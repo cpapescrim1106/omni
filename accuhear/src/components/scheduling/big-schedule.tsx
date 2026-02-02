@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 import type { OpUnitType } from "dayjs";
+import { useRouter, useSearchParams } from "next/navigation";
 const DATE_FORMAT = "YYYY-MM-DD";
 
 const DAY_START_HOUR = 8;
@@ -27,6 +28,14 @@ const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 dayjs.extend(isoWeek);
 
 type ScheduleView = "day" | "week";
+type StatusFilter = "all" | "confirmed" | "pending" | "cancelled";
+
+const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "confirmed", label: "Confirmed" },
+  { value: "pending", label: "Pending" },
+  { value: "cancelled", label: "Cancelled" },
+];
 
 type Appointment = {
   id: string;
@@ -65,6 +74,38 @@ function providerShortLabel(name: string) {
   return words.map((word) => word[0].toUpperCase()).join("");
 }
 
+function normalizeDateParam(value: string | null) {
+  if (!value) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const parsed = dayjs(value);
+  return parsed.isValid() ? parsed.format(DATE_FORMAT) : null;
+}
+
+function normalizeStatusParam(value: string | null): StatusFilter {
+  const normalized = (value || "").toLowerCase();
+  if (normalized === "canceled") return "cancelled";
+  if (normalized === "confirmed" || normalized === "pending" || normalized === "cancelled") {
+    return normalized as StatusFilter;
+  }
+  return "all";
+}
+
+function statusMatches(filter: StatusFilter, statusName?: string | null) {
+  if (filter === "all") return true;
+  const normalized = (statusName || "").toLowerCase();
+  if (!normalized) return false;
+  if (filter === "confirmed") return normalized.includes("confirm");
+  if (filter === "pending") {
+    return (
+      normalized.includes("pending") ||
+      normalized.includes("scheduled") ||
+      normalized.includes("tentative") ||
+      normalized.includes("ready")
+    );
+  }
+  return normalized.includes("cancel") || normalized.includes("no show") || normalized.includes("no-show");
+}
+
 function buildSlots(base: dayjs.Dayjs) {
   const start = base.hour(DAY_START_HOUR).minute(0).second(0);
   const end = base.hour(DAY_END_HOUR).minute(0).second(0);
@@ -93,14 +134,42 @@ function useTypeColors(types: MetaPayload["types"]) {
 }
 
 export function BigSchedule() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [meta, setMeta] = useState<MetaPayload | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [viewDate, setViewDate] = useState(dayjs().format(DATE_FORMAT));
   const [viewType, setViewType] = useState<ScheduleView>("week");
-  const [error, setError] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [selectedProviders, setSelectedProviders] = useState<string[]>(fallbackProviders);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [colorByType, setColorByType] = useState(true);
+  const [selectedStatus, setSelectedStatus] = useState<StatusFilter>("all");
+  const [hasSynced, setHasSynced] = useState(false);
+  const resizeRef = useRef<{
+    id: string;
+    start: dayjs.Dayjs;
+    end: dayjs.Dayjs;
+    providerName: string;
+    date: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timeout = window.setTimeout(() => setToastMessage(null), 5000);
+    return () => window.clearTimeout(timeout);
+  }, [toastMessage]);
+
+  useEffect(() => {
+    if (hasSynced) return;
+    const dateParam = normalizeDateParam(searchParams.get("date"));
+    const statusParam = normalizeStatusParam(searchParams.get("status"));
+    const providerParams = searchParams.getAll("provider");
+    if (dateParam) setViewDate(dateParam);
+    setSelectedStatus(statusParam);
+    if (providerParams.length) setSelectedProviders(providerParams);
+    setHasSynced(true);
+  }, [hasSynced, searchParams]);
 
   useEffect(() => {
     fetch("/api/appointments/meta")
@@ -126,6 +195,34 @@ export function BigSchedule() {
     if (!meta?.types?.length) return;
     setSelectedTypes((current) => (current.length ? current : meta.types.map((type) => type.id)));
   }, [meta]);
+
+  useEffect(() => {
+    if (!hasSynced) return;
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (viewDate) {
+      params.set("date", viewDate);
+    } else {
+      params.delete("date");
+    }
+
+    if (selectedStatus !== "all") {
+      params.set("status", selectedStatus);
+    } else {
+      params.delete("status");
+    }
+
+    params.delete("provider");
+    if (providers.length && selectedProviders.length && selectedProviders.length !== providers.length) {
+      selectedProviders.forEach((provider) => params.append("provider", provider));
+    }
+
+    const nextQuery = params.toString();
+    const currentQuery = searchParams.toString();
+    if (nextQuery !== currentQuery) {
+      router.replace(nextQuery ? `/scheduling?${nextQuery}` : "/scheduling", { scroll: false });
+    }
+  }, [hasSynced, providers, router, searchParams, selectedProviders, selectedStatus, viewDate]);
 
   const typeColors = useTypeColors(meta?.types ?? []);
 
@@ -189,12 +286,17 @@ export function BigSchedule() {
       })
       .filter((event) => visibleProviders.includes(event.providerName))
       .filter((event) => (selectedTypes.length ? selectedTypes.includes(event.typeId || "") : true))
+      .filter((event) => statusMatches(selectedStatus, event.statusName))
       .sort((a, b) => a.start.valueOf() - b.start.valueOf());
-  }, [appointments, colorByType, selectedTypes, typeColors, visibleProviders]);
+  }, [appointments, colorByType, selectedStatus, selectedTypes, typeColors, visibleProviders]);
 
   const eventMap = useMemo(() => {
     return new Map(events.map((event) => [event.id, event]));
   }, [events]);
+
+  const showError = useCallback((message: string) => {
+    setToastMessage(message);
+  }, []);
 
   const dayGrid = useMemo(() => {
     if (viewType !== "day") return null;
@@ -314,8 +416,14 @@ export function BigSchedule() {
     setViewDate(nextDate.format(DATE_FORMAT));
   }
 
-  async function moveAppointment(eventId: string, providerName: string, startTime: dayjs.Dayjs, endTime: dayjs.Dayjs) {
-    setError(null);
+  async function patchAppointment(
+    eventId: string,
+    providerName: string,
+    startTime: dayjs.Dayjs,
+    endTime: dayjs.Dayjs,
+    snapshot: Appointment[]
+  ) {
+    setToastMessage(null);
     const response = await fetch(`/api/appointments/${eventId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -328,8 +436,8 @@ export function BigSchedule() {
 
     if (!response.ok) {
       const payload = await response.json();
-      setError(payload.error || "Conflict detected");
-      await loadAppointments();
+      showError(payload.error || "Conflict detected");
+      setAppointments(snapshot);
       return;
     }
 
@@ -338,7 +446,6 @@ export function BigSchedule() {
 
   async function createAppointment(providerName: string, startTime: dayjs.Dayjs, endTime: dayjs.Dayjs) {
     if (!meta) return;
-    setError(null);
     const statusId = meta.statuses.find((status) => status.name === "Scheduled")?.id || meta.statuses[0]?.id;
     const typeId = meta.types[0]?.id;
     if (!statusId || !typeId) return;
@@ -358,7 +465,7 @@ export function BigSchedule() {
 
     if (!response.ok) {
       const payload = await response.json();
-      setError(payload.error || "Conflict detected");
+      showError(payload.error || "Conflict detected");
       return;
     }
 
@@ -391,7 +498,15 @@ export function BigSchedule() {
       newStart = dayEnd.subtract(appointment.durationMinutes, "minute");
     }
 
-    await moveAppointment(appointment.id, payload.provider, newStart, newEnd);
+    const snapshot = appointments;
+    setAppointments((current) =>
+      current.map((item) =>
+        item.id === appointment.id
+          ? { ...item, providerName: payload.provider, startTime: newStart.toISOString(), endTime: newEnd.toISOString() }
+          : item
+      )
+    );
+    await patchAppointment(appointment.id, payload.provider, newStart, newEnd, snapshot);
   }
 
   async function handleCreate(payload: { date: string; time: string; provider: string }) {
@@ -399,6 +514,45 @@ export function BigSchedule() {
     const base = dayjs(payload.date).hour(hour).minute(minute).second(0);
     const end = base.add(SLOT_MINUTES, "minute");
     await createAppointment(payload.provider, base, end);
+  }
+
+  function handleResizeStart(
+    event: React.PointerEvent<HTMLDivElement>,
+    payload: { id: string; start: dayjs.Dayjs; end: dayjs.Dayjs; providerName: string; date: string }
+  ) {
+    event.stopPropagation();
+    event.preventDefault();
+    resizeRef.current = payload;
+
+    const handlePointerUp = async (pointerEvent: PointerEvent) => {
+      const element = document.elementFromPoint(pointerEvent.clientX, pointerEvent.clientY) as HTMLElement | null;
+      const cell = element?.closest(".schedule-day-cell, .schedule-week-cell") as HTMLElement | null;
+      const fallbackTarget = element?.closest("[data-date][data-time]") as HTMLElement | null;
+      const active = resizeRef.current;
+      resizeRef.current = null;
+      window.removeEventListener("pointerup", handlePointerUp);
+
+      if (!active) return;
+      const date = cell?.dataset.date ?? fallbackTarget?.dataset.date;
+      const time = cell?.dataset.time ?? fallbackTarget?.dataset.time;
+      if (!date || !time) return;
+
+      const [hour, minute] = time.split(":").map((value) => Number(value));
+      let newEnd = dayjs(date).hour(hour).minute(minute).second(0).add(SLOT_MINUTES, "minute");
+      const minEnd = active.start.add(SLOT_MINUTES, "minute");
+      if (newEnd.isBefore(minEnd)) newEnd = minEnd;
+      if (newEnd.isSame(active.end)) return;
+
+      const snapshot = appointments;
+      setAppointments((current) =>
+        current.map((item) =>
+          item.id === active.id ? { ...item, endTime: newEnd.toISOString() } : item
+        )
+      );
+      await patchAppointment(active.id, active.providerName, active.start, newEnd, snapshot);
+    };
+
+    window.addEventListener("pointerup", handlePointerUp);
   }
 
   const sidebarTypes = meta?.types ?? [];
@@ -437,7 +591,15 @@ export function BigSchedule() {
         </div>
       </div>
 
-      {error ? <div className="mb-3 text-xs text-danger">{error}</div> : null}
+      {toastMessage ? (
+        <div
+          className="mb-3 rounded-xl border border-danger/30 bg-danger/10 px-4 py-2 text-xs text-danger"
+          data-testid="schedule-toast"
+          role="status"
+        >
+          {toastMessage}
+        </div>
+      ) : null}
 
       <div className="schedule-shell" data-testid="scheduler-root">
         <aside className="schedule-sidebar">
@@ -452,6 +614,7 @@ export function BigSchedule() {
                 <label key={provider} className="flex items-center gap-2 text-xs">
                   <input
                     type="checkbox"
+                    data-testid={`provider-filter-${provider}`}
                     checked={selectedProviders.includes(provider)}
                     onChange={() => {
                       setSelectedProviders((current) =>
@@ -476,8 +639,17 @@ export function BigSchedule() {
 
           <div className="schedule-sidebar-card">
             <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">Status</div>
-            <select className="mt-2 w-full rounded-xl border border-surface-3 bg-white/80 px-3 py-2 text-xs">
-              <option>Active</option>
+            <select
+              className="mt-2 w-full rounded-xl border border-surface-3 bg-white/80 px-3 py-2 text-xs"
+              value={selectedStatus}
+              data-testid="status-filter"
+              onChange={(event) => setSelectedStatus(event.target.value as StatusFilter)}
+            >
+              {STATUS_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
             <label className="mt-3 flex items-center gap-2 text-xs">
               <input type="checkbox" checked={colorByType} onChange={() => setColorByType((value) => !value)} />
@@ -583,8 +755,19 @@ export function BigSchedule() {
                     key={`event-${event.id}`}
                     className="schedule-day-event"
                     data-testid="schedule-event"
+                    data-appointment-id={event.id}
+                    data-date={event.start.format("YYYY-MM-DD")}
+                    data-time={event.start.format("HH:mm")}
                     draggable
                     onDragStart={(dragEvent) => handleDragStart(dragEvent, event.id)}
+                    onDragOver={(dragEvent) => dragEvent.preventDefault()}
+                    onDrop={(dragEvent) =>
+                      handleDrop(dragEvent, {
+                        date: event.start.format("YYYY-MM-DD"),
+                        time: event.start.format("HH:mm"),
+                        provider: event.providerName,
+                      })
+                    }
                     style={{
                       gridColumn: event.gridColumn,
                       gridRow: `${event.gridRowStart} / ${event.gridRowEnd}`,
@@ -594,6 +777,20 @@ export function BigSchedule() {
                   >
                     <div className="schedule-day-event-title">{event.title}</div>
                     <div className="schedule-day-event-time">{event.timeLabel}</div>
+                    <div
+                      className="schedule-event-resize-handle"
+                      data-testid="schedule-event-resize"
+                      draggable={false}
+                      onPointerDown={(pointerEvent) =>
+                        handleResizeStart(pointerEvent, {
+                          id: event.id,
+                          start: event.start,
+                          end: event.end,
+                          providerName: event.providerName,
+                          date: event.start.format("YYYY-MM-DD"),
+                        })
+                      }
+                    />
                   </div>
                 ))}
               </div>
@@ -679,8 +876,19 @@ export function BigSchedule() {
                     key={`event-${event.id}`}
                     className="schedule-week-event"
                     data-testid="schedule-event"
+                    data-appointment-id={event.id}
+                    data-date={event.start.format("YYYY-MM-DD")}
+                    data-time={event.start.format("HH:mm")}
                     draggable
                     onDragStart={(dragEvent) => handleDragStart(dragEvent, event.id)}
+                    onDragOver={(dragEvent) => dragEvent.preventDefault()}
+                    onDrop={(dragEvent) =>
+                      handleDrop(dragEvent, {
+                        date: event.start.format("YYYY-MM-DD"),
+                        time: event.start.format("HH:mm"),
+                        provider: event.providerName,
+                      })
+                    }
                     style={{
                       gridColumn: event.gridColumn,
                       gridRow: `${event.gridRowStart} / ${event.gridRowEnd}`,
@@ -690,6 +898,20 @@ export function BigSchedule() {
                   >
                     <div className="schedule-week-event-title">{event.title}</div>
                     <div className="schedule-week-event-time">{event.timeLabel}</div>
+                    <div
+                      className="schedule-event-resize-handle"
+                      data-testid="schedule-event-resize"
+                      draggable={false}
+                      onPointerDown={(pointerEvent) =>
+                        handleResizeStart(pointerEvent, {
+                          id: event.id,
+                          start: event.start,
+                          end: event.end,
+                          providerName: event.providerName,
+                          date: event.start.format("YYYY-MM-DD"),
+                        })
+                      }
+                    />
                   </div>
                 ))}
               </div>
@@ -745,6 +967,8 @@ function MiniCalendar({
               key={day.format("YYYY-MM-DD")}
               type="button"
               className={`schedule-mini-day ${isCurrentMonth ? "" : "is-out"} ${isSelected ? "is-active" : ""}`}
+              data-date={day.format(DATE_FORMAT)}
+              data-testid={`mini-calendar-day-${day.format(DATE_FORMAT)}`}
               onClick={() => onSelect(day.format(DATE_FORMAT))}
             >
               {day.date()}
