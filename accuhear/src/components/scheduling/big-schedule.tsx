@@ -9,11 +9,11 @@ const DATE_FORMAT = "YYYY-MM-DD";
 
 const DAY_START_HOUR = 8;
 const DAY_END_HOUR = 18;
-const SLOT_MINUTES = 30;
-const DAY_ROW_HEIGHT = 32;
-const DAY_HEADER_HEIGHT = 48;
-const WEEK_HEADER_HEIGHT = 40;
-const WEEK_PROVIDER_HEIGHT = 32;
+const SLOT_MINUTES = 15;
+const DAY_ROW_HEIGHT = 20;
+const DAY_HEADER_HEIGHT = 40;
+const WEEK_HEADER_HEIGHT = 32;
+const WEEK_PROVIDER_HEIGHT = 28;
 
 const fallbackProviders = ["Chris Pape", "C + C, SHD"];
 const providerShortNames: Record<string, string> = {
@@ -42,15 +42,18 @@ type Appointment = {
   providerName: string;
   startTime: string;
   endTime: string;
-  patient?: { firstName: string; lastName: string } | null;
+  patient?: { id: string; firstName: string; lastName: string } | null;
   type?: { id: string; name: string } | null;
-  status?: { name: string } | null;
+  status?: { id: string; name: string } | null;
+  notes?: string | null;
 };
 
 type MetaPayload = {
   providers: string[];
   types: { id: string; name: string }[];
   statuses: { id: string; name: string }[];
+  rangeStart?: string | null;
+  rangeEnd?: string | null;
 };
 
 type ScheduleEvent = {
@@ -64,6 +67,27 @@ type ScheduleEvent = {
   end: dayjs.Dayjs;
   durationMinutes: number;
   color: string;
+};
+
+type PatientSearchResult = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  preferredName?: string | null;
+  dob?: string | null;
+  legacyId?: string | null;
+};
+
+type AppointmentFormState = {
+  patientId: string;
+  patientName: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  providerName: string;
+  typeId: string;
+  statusId: string;
+  notes: string;
 };
 
 function providerShortLabel(name: string) {
@@ -146,6 +170,8 @@ export function BigSchedule() {
   const [colorByType, setColorByType] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState<StatusFilter>("all");
   const [hasSynced, setHasSynced] = useState(false);
+  const [hasExplicitDate, setHasExplicitDate] = useState(false);
+  const [hasAutoFocused, setHasAutoFocused] = useState(false);
   const resizeRef = useRef<{
     id: string;
     start: dayjs.Dayjs;
@@ -153,6 +179,16 @@ export function BigSchedule() {
     providerName: string;
     date: string;
   } | null>(null);
+  const draggingRef = useRef(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formState, setFormState] = useState<AppointmentFormState | null>(null);
+  const [patientQuery, setPatientQuery] = useState("");
+  const debouncedPatientQuery = useDebounce(patientQuery, 300);
+  const [patientResults, setPatientResults] = useState<PatientSearchResult[]>([]);
+  const [patientLoading, setPatientLoading] = useState(false);
+  const [patientStatusFilter, setPatientStatusFilter] = useState<"active" | "inactive">("active");
+  const [modalError, setModalError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!toastMessage) return;
@@ -165,6 +201,7 @@ export function BigSchedule() {
     const dateParam = normalizeDateParam(searchParams.get("date"));
     const statusParam = normalizeStatusParam(searchParams.get("status"));
     const providerParams = searchParams.getAll("provider");
+    setHasExplicitDate(Boolean(dateParam));
     if (dateParam) setViewDate(dateParam);
     setSelectedStatus(statusParam);
     if (providerParams.length) setSelectedProviders(providerParams);
@@ -183,6 +220,21 @@ export function BigSchedule() {
   }, [meta]);
 
   useEffect(() => {
+    if (!meta || hasAutoFocused || hasExplicitDate) return;
+    const rangeStart = meta.rangeStart ? dayjs(meta.rangeStart) : null;
+    const rangeEnd = meta.rangeEnd ? dayjs(meta.rangeEnd) : null;
+    if (!rangeStart || !rangeEnd) {
+      setHasAutoFocused(true);
+      return;
+    }
+    const current = dayjs(viewDate);
+    if (current.isBefore(rangeStart, "day") || current.isAfter(rangeEnd, "day")) {
+      setViewDate(rangeEnd.format(DATE_FORMAT));
+    }
+    setHasAutoFocused(true);
+  }, [hasAutoFocused, hasExplicitDate, meta, viewDate]);
+
+  useEffect(() => {
     if (!providers.length) return;
     setSelectedProviders((current) => {
       if (!current.length) return providers;
@@ -195,6 +247,72 @@ export function BigSchedule() {
     if (!meta?.types?.length) return;
     setSelectedTypes((current) => (current.length ? current : meta.types.map((type) => type.id)));
   }, [meta]);
+
+  const typeColors = useTypeColors(meta?.types ?? []);
+  const defaultStatusId = useMemo(() => {
+    if (!meta?.statuses?.length) return "";
+    return meta.statuses.find((status) => status.name === "Scheduled")?.id ?? meta.statuses[0].id;
+  }, [meta]);
+  const defaultTypeId = useMemo(() => {
+    if (!meta?.types?.length) return "";
+    return meta.types[0].id;
+  }, [meta]);
+
+  useEffect(() => {
+    if (!formState) return;
+    setFormState((current) => {
+      if (!current) return current;
+      const next = {
+        ...current,
+        providerName: current.providerName || providers[0] || "",
+        typeId: current.typeId || defaultTypeId,
+        statusId: current.statusId || defaultStatusId,
+      };
+      if (
+        next.providerName === current.providerName &&
+        next.typeId === current.typeId &&
+        next.statusId === current.statusId
+      ) {
+        return current;
+      }
+      return next;
+    });
+  }, [defaultStatusId, defaultTypeId, formState, providers]);
+
+  useEffect(() => {
+    if (!isModalOpen) return;
+    const query = debouncedPatientQuery.trim();
+    if (!query) {
+      setPatientResults([]);
+      return;
+    }
+    let active = true;
+    const controller = new AbortController();
+
+    async function run() {
+      setPatientLoading(true);
+      try {
+        const response = await fetch(
+          `/api/patients/search?q=${encodeURIComponent(query)}&status=${patientStatusFilter}`,
+          {
+          signal: controller.signal,
+          }
+        );
+        const data = await response.json();
+        if (active) setPatientResults(data.results || []);
+      } catch {
+        if (active) setPatientResults([]);
+      } finally {
+        if (active) setPatientLoading(false);
+      }
+    }
+
+    run();
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [debouncedPatientQuery, isModalOpen, patientStatusFilter]);
 
   useEffect(() => {
     if (!hasSynced) return;
@@ -224,7 +342,25 @@ export function BigSchedule() {
     }
   }, [hasSynced, providers, router, searchParams, selectedProviders, selectedStatus, viewDate]);
 
-  const typeColors = useTypeColors(meta?.types ?? []);
+  const buildDefaultForm = useCallback((): AppointmentFormState => {
+    const baseDate = dayjs(viewDate).format("YYYY-MM-DD");
+    const start = `${String(DAY_START_HOUR).padStart(2, "0")}:00`;
+    const endMinutes = DAY_START_HOUR * 60 + SLOT_MINUTES;
+    const endHour = Math.floor(endMinutes / 60);
+    const endMinute = endMinutes % 60;
+    const end = `${String(endHour).padStart(2, "0")}:${String(endMinute).padStart(2, "0")}`;
+    return {
+      patientId: "",
+      patientName: "",
+      date: baseDate,
+      startTime: start,
+      endTime: end,
+      providerName: providers[0] ?? "",
+      typeId: defaultTypeId,
+      statusId: defaultStatusId,
+      notes: "",
+    };
+  }, [defaultStatusId, defaultTypeId, providers, viewDate]);
 
   const loadAppointments = useCallback(async () => {
     const rangeUnit = viewType === "day" ? "day" : "isoWeek";
@@ -251,6 +387,86 @@ export function BigSchedule() {
     };
     return () => events.close();
   }, [loadAppointments]);
+
+  const openNewModal = useCallback(() => {
+    setEditingId(null);
+    setFormState(buildDefaultForm());
+    setPatientQuery("");
+    setPatientResults([]);
+    setModalError(null);
+    setIsModalOpen(true);
+  }, [buildDefaultForm]);
+
+  useEffect(() => {
+    const globalWindow = window as unknown as {
+      __openAppointmentModal?: () => void;
+      __pendingAppointmentModal?: boolean;
+    };
+    globalWindow.__openAppointmentModal = openNewModal;
+    if (globalWindow.__pendingAppointmentModal) {
+      globalWindow.__pendingAppointmentModal = false;
+      openNewModal();
+    }
+    return () => {
+      if (globalWindow.__openAppointmentModal === openNewModal) {
+        delete globalWindow.__openAppointmentModal;
+      }
+    };
+  }, [openNewModal]);
+
+  const openEditModal = useCallback(
+    (appointmentId: string) => {
+      const appointment = appointments.find((item) => item.id === appointmentId);
+      if (!appointment) return;
+      const start = dayjs(appointment.startTime);
+      const end = dayjs(appointment.endTime);
+      const patientName = appointment.patient
+        ? `${appointment.patient.lastName}, ${appointment.patient.firstName}`
+        : "";
+      setEditingId(appointment.id);
+      setFormState({
+        patientId: appointment.patient?.id ?? "",
+        patientName,
+        date: start.format("YYYY-MM-DD"),
+        startTime: start.format("HH:mm"),
+        endTime: end.format("HH:mm"),
+        providerName: appointment.providerName,
+        typeId: appointment.type?.id ?? defaultTypeId,
+        statusId: appointment.status?.id ?? defaultStatusId,
+        notes: appointment.notes ?? "",
+      });
+      setPatientQuery(patientName);
+      setPatientResults([]);
+      setModalError(null);
+      setIsModalOpen(true);
+    },
+    [appointments, defaultStatusId, defaultTypeId]
+  );
+
+  const closeModal = useCallback(() => {
+    setIsModalOpen(false);
+    setEditingId(null);
+    setFormState(null);
+    setPatientQuery("");
+    setPatientResults([]);
+    setModalError(null);
+  }, []);
+
+  useEffect(() => {
+    const handler = () => openNewModal();
+    window.addEventListener("open-appointment-modal", handler);
+    return () => window.removeEventListener("open-appointment-modal", handler);
+  }, [openNewModal]);
+
+  useEffect(() => {
+    const flag = searchParams.get("new");
+    if (flag !== "1") return;
+    openNewModal();
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("new");
+    const query = params.toString();
+    router.replace(query ? `/scheduling?${query}` : "/scheduling");
+  }, [openNewModal, router, searchParams]);
 
   const visibleProviders = useMemo(() => {
     if (!selectedProviders.length) return [] as string[];
@@ -473,6 +689,7 @@ export function BigSchedule() {
   }
 
   function handleDragStart(event: React.DragEvent<HTMLDivElement>, appointmentId: string) {
+    draggingRef.current = true;
     event.dataTransfer.setData("application/json", JSON.stringify({ id: appointmentId }));
     event.dataTransfer.effectAllowed = "move";
   }
@@ -516,6 +733,126 @@ export function BigSchedule() {
     await createAppointment(payload.provider, base, end);
   }
 
+  async function hasConflict(
+    providerName: string,
+    startTime: dayjs.Dayjs,
+    endTime: dayjs.Dayjs,
+    ignoreId?: string | null
+  ) {
+    try {
+      const rangeStart = startTime.subtract(SLOT_MINUTES, "minute");
+      const rangeEnd = endTime.add(SLOT_MINUTES, "minute");
+      const response = await fetch(
+        `/api/appointments?start=${rangeStart.toISOString()}&end=${rangeEnd.toISOString()}&provider=${encodeURIComponent(
+          providerName
+        )}`
+      );
+      const data = await response.json();
+      const appointmentsList: Appointment[] = data.appointments || [];
+      return appointmentsList.some((appt) => {
+        if (ignoreId && appt.id === ignoreId) return false;
+        const start = dayjs(appt.startTime);
+        const end = dayjs(appt.endTime);
+        return start.isBefore(endTime) && end.isAfter(startTime);
+      });
+    } catch {
+      return false;
+    }
+  }
+
+  async function handleModalSubmit() {
+    if (!formState) return;
+    setModalError(null);
+    setToastMessage(null);
+
+    const requiredMissing =
+      !formState.patientId ||
+      !formState.date ||
+      !formState.startTime ||
+      !formState.endTime ||
+      !formState.providerName ||
+      !formState.typeId ||
+      !formState.statusId;
+    if (requiredMissing) {
+      setModalError("Please complete all required fields.");
+      return;
+    }
+
+    const start = dayjs(`${formState.date}T${formState.startTime}`);
+    const end = dayjs(`${formState.date}T${formState.endTime}`);
+    if (!start.isValid() || !end.isValid() || !end.isAfter(start)) {
+      setModalError("End time must be after start time.");
+      return;
+    }
+
+    const conflict = await hasConflict(formState.providerName, start, end, editingId);
+    if (conflict) {
+      setModalError("Scheduling conflict");
+      setToastMessage("Scheduling conflict");
+      return;
+    }
+
+    const payload = {
+      providerName: formState.providerName,
+      startTime: start.toISOString(),
+      endTime: end.toISOString(),
+      typeId: formState.typeId,
+      statusId: formState.statusId,
+      notes: formState.notes,
+      patientId: formState.patientId,
+      location: "SHD",
+    };
+
+    const response = await fetch(
+      editingId ? `/api/appointments/${editingId}` : "/api/appointments",
+      {
+        method: editingId ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    if (!response.ok) {
+      const data = await response.json();
+      const message = data.error || "Unable to save appointment.";
+      setModalError(message);
+      setToastMessage(message);
+      return;
+    }
+
+    await loadAppointments();
+    closeModal();
+  }
+
+  function handlePatientQueryChange(value: string) {
+    setPatientQuery(value);
+    setPatientResults([]);
+    setFormState((current) =>
+      current
+        ? {
+            ...current,
+            patientId: "",
+            patientName: "",
+          }
+        : current
+    );
+  }
+
+  function handlePatientSelect(patient: PatientSearchResult) {
+    const name = `${patient.lastName}, ${patient.firstName}`;
+    setFormState((current) =>
+      current
+        ? {
+            ...current,
+            patientId: patient.id,
+            patientName: name,
+          }
+        : current
+    );
+    setPatientQuery(name);
+    setPatientResults([]);
+  }
+
   function handleResizeStart(
     event: React.PointerEvent<HTMLDivElement>,
     payload: { id: string; start: dayjs.Dayjs; end: dayjs.Dayjs; providerName: string; date: string }
@@ -556,15 +893,19 @@ export function BigSchedule() {
   }
 
   const sidebarTypes = meta?.types ?? [];
+  const rangeStart = meta?.rangeStart ? dayjs(meta.rangeStart) : null;
+  const rangeEnd = meta?.rangeEnd ? dayjs(meta.rangeEnd) : null;
+  const rangeLabel =
+    rangeStart && rangeEnd ? `${rangeStart.format("MMM D, YYYY")} – ${rangeEnd.format("MMM D, YYYY")}` : null;
 
   return (
-    <section className="card p-6">
+    <section className="card schedule-card p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="section-title text-xs text-brand-ink">Scheduling</div>
           <div className="text-sm text-ink-muted">Drag and drop to reschedule across providers.</div>
         </div>
-        <div className="flex items-center gap-2 text-xs text-ink-muted">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
           <button onClick={prevClick} data-testid="schedule-prev" className="tab-pill bg-surface-2">
             Prev
           </button>
@@ -588,6 +929,29 @@ export function BigSchedule() {
           <div data-testid="schedule-date" className="rounded-full bg-surface-2 px-3 py-2">
             {dayjs(viewDate).format("MMM D, YYYY")}
           </div>
+          {rangeStart && rangeEnd ? (
+            <>
+              <button
+                onClick={() => setViewDate(rangeStart.format(DATE_FORMAT))}
+                data-testid="schedule-earliest"
+                className="tab-pill bg-surface-2"
+              >
+                Earliest
+              </button>
+              <button
+                onClick={() => setViewDate(rangeEnd.format(DATE_FORMAT))}
+                data-testid="schedule-latest"
+                className="tab-pill bg-surface-2"
+              >
+                Latest
+              </button>
+              {rangeLabel ? (
+                <div className="rounded-full bg-surface-2 px-3 py-2 text-[11px] uppercase tracking-[0.16em]">
+                  Range: {rangeLabel}
+                </div>
+              ) : null}
+            </>
+          ) : null}
         </div>
       </div>
 
@@ -598,6 +962,233 @@ export function BigSchedule() {
           role="status"
         >
           {toastMessage}
+        </div>
+      ) : null}
+
+      {isModalOpen && formState ? (
+        <div className="appointment-modal-overlay" data-testid="appointment-modal" role="dialog" aria-modal="true">
+          <div className="appointment-modal-card">
+            <div className="appointment-modal-header">
+              <div>
+                <div className="text-xs uppercase tracking-[0.2em] text-ink-soft">
+                  {editingId ? "Edit appointment" : "New appointment"}
+                </div>
+                <div className="text-lg font-semibold text-ink-strong">
+                  {editingId ? "Update appointment details" : "Schedule a new visit"}
+                </div>
+              </div>
+              <button
+                type="button"
+                data-testid="appointment-cancel"
+                className="rounded-full border border-surface-3 px-4 py-2 text-xs text-ink-soft"
+                onClick={closeModal}
+              >
+                Cancel
+              </button>
+            </div>
+
+            {modalError ? (
+              <div className="appointment-modal-error" data-testid="appointment-modal-error">
+                {modalError}
+              </div>
+            ) : null}
+
+            <div className="appointment-modal-body">
+              <div className="appointment-field">
+                <div className="flex items-center justify-between gap-3">
+                  <label className="appointment-label">Patient</label>
+                  <div className="flex items-center gap-2 text-xs text-ink-muted">
+                    <button
+                      type="button"
+                      onClick={() => setPatientStatusFilter("active")}
+                      className={`tab-pill ${patientStatusFilter === "active" ? "" : "bg-surface-2"}`}
+                    >
+                      Active
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPatientStatusFilter("inactive")}
+                      className={`tab-pill ${patientStatusFilter === "inactive" ? "" : "bg-surface-2"}`}
+                    >
+                      Inactive
+                    </button>
+                  </div>
+                </div>
+                <input
+                  data-testid="appointment-patient-search"
+                  value={patientQuery}
+                  required
+                  placeholder="Search patients"
+                  onChange={(event) => handlePatientQueryChange(event.target.value)}
+                  className="appointment-input"
+                />
+                {patientLoading ? <div className="appointment-hint">Searching…</div> : null}
+                {patientResults.length ? (
+                  <div className="appointment-patient-results">
+                    {patientResults.map((patient) => (
+                      <button
+                        key={patient.id}
+                        type="button"
+                        data-testid="appointment-patient-option"
+                        className="appointment-patient-option"
+                        onClick={() => handlePatientSelect(patient)}
+                      >
+                        {patient.lastName}, {patient.firstName}
+                        {patient.dob ? ` · DOB ${patient.dob}` : ""}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+                {formState.patientId ? (
+                  <div className="appointment-selected" data-testid="appointment-patient-selected">
+                    Selected: {formState.patientName}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="appointment-grid">
+                <div className="appointment-field">
+                  <label className="appointment-label">Date</label>
+                  <input
+                    type="date"
+                    required
+                    data-testid="appointment-date"
+                    className="appointment-input"
+                    value={formState.date}
+                    onChange={(event) =>
+                      setFormState((current) =>
+                        current ? { ...current, date: event.target.value } : current
+                      )
+                    }
+                  />
+                </div>
+                <div className="appointment-field">
+                  <label className="appointment-label">Start</label>
+                  <input
+                    type="time"
+                    required
+                    data-testid="appointment-start-time"
+                    className="appointment-input"
+                    value={formState.startTime}
+                    onChange={(event) =>
+                      setFormState((current) =>
+                        current ? { ...current, startTime: event.target.value } : current
+                      )
+                    }
+                  />
+                </div>
+                <div className="appointment-field">
+                  <label className="appointment-label">End</label>
+                  <input
+                    type="time"
+                    required
+                    data-testid="appointment-end-time"
+                    className="appointment-input"
+                    value={formState.endTime}
+                    onChange={(event) =>
+                      setFormState((current) =>
+                        current ? { ...current, endTime: event.target.value } : current
+                      )
+                    }
+                  />
+                </div>
+                <div className="appointment-field">
+                  <label className="appointment-label">Provider</label>
+                  <select
+                    required
+                    data-testid="appointment-provider"
+                    className="appointment-input"
+                    value={formState.providerName}
+                    onChange={(event) =>
+                      setFormState((current) =>
+                        current ? { ...current, providerName: event.target.value } : current
+                      )
+                    }
+                  >
+                    {providers.map((provider) => (
+                      <option key={provider} value={provider}>
+                        {provider}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="appointment-field">
+                  <label className="appointment-label">Appointment Type</label>
+                  <select
+                    required
+                    data-testid="appointment-type"
+                    className="appointment-input"
+                    value={formState.typeId}
+                    onChange={(event) =>
+                      setFormState((current) =>
+                        current ? { ...current, typeId: event.target.value } : current
+                      )
+                    }
+                  >
+                    {meta?.types?.map((type) => (
+                      <option key={type.id} value={type.id}>
+                        {type.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="appointment-field">
+                  <label className="appointment-label">Status</label>
+                  <select
+                    required
+                    data-testid="appointment-status"
+                    className="appointment-input"
+                    value={formState.statusId}
+                    onChange={(event) =>
+                      setFormState((current) =>
+                        current ? { ...current, statusId: event.target.value } : current
+                      )
+                    }
+                  >
+                    {meta?.statuses?.map((status) => (
+                      <option key={status.id} value={status.id}>
+                        {status.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="appointment-field">
+                <label className="appointment-label">Notes</label>
+                <textarea
+                  data-testid="appointment-notes"
+                  className="appointment-textarea"
+                  value={formState.notes}
+                  onChange={(event) =>
+                    setFormState((current) =>
+                      current ? { ...current, notes: event.target.value } : current
+                    )
+                  }
+                  rows={3}
+                />
+              </div>
+            </div>
+
+            <div className="appointment-modal-actions">
+              <button
+                type="button"
+                data-testid="appointment-cancel"
+                className="rounded-full border border-surface-3 px-4 py-2 text-xs text-ink-soft"
+                onClick={closeModal}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                data-testid="appointment-submit"
+                className="rounded-full bg-brand-ink px-5 py-2 text-xs font-semibold text-white"
+                onClick={handleModalSubmit}
+              >
+                {editingId ? "Save changes" : "Create appointment"}
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
 
@@ -720,7 +1311,7 @@ export function BigSchedule() {
                     data-testid="schedule-day-time"
                     style={{ gridColumn: 1, gridRow: index + 2 }}
                   >
-                    {slot.format("h:mm A")}
+                    {slot.minute() === 0 ? slot.format("ha") : ""}
                   </div>
                 ))}
                 {visibleProviders.flatMap((provider, colIndex) =>
@@ -760,6 +1351,15 @@ export function BigSchedule() {
                     data-time={event.start.format("HH:mm")}
                     draggable
                     onDragStart={(dragEvent) => handleDragStart(dragEvent, event.id)}
+                    onDragEnd={() => {
+                      window.setTimeout(() => {
+                        draggingRef.current = false;
+                      }, 0);
+                    }}
+                    onClick={() => {
+                      if (draggingRef.current) return;
+                      openEditModal(event.id);
+                    }}
                     onDragOver={(dragEvent) => dragEvent.preventDefault()}
                     onDrop={(dragEvent) =>
                       handleDrop(dragEvent, {
@@ -836,7 +1436,7 @@ export function BigSchedule() {
                     data-testid="schedule-week-time"
                     style={{ gridColumn: 1, gridRow: index + 3 }}
                   >
-                    {slot.format("h:mm A")}
+                    {slot.minute() === 0 ? slot.format("ha") : ""}
                   </div>
                 ))}
                 {weekGrid.weekDays.flatMap((day, dayIndex) =>
@@ -881,6 +1481,15 @@ export function BigSchedule() {
                     data-time={event.start.format("HH:mm")}
                     draggable
                     onDragStart={(dragEvent) => handleDragStart(dragEvent, event.id)}
+                    onDragEnd={() => {
+                      window.setTimeout(() => {
+                        draggingRef.current = false;
+                      }, 0);
+                    }}
+                    onClick={() => {
+                      if (draggingRef.current) return;
+                      openEditModal(event.id);
+                    }}
                     onDragOver={(dragEvent) => dragEvent.preventDefault()}
                     onDrop={(dragEvent) =>
                       handleDrop(dragEvent, {
@@ -978,4 +1587,13 @@ function MiniCalendar({
       </div>
     </div>
   );
+}
+
+function useDebounce<T>(value: T, delay: number) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handle = window.setTimeout(() => setDebouncedValue(value), delay);
+    return () => window.clearTimeout(handle);
+  }, [value, delay]);
+  return debouncedValue;
 }
