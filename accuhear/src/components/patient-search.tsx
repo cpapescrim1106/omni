@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { consumePatientSearchFocusFlag } from "@/components/global-shortcuts";
 
 export type PatientSearchResult = {
   id: string;
@@ -33,6 +34,7 @@ export function PatientSearch() {
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<"active" | "inactive">("active");
   const [activeIndex, setActiveIndex] = useState(-1);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const debouncedQuery = useDebounce(query, 360);
 
@@ -99,6 +101,21 @@ export function PatientSearch() {
     element.scrollIntoView({ block: "nearest" });
   }, [activeIndex]);
 
+  useEffect(() => {
+    if (consumePatientSearchFocusFlag()) {
+      window.requestAnimationFrame(() => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      });
+    }
+    function handleFocusEvent() {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+    window.addEventListener("patient-search:focus", handleFocusEvent);
+    return () => window.removeEventListener("patient-search:focus", handleFocusEvent);
+  }, []);
+
   const hint = useMemo(() => {
     if (!query) {
       return statusFilter === "active"
@@ -130,6 +147,7 @@ export function PatientSearch() {
         <div className="flex flex-1 items-center gap-3 rounded-2xl border border-transparent bg-white px-4 py-3 shadow-[0_10px_22px_rgba(24,20,50,0.08)] focus-within:ring-2 focus-within:ring-[var(--ring)]">
           <span className="text-ink-soft">⌕</span>
           <input
+            ref={inputRef}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search patients"
