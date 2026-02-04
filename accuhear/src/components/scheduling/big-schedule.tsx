@@ -1304,42 +1304,48 @@ export function BigSchedule() {
                     {provider}
                   </div>
                 ))}
-                {dayGrid.slots.map((slot, index) => (
+                {dayGrid.slots.map((slot, index) => {
+                  const isHour = slot.minute() === 0;
+                  return (
                   <div
                     key={`time-${slot.format("HH:mm")}`}
-                    className="schedule-day-time"
+                    className={`schedule-day-time${isHour ? " is-hour" : ""}`}
                     data-testid="schedule-day-time"
                     style={{ gridColumn: 1, gridRow: index + 2 }}
                   >
                     {slot.minute() === 0 ? slot.format("ha") : ""}
                   </div>
-                ))}
+                );
+                })}
                 {visibleProviders.flatMap((provider, colIndex) =>
-                  dayGrid.slots.map((slot, rowIndex) => (
-                    <div
-                      key={`cell-${provider}-${slot.format("HH:mm")}`}
-                      className="schedule-day-cell"
-                      style={{ gridColumn: colIndex + 2, gridRow: rowIndex + 2 }}
-                      data-provider={provider}
-                      data-date={dayjs(viewDate).format("YYYY-MM-DD")}
-                      data-time={slot.format("HH:mm")}
-                      onDragOver={(event) => event.preventDefault()}
-                      onDrop={(event) =>
-                        handleDrop(event, {
-                          date: dayjs(viewDate).format("YYYY-MM-DD"),
-                          time: slot.format("HH:mm"),
-                          provider,
-                        })
-                      }
-                      onDoubleClick={() =>
-                        handleCreate({
-                          date: dayjs(viewDate).format("YYYY-MM-DD"),
-                          time: slot.format("HH:mm"),
-                          provider,
-                        })
-                      }
-                    />
-                  ))
+                  dayGrid.slots.map((slot, rowIndex) => {
+                    const isHour = slot.minute() === 0;
+                    return (
+                      <div
+                        key={`cell-${provider}-${slot.format("HH:mm")}`}
+                        className={`schedule-day-cell${isHour ? " is-hour" : ""}`}
+                        style={{ gridColumn: colIndex + 2, gridRow: rowIndex + 2 }}
+                        data-provider={provider}
+                        data-date={dayjs(viewDate).format("YYYY-MM-DD")}
+                        data-time={slot.format("HH:mm")}
+                        onDragOver={(event) => event.preventDefault()}
+                        onDrop={(event) =>
+                          handleDrop(event, {
+                            date: dayjs(viewDate).format("YYYY-MM-DD"),
+                            time: slot.format("HH:mm"),
+                            provider,
+                          })
+                        }
+                        onDoubleClick={() =>
+                          handleCreate({
+                            date: dayjs(viewDate).format("YYYY-MM-DD"),
+                            time: slot.format("HH:mm"),
+                            provider,
+                          })
+                        }
+                      />
+                    );
+                  })
                 )}
                 {dayGrid.dayEvents.map((event) => (
                   <div
@@ -1429,46 +1435,52 @@ export function BigSchedule() {
                     </div>
                   ))
                 )}
-                {weekGrid.slots.slots.map((slot, index) => (
+                {weekGrid.slots.slots.map((slot, index) => {
+                  const isHour = slot.minute() === 0;
+                  return (
                   <div
                     key={`time-${slot.format("HH:mm")}`}
-                    className="schedule-week-time"
+                    className={`schedule-week-time${isHour ? " is-hour" : ""}`}
                     data-testid="schedule-week-time"
                     style={{ gridColumn: 1, gridRow: index + 3 }}
                   >
                     {slot.minute() === 0 ? slot.format("ha") : ""}
                   </div>
-                ))}
+                  );
+                })}
                 {weekGrid.weekDays.flatMap((day, dayIndex) =>
                   visibleProviders.flatMap((provider, providerIndex) =>
-                    weekGrid.slots.slots.map((slot, slotIndex) => (
-                      <div
-                        key={`cell-${day.format("YYYY-MM-DD")}-${provider}-${slot.format("HH:mm")}`}
-                        className="schedule-week-cell"
-                        style={{
-                          gridColumn: 2 + dayIndex * visibleProviders.length + providerIndex,
-                          gridRow: slotIndex + 3,
-                        }}
-                        data-provider={provider}
-                        data-date={day.format("YYYY-MM-DD")}
-                        data-time={slot.format("HH:mm")}
-                        onDragOver={(event) => event.preventDefault()}
-                        onDrop={(event) =>
-                          handleDrop(event, {
-                            date: day.format("YYYY-MM-DD"),
-                            time: slot.format("HH:mm"),
-                            provider,
-                          })
-                        }
-                        onDoubleClick={() =>
-                          handleCreate({
-                            date: day.format("YYYY-MM-DD"),
-                            time: slot.format("HH:mm"),
-                            provider,
-                          })
-                        }
-                      />
-                    ))
+                    weekGrid.slots.slots.map((slot, slotIndex) => {
+                      const isHour = slot.minute() === 0;
+                      return (
+                        <div
+                          key={`cell-${day.format("YYYY-MM-DD")}-${provider}-${slot.format("HH:mm")}`}
+                          className={`schedule-week-cell${isHour ? " is-hour" : ""}`}
+                          style={{
+                            gridColumn: 2 + dayIndex * visibleProviders.length + providerIndex,
+                            gridRow: slotIndex + 3,
+                          }}
+                          data-provider={provider}
+                          data-date={day.format("YYYY-MM-DD")}
+                          data-time={slot.format("HH:mm")}
+                          onDragOver={(event) => event.preventDefault()}
+                          onDrop={(event) =>
+                            handleDrop(event, {
+                              date: day.format("YYYY-MM-DD"),
+                              time: slot.format("HH:mm"),
+                              provider,
+                            })
+                          }
+                          onDoubleClick={() =>
+                            handleCreate({
+                              date: day.format("YYYY-MM-DD"),
+                              time: slot.format("HH:mm"),
+                              provider,
+                            })
+                          }
+                        />
+                      );
+                    })
                   )
                 )}
                 {weekGrid.weekEvents.map((event) => (

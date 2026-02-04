@@ -315,6 +315,14 @@ a {
   z-index: 3;
 }
 
+.schedule-day-time.is-hour,
+.schedule-day-cell.is-hour,
+.schedule-week-time.is-hour,
+.schedule-week-cell.is-hour {
+  border-bottom-width: 2px;
+  border-bottom-color: rgba(38, 34, 96, 0.18);
+}
+
 .schedule-day-cell {
   background: rgba(255, 255, 255, 0.6);
   border-bottom: 1px solid rgba(38, 34, 96, 0.08);
