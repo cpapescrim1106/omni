@@ -1,9 +1,8 @@
 import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
+import { ensureTestDatabaseUrl } from "../helpers/test-database";
 
-if (!process.env.DATABASE_URL) {
-  process.env.DATABASE_URL = "file:./dev.db";
-}
+ensureTestDatabaseUrl();
 
 const prisma = new PrismaClient();
 const e2eTag = `E2E:${Date.now()}`;
@@ -11,6 +10,8 @@ const DAY_START_HOUR = 8;
 const DAY_STOP_HOUR = 18;
 const DAY_SLOT_MINUTES = 30;
 const DAY_SLOT_COUNT = ((DAY_STOP_HOUR - DAY_START_HOUR) * 60) / DAY_SLOT_MINUTES;
+
+type AppointmentRange = { startTime: string; endTime: string };
 
 function expectDateBadgeFormat(value: string | null) {
   expect(value).toBeTruthy();
@@ -38,6 +39,51 @@ function toIso(date: Date, minutesOffset = 0) {
   const next = new Date(date);
   next.setMinutes(next.getMinutes() + minutesOffset);
   return next.toISOString();
+}
+
+function pad2(value: number) {
+  return value.toString().padStart(2, "0");
+}
+
+function toTimeLabel(date: Date) {
+  return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+}
+
+function buildLocalDateTime(date: string, hour: number, minute: number) {
+  return new Date(`${date}T${pad2(hour)}:${pad2(minute)}:00`);
+}
+
+function findFreeSlot(appointments: AppointmentRange[], date: string, startAfter?: Date) {
+  const slotMs = DAY_SLOT_MINUTES * 60 * 1000;
+  const dayStart = buildLocalDateTime(date, DAY_START_HOUR, 0);
+  const dayEnd = buildLocalDateTime(date, DAY_STOP_HOUR, 0);
+  const slotCount = Math.max(1, Math.floor((dayEnd.getTime() - dayStart.getTime()) / slotMs));
+  const startIndex = startAfter
+    ? Math.max(0, Math.ceil((startAfter.getTime() - dayStart.getTime()) / slotMs))
+    : 0;
+  const ranges = appointments.map((appt) => ({
+    start: new Date(appt.startTime).getTime(),
+    end: new Date(appt.endTime).getTime(),
+  }));
+
+  for (let i = startIndex; i < slotCount; i += 1) {
+    const slotStart = dayStart.getTime() + i * slotMs;
+    const slotEnd = slotStart + slotMs;
+    const overlaps = ranges.some((range) => range.start < slotEnd && range.end > slotStart);
+    if (!overlaps) {
+      return {
+        start: new Date(slotStart),
+        end: new Date(slotEnd),
+        timeLabel: toTimeLabel(new Date(slotStart)),
+      };
+    }
+  }
+
+  return {
+    start: dayStart,
+    end: new Date(dayStart.getTime() + slotMs),
+    timeLabel: toTimeLabel(dayStart),
+  };
 }
 
 async function getMeta(request: APIRequestContext): Promise<MetaPayload> {
@@ -451,6 +497,114 @@ test.describe.serial("Scheduling calendar", () => {
     await expect(page.getByTestId("schedule-week-grid")).toBeVisible();
     await expect(page.getByTestId("schedule-week-day")).toHaveCount(5);
     await expect(page.getByText(created.providerName)).toBeVisible();
+  });
+
+  test("double click creates appointment in day view", async ({ page, request }) => {
+    await page.goto("/scheduling");
+    await page.getByTestId("schedule-day").click();
+    await expect(page.getByTestId("schedule-day-grid")).toBeVisible();
+
+    const sampleCell = page.locator(".schedule-day-cell").first();
+    const date = await sampleCell.getAttribute("data-date");
+    expect(date).toBeTruthy();
+    if (!date) return;
+
+    const meta = await getMeta(request);
+    const provider = meta.providers[0];
+    const rangeStart = buildLocalDateTime(date, DAY_START_HOUR, 0);
+    const rangeEnd = buildLocalDateTime(date, DAY_STOP_HOUR, 0);
+    const listResponse = await request.get(
+      `/api/appointments?start=${rangeStart.toISOString()}&end=${rangeEnd.toISOString()}&provider=${encodeURIComponent(
+        provider
+      )}`
+    );
+    expect(listResponse.ok()).toBeTruthy();
+    const listPayload = await listResponse.json();
+    const slot = findFreeSlot(listPayload.appointments || [], date);
+
+    const targetCell = page.locator(
+      `.schedule-day-cell[data-provider="${provider}"][data-date="${date}"][data-time="${slot.timeLabel}"]`
+    );
+    await expect(targetCell.first()).toBeVisible();
+    const beforeCount = await page.getByTestId("schedule-event").count();
+
+    await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.url().includes("/api/appointments") &&
+          response.request().method() === "POST" &&
+          response.ok()
+      ),
+      targetCell.first().dblclick(),
+    ]);
+
+    await expect(page.getByTestId("schedule-event")).toHaveCount(beforeCount + 1);
+  });
+
+  test("drag and drop moves appointment to a new time slot", async ({ page, request }) => {
+    await page.goto("/scheduling");
+    await page.getByTestId("schedule-day").click();
+    await expect(page.getByTestId("schedule-day-grid")).toBeVisible();
+
+    const sampleCell = page.locator(".schedule-day-cell").first();
+    const date = await sampleCell.getAttribute("data-date");
+    expect(date).toBeTruthy();
+    if (!date) return;
+
+    const meta = await getMeta(request);
+    const provider = meta.providers[0];
+    const rangeStart = buildLocalDateTime(date, DAY_START_HOUR, 0);
+    const rangeEnd = buildLocalDateTime(date, DAY_STOP_HOUR, 0);
+    const listResponse = await request.get(
+      `/api/appointments?start=${rangeStart.toISOString()}&end=${rangeEnd.toISOString()}&provider=${encodeURIComponent(
+        provider
+      )}`
+    );
+    expect(listResponse.ok()).toBeTruthy();
+    const listPayload = await listResponse.json();
+    const slot = findFreeSlot(listPayload.appointments || [], date);
+    const targetSlot = findFreeSlot(listPayload.appointments || [], date, slot.end);
+
+    const created = await createAppointment(request, {
+      providerName: provider,
+      startTime: slot.start.toISOString(),
+      endTime: slot.end.toISOString(),
+    });
+    expect(created.response.ok()).toBeTruthy();
+    const payload = await created.response.json();
+    const appointmentId = payload.appointment?.id as string;
+    expect(appointmentId).toBeTruthy();
+
+    const source = page.locator(`[data-appointment-id="${appointmentId}"]`).first();
+    await expect(source).toBeVisible();
+    const targetCell = page.locator(
+      `.schedule-day-cell[data-provider="${provider}"][data-date="${date}"][data-time="${targetSlot.timeLabel}"]`
+    );
+    await expect(targetCell.first()).toBeVisible();
+
+    await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.url().includes(`/api/appointments/${appointmentId}`) &&
+          response.request().method() === "PATCH" &&
+          response.ok()
+      ),
+      source.dragTo(targetCell.first()),
+    ]);
+
+    const updatedResponse = await request.get(
+      `/api/appointments?start=${rangeStart.toISOString()}&end=${rangeEnd.toISOString()}&provider=${encodeURIComponent(
+        provider
+      )}`
+    );
+    expect(updatedResponse.ok()).toBeTruthy();
+    const updatedPayload = await updatedResponse.json();
+    const updated = updatedPayload.appointments.find((appt: { id: string }) => appt.id === appointmentId);
+    expect(updated).toBeTruthy();
+    const updatedStart = new Date(updated.startTime).getTime();
+    const expectedStart = targetSlot.start.getTime();
+    const diff = Math.abs(updatedStart - expectedStart);
+    expect(diff).toBeLessThan(60_000);
   });
 
   test("appointment patch updates provider and time", async ({ request }) => {

@@ -1,7 +1,9 @@
+import type { PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db";
 
 let ensurePromise: Promise<void> | null = null;
 let initialRefreshDone = false;
+const PATIENT_SEARCH_LOCK_ID = 94251833;
 
 export function isPostgresUrl(url = process.env.DATABASE_URL) {
   return Boolean(url && (url.startsWith("postgres://") || url.startsWith("postgresql://")));
@@ -11,9 +13,11 @@ export async function ensurePatientSearchSchema() {
   if (!isPostgresUrl()) return;
   if (!ensurePromise) {
     ensurePromise = (async () => {
-      await prisma.$executeRawUnsafe("CREATE EXTENSION IF NOT EXISTS pg_trgm;");
+      await prisma.$executeRawUnsafe(`SELECT pg_advisory_lock(${PATIENT_SEARCH_LOCK_ID});`);
+      try {
+        await prisma.$executeRawUnsafe("CREATE EXTENSION IF NOT EXISTS pg_trgm;");
 
-      await prisma.$executeRawUnsafe(`
+        await prisma.$executeRawUnsafe(`
         CREATE TABLE IF NOT EXISTS patient_search (
           patient_id text PRIMARY KEY REFERENCES "Patient"(id) ON DELETE CASCADE,
           legacy_id text,
@@ -35,23 +39,26 @@ export async function ensurePatientSearchSchema() {
         );
       `);
 
-      await prisma.$executeRawUnsafe(
+        await prisma.$executeRawUnsafe(
         "CREATE INDEX IF NOT EXISTS patient_search_name_trgm_idx ON patient_search USING GIN (name_search gin_trgm_ops);"
       );
-      await prisma.$executeRawUnsafe(
+        await prisma.$executeRawUnsafe(
         "CREATE INDEX IF NOT EXISTS patient_search_payer_trgm_idx ON patient_search USING GIN (payer_search gin_trgm_ops);"
       );
-      await prisma.$executeRawUnsafe(
+        await prisma.$executeRawUnsafe(
         "CREATE INDEX IF NOT EXISTS patient_search_phone_idx ON patient_search USING GIN (phones_e164);"
       );
-      await prisma.$executeRawUnsafe(
+        await prisma.$executeRawUnsafe(
+        "CREATE INDEX IF NOT EXISTS patient_search_serial_idx ON patient_search USING GIN (serial_numbers);"
+      );
+        await prisma.$executeRawUnsafe(
         "CREATE INDEX IF NOT EXISTS patient_search_legacy_idx ON patient_search (legacy_id);"
       );
-      await prisma.$executeRawUnsafe(
+        await prisma.$executeRawUnsafe(
         "CREATE INDEX IF NOT EXISTS patient_search_email_idx ON patient_search (email);"
       );
 
-      await prisma.$executeRawUnsafe(`
+        await prisma.$executeRawUnsafe(`
         CREATE OR REPLACE FUNCTION refresh_patient_search_row(p_id text) RETURNS void AS $$
         BEGIN
           INSERT INTO patient_search (
@@ -114,9 +121,9 @@ export async function ensurePatientSearchSchema() {
             ),
             COALESCE(
               ARRAY(
-                SELECT DISTINCT d."serialNumber"
+                SELECT DISTINCT d."serial"
                 FROM "Device" d
-                WHERE d."patientId" = p.id AND d."serialNumber" IS NOT NULL AND d."serialNumber" <> ''
+                WHERE d."patientId" = p.id AND d."serial" IS NOT NULL AND d."serial" <> ''
               ),
               '{}'
             ),
@@ -144,7 +151,7 @@ export async function ensurePatientSearchSchema() {
         $$ LANGUAGE plpgsql;
       `);
 
-      await prisma.$executeRawUnsafe(`
+        await prisma.$executeRawUnsafe(`
         CREATE OR REPLACE FUNCTION rebuild_patient_search() RETURNS void AS $$
         BEGIN
           TRUNCATE patient_search;
@@ -208,9 +215,9 @@ export async function ensurePatientSearchSchema() {
             ),
             COALESCE(
               ARRAY(
-                SELECT DISTINCT d."serialNumber"
+                SELECT DISTINCT d."serial"
                 FROM "Device" d
-                WHERE d."patientId" = p.id AND d."serialNumber" IS NOT NULL AND d."serialNumber" <> ''
+                WHERE d."patientId" = p.id AND d."serial" IS NOT NULL AND d."serial" <> ''
               ),
               '{}'
             ),
@@ -220,7 +227,7 @@ export async function ensurePatientSearchSchema() {
         $$ LANGUAGE plpgsql;
       `);
 
-      await prisma.$executeRawUnsafe(`
+        await prisma.$executeRawUnsafe(`
         CREATE OR REPLACE FUNCTION patient_search_patient_trigger() RETURNS trigger AS $$
         BEGIN
           PERFORM refresh_patient_search_row(COALESCE(NEW.id, OLD.id));
@@ -229,7 +236,7 @@ export async function ensurePatientSearchSchema() {
         $$ LANGUAGE plpgsql;
       `);
 
-      await prisma.$executeRawUnsafe(`
+        await prisma.$executeRawUnsafe(`
         CREATE OR REPLACE FUNCTION patient_search_related_trigger() RETURNS trigger AS $$
         BEGIN
           PERFORM refresh_patient_search_row(COALESCE(NEW."patientId", OLD."patientId"));
@@ -238,43 +245,48 @@ export async function ensurePatientSearchSchema() {
         $$ LANGUAGE plpgsql;
       `);
 
-      await prisma.$executeRawUnsafe('DROP TRIGGER IF EXISTS patient_search_patient_trigger ON "Patient";');
-      await prisma.$executeRawUnsafe(`
+        await prisma.$executeRawUnsafe('DROP TRIGGER IF EXISTS patient_search_patient_trigger ON "Patient";');
+        await prisma.$executeRawUnsafe(`
         CREATE TRIGGER patient_search_patient_trigger
         AFTER INSERT OR UPDATE ON "Patient"
         FOR EACH ROW EXECUTE FUNCTION patient_search_patient_trigger();
       `);
 
-      await prisma.$executeRawUnsafe('DROP TRIGGER IF EXISTS patient_search_phone_trigger ON "PhoneNumber";');
-      await prisma.$executeRawUnsafe(`
+        await prisma.$executeRawUnsafe('DROP TRIGGER IF EXISTS patient_search_phone_trigger ON "PhoneNumber";');
+        await prisma.$executeRawUnsafe(`
         CREATE TRIGGER patient_search_phone_trigger
         AFTER INSERT OR UPDATE OR DELETE ON "PhoneNumber"
         FOR EACH ROW EXECUTE FUNCTION patient_search_related_trigger();
       `);
 
-      await prisma.$executeRawUnsafe('DROP TRIGGER IF EXISTS patient_search_payer_trigger ON "PayerPolicy";');
-      await prisma.$executeRawUnsafe(`
+        await prisma.$executeRawUnsafe('DROP TRIGGER IF EXISTS patient_search_payer_trigger ON "PayerPolicy";');
+        await prisma.$executeRawUnsafe(`
         CREATE TRIGGER patient_search_payer_trigger
         AFTER INSERT OR UPDATE OR DELETE ON "PayerPolicy"
         FOR EACH ROW EXECUTE FUNCTION patient_search_related_trigger();
       `);
 
-      await prisma.$executeRawUnsafe('DROP TRIGGER IF EXISTS patient_search_device_trigger ON "Device";');
-      await prisma.$executeRawUnsafe(`
+        await prisma.$executeRawUnsafe('DROP TRIGGER IF EXISTS patient_search_device_trigger ON "Device";');
+        await prisma.$executeRawUnsafe(`
         CREATE TRIGGER patient_search_device_trigger
         AFTER INSERT OR UPDATE OR DELETE ON "Device"
         FOR EACH ROW EXECUTE FUNCTION patient_search_related_trigger();
       `);
+      } finally {
+        await prisma.$executeRawUnsafe(`SELECT pg_advisory_unlock(${PATIENT_SEARCH_LOCK_ID});`);
+      }
     })();
   }
 
   await ensurePromise;
 }
 
-export async function refreshPatientSearch() {
+type RawClient = Pick<PrismaClient, "$executeRawUnsafe">;
+
+export async function refreshPatientSearch(client: RawClient = prisma) {
   if (!isPostgresUrl()) return;
   await ensurePatientSearchSchema();
-  await prisma.$executeRawUnsafe("SELECT rebuild_patient_search();");
+  await client.$executeRawUnsafe("SELECT rebuild_patient_search();");
   initialRefreshDone = true;
 }
 

@@ -150,7 +150,7 @@ export function PatientSearch() {
             ref={inputRef}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search patients"
+            placeholder="Name, phone, DOB (MM/DD/YYYY), serial #"
             onKeyDown={(event) => {
               if (!results.length) return;
               if (event.key === "ArrowDown" || event.key === "Down") {
@@ -196,7 +196,7 @@ export function PatientSearch() {
       <div className="mt-6 grid gap-3">
         {results.length === 0 && query ? (
           <div className="rounded-2xl border border-dashed border-surface-3 bg-white/60 p-6 text-sm text-ink-muted">
-            No matches yet. Try phone, legacy ID, payer name, or serial number.
+            No matches yet. Try phone, DOB (MM/DD/YYYY), legacy ID, payer name, or serial number.
           </div>
         ) : null}
 

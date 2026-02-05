@@ -53,11 +53,20 @@ function normalizePhone(value: string) {
 }
 
 function parseDob(query: string) {
-  const match = query.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  if (!match) return null;
-  const [, month, day, year] = match;
-  const date = new Date(Number(year), Number(month) - 1, Number(day));
-  return Number.isNaN(date.getTime()) ? null : date;
+  const trimmed = query.trim();
+  const slashMatch = trimmed.match(/^(\d{2})[\/-](\d{2})[\/-](\d{4})$/);
+  if (slashMatch) {
+    const [, month, day, year] = slashMatch;
+    const date = new Date(Number(year), Number(month) - 1, Number(day));
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  const isoMatch = trimmed.match(/^(\d{4})[\/-](\d{2})[\/-](\d{2})$/);
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch;
+    const date = new Date(Number(year), Number(month) - 1, Number(day));
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  return null;
 }
 
 export async function searchPatients(query: string, options?: { status?: string | null }) {
@@ -66,6 +75,7 @@ export async function searchPatients(query: string, options?: { status?: string 
   const lower = q.toLowerCase();
   const normalizedPhone = normalizePhone(q);
   const dob = parseDob(q);
+  const serialQuery = lower.length >= 2 ? lower : "";
   const useTrigram = lower.length >= 3;
   const statusFilter = normalizeStatusFilter(options?.status);
   const statusFilterAll = statusFilter === "all";
@@ -101,6 +111,10 @@ export async function searchPatients(query: string, options?: { status?: string 
             OR (legacy_id = ${lower})
             OR (email ILIKE ${`%${lower}%`})
             OR (${dob}::date IS NOT NULL AND date_of_birth = ${dob}::date)
+            OR (${serialQuery} <> '' AND EXISTS (
+              SELECT 1 FROM unnest(serial_numbers) AS serial
+              WHERE serial ILIKE ${`%${serialQuery}%`}
+            ))
           )
           AND (${statusFilterAll} OR lower(status) = ANY(${statusValues}))
           ORDER BY
@@ -133,6 +147,10 @@ export async function searchPatients(query: string, options?: { status?: string 
             OR (legacy_id = ${lower})
             OR (email ILIKE ${`%${lower}%`})
             OR (${dob}::date IS NOT NULL AND date_of_birth = ${dob}::date)
+            OR (${serialQuery} <> '' AND EXISTS (
+              SELECT 1 FROM unnest(serial_numbers) AS serial
+              WHERE serial ILIKE ${`%${serialQuery}%`}
+            ))
           )
           AND (${statusFilterAll} OR lower(status) = ANY(${statusValues}))
           ORDER BY

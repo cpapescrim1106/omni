@@ -1,9 +1,8 @@
 import { test, expect, type APIRequestContext } from "@playwright/test";
 import dayjs from "dayjs";
+import { ensureTestDatabaseUrl } from "../helpers/test-database";
 
-if (!process.env.DATABASE_URL) {
-  process.env.DATABASE_URL = "file:./dev.db";
-}
+ensureTestDatabaseUrl();
 
 const e2eTag = `E2E-INT:${Date.now()}`;
 const DAY_START_HOUR = 8;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 const SEQUENCE_TIMEOUT_MS = 800;
@@ -17,6 +17,15 @@ export function GlobalShortcuts() {
   const router = useRouter();
   const pathname = usePathname();
   const lastKeyRef = useRef<{ key: string; time: number } | null>(null);
+  const [isShortcutMenuOpen, setIsShortcutMenuOpen] = useState(false);
+
+  const shortcuts = [
+    { keys: ["P", "P"], label: "Patient search" },
+    { keys: ["P", "S"], label: "Scheduling" },
+    { keys: ["P", "M"], label: "Marketing" },
+    { keys: ["P", "R"], label: "Recalls" },
+    { keys: ["?", "?"], label: "Shortcuts menu" },
+  ];
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -27,14 +36,30 @@ export function GlobalShortcuts() {
       const key = event.key.toLowerCase();
       const now = Date.now();
       const last = lastKeyRef.current;
+      const withinSequence = last && now - last.time <= SEQUENCE_TIMEOUT_MS;
 
-      if (key === "p") {
-        lastKeyRef.current = { key: "p", time: now };
+      if (isShortcutMenuOpen) {
+        if (key === "escape") {
+          event.preventDefault();
+          setIsShortcutMenuOpen(false);
+          lastKeyRef.current = null;
+        }
         return;
       }
 
-      if (key === "s") {
-        if (last?.key === "p" && now - last.time <= SEQUENCE_TIMEOUT_MS) {
+      if (key === "?") {
+        if (last?.key === "?" && withinSequence) {
+          event.preventDefault();
+          lastKeyRef.current = null;
+          setIsShortcutMenuOpen(true);
+          return;
+        }
+        lastKeyRef.current = { key: "?", time: now };
+        return;
+      }
+
+      if (key === "p") {
+        if (last?.key === "p" && withinSequence) {
           event.preventDefault();
           lastKeyRef.current = null;
           if (pathname === "/patients") {
@@ -45,6 +70,41 @@ export function GlobalShortcuts() {
           }
           return;
         }
+        lastKeyRef.current = { key: "p", time: now };
+        return;
+      }
+
+      if (key === "s") {
+        if (last?.key === "p" && withinSequence) {
+          event.preventDefault();
+          lastKeyRef.current = null;
+          if (pathname !== "/scheduling") {
+            router.push("/scheduling");
+          }
+          return;
+        }
+      }
+
+      if (key === "m") {
+        if (last?.key === "p" && withinSequence) {
+          event.preventDefault();
+          lastKeyRef.current = null;
+          if (pathname !== "/marketing") {
+            router.push("/marketing");
+          }
+          return;
+        }
+      }
+
+      if (key === "r") {
+        if (last?.key === "p" && withinSequence) {
+          event.preventDefault();
+          lastKeyRef.current = null;
+          if (pathname !== "/recalls") {
+            router.push("/recalls");
+          }
+          return;
+        }
       }
 
       lastKeyRef.current = null;
@@ -52,9 +112,59 @@ export function GlobalShortcuts() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [pathname, router]);
+  }, [isShortcutMenuOpen, pathname, router]);
 
-  return null;
+  return (
+    <>
+      {isShortcutMenuOpen ? (
+        <div
+          className="shortcut-modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          data-testid="shortcut-menu"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setIsShortcutMenuOpen(false);
+              lastKeyRef.current = null;
+            }
+          }}
+        >
+          <div className="shortcut-modal-card">
+            <div className="shortcut-modal-header">
+              <div>
+                <div className="section-title text-xs text-brand-ink">Keyboard shortcuts</div>
+                <div className="text-sm text-ink-muted">Press ? then ? to open this menu.</div>
+              </div>
+              <button
+                type="button"
+                className="tab-pill bg-surface-2"
+                onClick={() => {
+                  setIsShortcutMenuOpen(false);
+                  lastKeyRef.current = null;
+                }}
+              >
+                Close
+              </button>
+            </div>
+            <div className="shortcut-modal-list">
+              {shortcuts.map((shortcut) => (
+                <div key={shortcut.label} className="shortcut-modal-row">
+                  <div className="shortcut-modal-keys">
+                    {shortcut.keys.map((keyLabel, index) => (
+                      <span key={`${shortcut.label}-${keyLabel}-${index}`} className="shortcut-key">
+                        {keyLabel}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="shortcut-modal-label">{shortcut.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
+  );
 }
 
 export function consumePatientSearchFocusFlag() {
