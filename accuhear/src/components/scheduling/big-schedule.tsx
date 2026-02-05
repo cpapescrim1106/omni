@@ -8,16 +8,19 @@ import { useRouter, useSearchParams } from "next/navigation";
 const DATE_FORMAT = "YYYY-MM-DD";
 
 const DAY_START_HOUR = 8;
-const DAY_END_HOUR = 18;
+const DAY_END_HOUR = 17;
 const SLOT_MINUTES = 15;
 const DAY_ROW_HEIGHT = 20;
 const DAY_HEADER_HEIGHT = 40;
 const WEEK_HEADER_HEIGHT = 32;
 const WEEK_PROVIDER_HEIGHT = 28;
+const TIME_COLUMN_WIDTH = 80;
 
 const fallbackProviders = ["Chris Pape", "C + C, SHD"];
 const providerShortNames: Record<string, string> = {
-  "Chris Pape": "CP",
+  "Chris Pape": "Chris",
+  "Pape, Chris": "Chris",
+  "Cal, SHD": "C+C",
   "C + C, SHD": "C+C",
 };
 
@@ -98,6 +101,24 @@ function providerShortLabel(name: string) {
   return words.map((word) => word[0].toUpperCase()).join("");
 }
 
+function providerHeaderLabel(name: string) {
+  return providerShortNames[name] ?? name;
+}
+
+function orderProviders(list: string[]) {
+  if (list.length < 2) return list;
+  const ordered = [...list];
+  const moveToEnd = (match: string) => {
+    const index = ordered.findIndex((provider) => provider.toLowerCase() === match.toLowerCase());
+    if (index === -1) return;
+    const [provider] = ordered.splice(index, 1);
+    ordered.push(provider);
+  };
+  moveToEnd("Cal, SHD");
+  moveToEnd("C + C, SHD");
+  return ordered;
+}
+
 function normalizeDateParam(value: string | null) {
   if (!value) return null;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
@@ -142,6 +163,25 @@ function buildSlots(base: dayjs.Dayjs) {
   return { start, end, totalMinutes, slotCount, slots };
 }
 
+function parseAppointmentTime(value: string | Date) {
+  if (!value) return dayjs(value);
+  if (typeof value === "string") {
+    const normalized = value.replace(/([zZ]|[+-]\d{2}:\d{2})$/, "");
+    return dayjs(normalized);
+  }
+  return dayjs(value);
+}
+
+function formatLocalDateTime(value: dayjs.Dayjs) {
+  return value.format("YYYY-MM-DDTHH:mm:ss[Z]");
+}
+
+function getColumnMin(totalColumns: number) {
+  if (totalColumns >= 15) return 80;
+  if (totalColumns >= 10) return 95;
+  return 120;
+}
+
 function getWeekDays(viewDate: string) {
   const weekStart = dayjs(viewDate).startOf("isoWeek");
   return Array.from({ length: 5 }, (_, index) => weekStart.add(index, "day"));
@@ -172,6 +212,15 @@ export function BigSchedule() {
   const [hasSynced, setHasSynced] = useState(false);
   const [hasExplicitDate, setHasExplicitDate] = useState(false);
   const [hasAutoFocused, setHasAutoFocused] = useState(false);
+  const [actionMenu, setActionMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [actionMenuView, setActionMenuView] = useState<"main" | "status">("main");
+  const [sidebarSections, setSidebarSections] = useState({
+    status: true,
+    types: true,
+    calendar: true,
+  });
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
+  const [pinnedAppointmentId, setPinnedAppointmentId] = useState<string | null>(null);
   const resizeRef = useRef<{
     id: string;
     start: dayjs.Dayjs;
@@ -179,6 +228,10 @@ export function BigSchedule() {
     providerName: string;
     date: string;
   } | null>(null);
+  const isResizingRef = useRef(false);
+  const scheduleBoardRef = useRef<HTMLDivElement | null>(null);
+  const actionMenuRef = useRef<HTMLDivElement | null>(null);
+  const clickTimeoutRef = useRef<number | null>(null);
   const draggingRef = useRef(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -195,6 +248,23 @@ export function BigSchedule() {
     const timeout = window.setTimeout(() => setToastMessage(null), 5000);
     return () => window.clearTimeout(timeout);
   }, [toastMessage]);
+
+  useEffect(() => {
+    if (!actionMenu) return;
+    function handlePointerDown(event: PointerEvent) {
+      if (actionMenuRef.current?.contains(event.target as Node)) return;
+      setActionMenu(null);
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setActionMenu(null);
+    }
+    window.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [actionMenu]);
 
   useEffect(() => {
     if (hasSynced) return;
@@ -216,7 +286,8 @@ export function BigSchedule() {
   }, []);
 
   const providers = useMemo(() => {
-    return meta?.providers?.length ? meta.providers : fallbackProviders;
+    const list = meta?.providers?.length ? meta.providers : fallbackProviders;
+    return orderProviders(list);
   }, [meta]);
 
   useEffect(() => {
@@ -249,6 +320,41 @@ export function BigSchedule() {
   }, [meta]);
 
   const typeColors = useTypeColors(meta?.types ?? []);
+  const statusByName = useMemo(() => {
+    const map = new Map<string, { id: string; name: string }>();
+    (meta?.statuses ?? []).forEach((status) => {
+      map.set(status.name.toLowerCase(), status);
+    });
+    return map;
+  }, [meta]);
+  const orderedStatusOptions = useMemo(() => {
+    const preferred = [
+      "Ready",
+      "Arrived",
+      "In progress",
+      "Completed",
+      "Confirmed",
+      "Tentative",
+      "Rescheduled",
+      "No show",
+      "Cancelled",
+      "Scheduled",
+    ];
+    const used = new Set<string>();
+    const ordered = preferred
+      .map((name) => statusByName.get(name.toLowerCase()))
+      .filter((status): status is { id: string; name: string } => Boolean(status))
+      .map((status) => {
+        used.add(status.name.toLowerCase());
+        return status;
+      });
+
+    const extras = (meta?.statuses ?? [])
+      .filter((status) => !used.has(status.name.toLowerCase()))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    return [...ordered, ...extras];
+  }, [meta, statusByName]);
   const defaultStatusId = useMemo(() => {
     if (!meta?.statuses?.length) return "";
     return meta.statuses.find((status) => status.name === "Scheduled")?.id ?? meta.statuses[0].id;
@@ -368,7 +474,9 @@ export function BigSchedule() {
     const end = dayjs(viewDate).endOf(rangeUnit as OpUnitType);
 
     try {
-      const response = await fetch(`/api/appointments?start=${start.toISOString()}&end=${end.toISOString()}`);
+      const response = await fetch(
+        `/api/appointments?start=${formatLocalDateTime(start)}&end=${formatLocalDateTime(end)}`
+      );
       const data = await response.json();
       setAppointments(data.appointments || []);
     } catch {
@@ -395,6 +503,7 @@ export function BigSchedule() {
     setPatientResults([]);
     setModalError(null);
     setIsModalOpen(true);
+    setActionMenu(null);
   }, [buildDefaultForm]);
 
   useEffect(() => {
@@ -418,8 +527,8 @@ export function BigSchedule() {
     (appointmentId: string) => {
       const appointment = appointments.find((item) => item.id === appointmentId);
       if (!appointment) return;
-      const start = dayjs(appointment.startTime);
-      const end = dayjs(appointment.endTime);
+      const start = parseAppointmentTime(appointment.startTime);
+      const end = parseAppointmentTime(appointment.endTime);
       const patientName = appointment.patient
         ? `${appointment.patient.lastName}, ${appointment.patient.firstName}`
         : "";
@@ -439,6 +548,7 @@ export function BigSchedule() {
       setPatientResults([]);
       setModalError(null);
       setIsModalOpen(true);
+      setActionMenu(null);
     },
     [appointments, defaultStatusId, defaultTypeId]
   );
@@ -450,6 +560,7 @@ export function BigSchedule() {
     setPatientQuery("");
     setPatientResults([]);
     setModalError(null);
+    setActionMenu(null);
   }, []);
 
   useEffect(() => {
@@ -477,8 +588,8 @@ export function BigSchedule() {
     const fallbackColor = typePalette[0];
     return appointments
       .map((appointment) => {
-        const start = dayjs(appointment.startTime);
-        const end = dayjs(appointment.endTime);
+        const start = parseAppointmentTime(appointment.startTime);
+        const end = parseAppointmentTime(appointment.endTime);
         const durationMinutes = Math.max(15, end.diff(start, "minute"));
         const patientName = appointment.patient
           ? `${appointment.patient.lastName}, ${appointment.patient.firstName}`
@@ -510,9 +621,132 @@ export function BigSchedule() {
     return new Map(events.map((event) => [event.id, event]));
   }, [events]);
 
+  const appointmentMap = useMemo(() => {
+    return new Map(appointments.map((appointment) => [appointment.id, appointment]));
+  }, [appointments]);
+
+  const actionAppointment = actionMenu ? appointmentMap.get(actionMenu.id) ?? null : null;
+
+  const actionMenuSummary = useMemo(() => {
+    if (!actionAppointment) return null;
+    const start = parseAppointmentTime(actionAppointment.startTime);
+    const end = parseAppointmentTime(actionAppointment.endTime);
+    const patientName = actionAppointment.patient
+      ? `${actionAppointment.patient.lastName}, ${actionAppointment.patient.firstName}`
+      : "Reserved";
+    const typeName = actionAppointment.type?.name || "Appointment";
+    return {
+      title: `${patientName} · ${typeName}`,
+      timeLabel: `${start.format("h:mm A")} – ${end.format("h:mm A")}`,
+      patientId: actionAppointment.patient?.id ?? null,
+    };
+  }, [actionAppointment]);
+  const arrivedAndReadyStatus =
+    statusByName.get("ready") ??
+    statusByName.get("arrived") ??
+    statusByName.get("in progress") ??
+    null;
+
+  const openActionMenu = useCallback((appointmentId: string, rect: DOMRect) => {
+    const board = scheduleBoardRef.current;
+    if (!board) return;
+    const boardRect = board.getBoundingClientRect();
+    const menuWidth = 240;
+    const menuHeight = 180;
+    const padding = 8;
+    let x = rect.right - boardRect.left + 8;
+    if (x + menuWidth > boardRect.width - padding) {
+      x = rect.left - boardRect.left - menuWidth - 8;
+    }
+    if (x < padding) x = padding;
+    let y = rect.top - boardRect.top;
+    if (y + menuHeight > boardRect.height - padding) {
+      y = boardRect.height - menuHeight - padding;
+    }
+    if (y < padding) y = padding;
+    setActionMenu({ id: appointmentId, x, y });
+  }, []);
+
+  useEffect(() => {
+    setActionMenu(null);
+  }, [viewDate, viewType, selectedProviders, selectedTypes, selectedStatus]);
+
   const showError = useCallback((message: string) => {
     setToastMessage(message);
   }, []);
+
+  useEffect(() => {
+    if (actionMenu) {
+      setActionMenuView("main");
+    }
+  }, [actionMenu]);
+
+  const openPatientFromAppointment = useCallback(
+    (appointmentId: string) => {
+      const appointment = appointmentMap.get(appointmentId);
+      const patientId = appointment?.patient?.id;
+      if (!patientId) {
+        showError("No patient is assigned to this appointment.");
+        return;
+      }
+      router.push(`/patients/${patientId}`);
+    },
+    [appointmentMap, router, showError]
+  );
+
+  const openPatientTab = useCallback(
+    (appointmentId: string, tab: string) => {
+      const appointment = appointmentMap.get(appointmentId);
+      const patientId = appointment?.patient?.id;
+      if (!patientId) {
+        showError("No patient is assigned to this appointment.");
+        return;
+      }
+      router.push(`/patients/${patientId}?tab=${encodeURIComponent(tab)}`);
+    },
+    [appointmentMap, router, showError]
+  );
+
+  const updateAppointmentStatus = useCallback(
+    async (appointmentId: string, statusId: string, statusName: string) => {
+      const appointment = appointmentMap.get(appointmentId);
+      if (!appointment) return;
+      const start = parseAppointmentTime(appointment.startTime);
+      const end = parseAppointmentTime(appointment.endTime);
+      const snapshot = appointments;
+      setAppointments((current) =>
+        current.map((item) =>
+          item.id === appointmentId
+            ? {
+                ...item,
+                status: { id: statusId, name: statusName },
+              }
+            : item
+        )
+      );
+
+      const response = await fetch(`/api/appointments/${appointmentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          providerName: appointment.providerName,
+          startTime: formatLocalDateTime(start),
+          endTime: formatLocalDateTime(end),
+          statusId,
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json();
+        showError(payload.error || "Unable to update status.");
+        setAppointments(snapshot);
+        return;
+      }
+
+      await loadAppointments();
+    },
+    [appointmentMap, appointments, loadAppointments, showError]
+  );
 
   const dayGrid = useMemo(() => {
     if (viewType !== "day") return null;
@@ -610,14 +844,18 @@ export function BigSchedule() {
 
   const weekGridStyles = weekGrid
     ? {
-        gridTemplateColumns: `90px repeat(${weekGrid.weekDays.length * visibleProviders.length}, minmax(140px, 1fr))`,
+        gridTemplateColumns: `${TIME_COLUMN_WIDTH}px repeat(${
+          weekGrid.weekDays.length * visibleProviders.length
+        }, minmax(${getColumnMin(weekGrid.weekDays.length * visibleProviders.length)}px, 1fr))`,
         gridTemplateRows: `${WEEK_HEADER_HEIGHT}px ${WEEK_PROVIDER_HEIGHT}px repeat(${weekGrid.slots.slotCount}, ${DAY_ROW_HEIGHT}px)`,
       }
     : undefined;
 
   const dayGridStyles = dayGrid
     ? {
-        gridTemplateColumns: `90px repeat(${visibleProviders.length}, minmax(160px, 1fr))`,
+        gridTemplateColumns: `${TIME_COLUMN_WIDTH}px repeat(${visibleProviders.length}, minmax(${getColumnMin(
+          visibleProviders.length
+        )}px, 1fr))`,
         gridTemplateRows: `${DAY_HEADER_HEIGHT}px repeat(${dayGrid.slotCount}, ${DAY_ROW_HEIGHT}px)`,
       }
     : undefined;
@@ -645,8 +883,8 @@ export function BigSchedule() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         providerName,
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
+        startTime: formatLocalDateTime(startTime),
+        endTime: formatLocalDateTime(endTime),
       }),
     });
 
@@ -674,8 +912,8 @@ export function BigSchedule() {
         location: "SHD",
         typeId,
         statusId,
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
+        startTime: formatLocalDateTime(startTime),
+        endTime: formatLocalDateTime(endTime),
       }),
     });
 
@@ -689,6 +927,15 @@ export function BigSchedule() {
   }
 
   function handleDragStart(event: React.DragEvent<HTMLDivElement>, appointmentId: string) {
+    if (isResizingRef.current) {
+      event.preventDefault();
+      return;
+    }
+    if (clickTimeoutRef.current) {
+      window.clearTimeout(clickTimeoutRef.current);
+      clickTimeoutRef.current = null;
+    }
+    setActionMenu(null);
     draggingRef.current = true;
     event.dataTransfer.setData("application/json", JSON.stringify({ id: appointmentId }));
     event.dataTransfer.effectAllowed = "move";
@@ -719,7 +966,12 @@ export function BigSchedule() {
     setAppointments((current) =>
       current.map((item) =>
         item.id === appointment.id
-          ? { ...item, providerName: payload.provider, startTime: newStart.toISOString(), endTime: newEnd.toISOString() }
+          ? {
+              ...item,
+              providerName: payload.provider,
+              startTime: formatLocalDateTime(newStart),
+              endTime: formatLocalDateTime(newEnd),
+            }
           : item
       )
     );
@@ -743,16 +995,16 @@ export function BigSchedule() {
       const rangeStart = startTime.subtract(SLOT_MINUTES, "minute");
       const rangeEnd = endTime.add(SLOT_MINUTES, "minute");
       const response = await fetch(
-        `/api/appointments?start=${rangeStart.toISOString()}&end=${rangeEnd.toISOString()}&provider=${encodeURIComponent(
-          providerName
-        )}`
+        `/api/appointments?start=${formatLocalDateTime(rangeStart)}&end=${formatLocalDateTime(
+          rangeEnd
+        )}&provider=${encodeURIComponent(providerName)}`
       );
       const data = await response.json();
       const appointmentsList: Appointment[] = data.appointments || [];
       return appointmentsList.some((appt) => {
         if (ignoreId && appt.id === ignoreId) return false;
-        const start = dayjs(appt.startTime);
-        const end = dayjs(appt.endTime);
+        const start = parseAppointmentTime(appt.startTime);
+        const end = parseAppointmentTime(appt.endTime);
         return start.isBefore(endTime) && end.isAfter(startTime);
       });
     } catch {
@@ -794,8 +1046,8 @@ export function BigSchedule() {
 
     const payload = {
       providerName: formState.providerName,
-      startTime: start.toISOString(),
-      endTime: end.toISOString(),
+      startTime: formatLocalDateTime(start),
+      endTime: formatLocalDateTime(end),
       typeId: formState.typeId,
       statusId: formState.statusId,
       notes: formState.notes,
@@ -860,18 +1112,25 @@ export function BigSchedule() {
     event.stopPropagation();
     event.preventDefault();
     resizeRef.current = payload;
+    isResizingRef.current = true;
 
     const handlePointerUp = async (pointerEvent: PointerEvent) => {
-      const element = document.elementFromPoint(pointerEvent.clientX, pointerEvent.clientY) as HTMLElement | null;
-      const cell = element?.closest(".schedule-day-cell, .schedule-week-cell") as HTMLElement | null;
-      const fallbackTarget = element?.closest("[data-date][data-time]") as HTMLElement | null;
+      const elements = document.elementsFromPoint(pointerEvent.clientX, pointerEvent.clientY) as HTMLElement[];
+      const cell = elements.find((item) => item.closest(".schedule-day-cell, .schedule-week-cell")) as
+        | HTMLElement
+        | undefined;
+      const fallbackTarget = elements.find((item) => item.dataset?.date && item.dataset?.time) as
+        | HTMLElement
+        | undefined;
+      const target = (cell?.closest(".schedule-day-cell, .schedule-week-cell") as HTMLElement | null) ?? fallbackTarget;
       const active = resizeRef.current;
       resizeRef.current = null;
+      isResizingRef.current = false;
       window.removeEventListener("pointerup", handlePointerUp);
 
       if (!active) return;
-      const date = cell?.dataset.date ?? fallbackTarget?.dataset.date;
-      const time = cell?.dataset.time ?? fallbackTarget?.dataset.time;
+      const date = target?.dataset.date;
+      const time = target?.dataset.time;
       if (!date || !time) return;
 
       const [hour, minute] = time.split(":").map((value) => Number(value));
@@ -883,7 +1142,7 @@ export function BigSchedule() {
       const snapshot = appointments;
       setAppointments((current) =>
         current.map((item) =>
-          item.id === active.id ? { ...item, endTime: newEnd.toISOString() } : item
+          item.id === active.id ? { ...item, endTime: formatLocalDateTime(newEnd) } : item
         )
       );
       await patchAppointment(active.id, active.providerName, active.start, newEnd, snapshot);
@@ -895,63 +1154,104 @@ export function BigSchedule() {
   const sidebarTypes = meta?.types ?? [];
   const rangeStart = meta?.rangeStart ? dayjs(meta.rangeStart) : null;
   const rangeEnd = meta?.rangeEnd ? dayjs(meta.rangeEnd) : null;
-  const rangeLabel =
-    rangeStart && rangeEnd ? `${rangeStart.format("MMM D, YYYY")} – ${rangeEnd.format("MMM D, YYYY")}` : null;
+  const dayGridHeight = dayGrid ? DAY_HEADER_HEIGHT + dayGrid.slotCount * DAY_ROW_HEIGHT : 0;
+  const weekGridHeight = weekGrid
+    ? WEEK_HEADER_HEIGHT + WEEK_PROVIDER_HEIGHT + weekGrid.slots.slotCount * DAY_ROW_HEIGHT
+    : 0;
+
+  function toggleSidebarSection(section: keyof typeof sidebarSections) {
+    setSidebarSections((current) => ({ ...current, [section]: !current[section] }));
+  }
 
   return (
-    <section className="card schedule-card p-5">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+    <section className="card schedule-card p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="section-title text-xs text-brand-ink">Scheduling</div>
           <div className="text-sm text-ink-muted">Drag and drop to reschedule across providers.</div>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
-          <button onClick={prevClick} data-testid="schedule-prev" className="tab-pill bg-surface-2">
-            Prev
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={prevClick}
+              data-testid="schedule-prev"
+              aria-label="Previous"
+              className="tab-pill bg-surface-2"
+            >
+              {"<"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const nextDate = dayjs(viewDate).add(6, "month");
+                setViewDate(nextDate.format(DATE_FORMAT));
+              }}
+              data-testid="schedule-six-months"
+              className="tab-pill bg-surface-2"
+              aria-label="Jump ahead 6 months"
+              title="Jump ahead 6 months"
+            >
+              +6mo
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewDate(dayjs().format(DATE_FORMAT))}
+              data-testid="schedule-home"
+              className="tab-pill bg-surface-2"
+              aria-label="Go to today"
+              title="Go to today"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                focusable="false"
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 10.5L12 3l9 7.5" />
+                <path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9" />
+              </svg>
+            </button>
+            <button
+              onClick={nextClick}
+              data-testid="schedule-next"
+              aria-label="Next"
+              className="tab-pill bg-surface-2"
+            >
+              {">"}
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setViewType("day")}
+              data-testid="schedule-day"
+              className={`tab-pill ${viewType === "day" ? "" : "bg-surface-2"}`}
+            >
+              Day
+            </button>
+            <button
+              onClick={() => setViewType("week")}
+              data-testid="schedule-week"
+              className={`tab-pill ${viewType === "week" ? "" : "bg-surface-2"}`}
+            >
+              5-day
+            </button>
+          </div>
           <button
-            onClick={() => setViewType("day")}
-            data-testid="schedule-day"
-            className={`tab-pill ${viewType === "day" ? "" : "bg-surface-2"}`}
+            type="button"
+            className="tab-pill bg-surface-2"
+            onClick={() => setIsSidebarCollapsed((current) => !current)}
+            data-testid="schedule-toggle-filters"
           >
-            Day
-          </button>
-          <button
-            onClick={() => setViewType("week")}
-            data-testid="schedule-week"
-            className={`tab-pill ${viewType === "week" ? "" : "bg-surface-2"}`}
-          >
-            5-day
-          </button>
-          <button onClick={nextClick} data-testid="schedule-next" className="tab-pill bg-surface-2">
-            Next
+            {isSidebarCollapsed ? "Show filters" : "Hide filters"}
           </button>
           <div data-testid="schedule-date" className="rounded-full bg-surface-2 px-3 py-2">
             {dayjs(viewDate).format("MMM D, YYYY")}
           </div>
-          {rangeStart && rangeEnd ? (
-            <>
-              <button
-                onClick={() => setViewDate(rangeStart.format(DATE_FORMAT))}
-                data-testid="schedule-earliest"
-                className="tab-pill bg-surface-2"
-              >
-                Earliest
-              </button>
-              <button
-                onClick={() => setViewDate(rangeEnd.format(DATE_FORMAT))}
-                data-testid="schedule-latest"
-                className="tab-pill bg-surface-2"
-              >
-                Latest
-              </button>
-              {rangeLabel ? (
-                <div className="rounded-full bg-surface-2 px-3 py-2 text-[11px] uppercase tracking-[0.16em]">
-                  Range: {rangeLabel}
-                </div>
-              ) : null}
-            </>
-          ) : null}
         </div>
       </div>
 
@@ -1018,7 +1318,7 @@ export function BigSchedule() {
                   data-testid="appointment-patient-search"
                   value={patientQuery}
                   required
-                  placeholder="Search patients"
+                  placeholder="Name, phone, DOB (MM/DD/YYYY), serial #"
                   onChange={(event) => handlePatientQueryChange(event.target.value)}
                   className="appointment-input"
                 />
@@ -1192,7 +1492,10 @@ export function BigSchedule() {
         </div>
       ) : null}
 
-      <div className="schedule-shell" data-testid="scheduler-root">
+      <div
+        className={`schedule-shell${isSidebarCollapsed ? " is-collapsed" : ""}`}
+        data-testid="scheduler-root"
+      >
         <aside className="schedule-sidebar">
           <div className="schedule-sidebar-card">
             <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">Filter by</div>
@@ -1228,70 +1531,234 @@ export function BigSchedule() {
             </button>
           </div>
 
-          <div className="schedule-sidebar-card">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">Status</div>
-            <select
-              className="mt-2 w-full rounded-xl border border-surface-3 bg-white/80 px-3 py-2 text-xs"
-              value={selectedStatus}
-              data-testid="status-filter"
-              onChange={(event) => setSelectedStatus(event.target.value as StatusFilter)}
+          <div className={`schedule-sidebar-card${sidebarSections.status ? "" : " is-collapsed"}`}>
+            <button
+              type="button"
+              className="schedule-sidebar-toggle"
+              onClick={() => toggleSidebarSection("status")}
+              aria-expanded={sidebarSections.status}
             >
-              {STATUS_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <label className="mt-3 flex items-center gap-2 text-xs">
-              <input type="checkbox" checked={colorByType} onChange={() => setColorByType((value) => !value)} />
-              Color by appointment type
-            </label>
-          </div>
-
-          <div className="schedule-sidebar-card">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">
-              Appointment Types
-            </div>
-            <div className="mt-2 space-y-2">
-              {sidebarTypes.map((type) => (
-                <label key={type.id} className="flex items-center gap-2 text-xs">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">Status</span>
+              <span className={`schedule-sidebar-caret${sidebarSections.status ? "" : " is-collapsed"}`} aria-hidden>
+                ▾
+              </span>
+            </button>
+            {sidebarSections.status ? (
+              <>
+                <select
+                  className="mt-2 w-full rounded-xl border border-surface-3 bg-white/80 px-3 py-2 text-xs"
+                  value={selectedStatus}
+                  data-testid="status-filter"
+                  onChange={(event) => setSelectedStatus(event.target.value as StatusFilter)}
+                >
+                  {STATUS_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <label className="mt-3 flex items-center gap-2 text-xs">
                   <input
                     type="checkbox"
-                    checked={selectedTypes.includes(type.id)}
-                    onChange={() => {
-                      setSelectedTypes((current) =>
-                        current.includes(type.id)
-                          ? current.filter((item) => item !== type.id)
-                          : [...current, type.id]
-                      );
-                    }}
+                    checked={colorByType}
+                    onChange={() => setColorByType((value) => !value)}
                   />
-                  <span>{type.name}</span>
+                  Color by appointment type
                 </label>
-              ))}
-            </div>
-            <button
-              className="mt-3 text-xs text-brand-ink"
-              onClick={() => setSelectedTypes(sidebarTypes.map((type) => type.id))}
-              type="button"
-            >
-              Show all
-            </button>
+              </>
+            ) : null}
           </div>
 
-          <div className="schedule-sidebar-card">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">Calendar</div>
-            <MiniCalendar
-              viewDate={viewDate}
-              onSelect={(date) => setViewDate(date)}
-              className="mt-2"
-            />
+          <div className={`schedule-sidebar-card${sidebarSections.types ? "" : " is-collapsed"}`}>
+            <button
+              type="button"
+              className="schedule-sidebar-toggle"
+              onClick={() => toggleSidebarSection("types")}
+              aria-expanded={sidebarSections.types}
+            >
+              <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">
+                Appointment Types
+              </span>
+              <span className={`schedule-sidebar-caret${sidebarSections.types ? "" : " is-collapsed"}`} aria-hidden>
+                ▾
+              </span>
+            </button>
+            {sidebarSections.types ? (
+              <>
+                <div className="mt-2 space-y-2">
+                  {sidebarTypes.map((type) => (
+                    <label key={type.id} className="flex items-center gap-2 text-xs">
+                      <input
+                        type="checkbox"
+                        checked={selectedTypes.includes(type.id)}
+                        onChange={() => {
+                          setSelectedTypes((current) =>
+                            current.includes(type.id)
+                              ? current.filter((item) => item !== type.id)
+                              : [...current, type.id]
+                          );
+                        }}
+                      />
+                      <span>{type.name}</span>
+                    </label>
+                  ))}
+                </div>
+                <button
+                  className="mt-3 text-xs text-brand-ink"
+                  onClick={() => setSelectedTypes(sidebarTypes.map((type) => type.id))}
+                  type="button"
+                >
+                  Show all
+                </button>
+              </>
+            ) : null}
+          </div>
+
+          <div className={`schedule-sidebar-card${sidebarSections.calendar ? "" : " is-collapsed"}`}>
+            <button
+              type="button"
+              className="schedule-sidebar-toggle"
+              onClick={() => toggleSidebarSection("calendar")}
+              aria-expanded={sidebarSections.calendar}
+            >
+              <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">Calendar</span>
+              <span
+                className={`schedule-sidebar-caret${sidebarSections.calendar ? "" : " is-collapsed"}`}
+                aria-hidden
+              >
+                ▾
+              </span>
+            </button>
+            {sidebarSections.calendar ? (
+              <MiniCalendar viewDate={viewDate} onSelect={(date) => setViewDate(date)} className="mt-2" />
+            ) : null}
           </div>
         </aside>
 
-        <div className="schedule-board">
+        <div className="schedule-board" ref={scheduleBoardRef}>
+          {actionMenu && actionMenuSummary ? (
+            <div
+              ref={actionMenuRef}
+              className="schedule-action-menu"
+              role="menu"
+              style={{ top: actionMenu.y, left: actionMenu.x }}
+            >
+              <div className="schedule-action-menu-title">{actionMenuSummary.title}</div>
+              <div className="schedule-action-menu-time">{actionMenuSummary.timeLabel}</div>
+              <div className="schedule-action-menu-divider" />
+              {actionMenuView === "main" ? (
+                <>
+                  <button
+                    type="button"
+                    className="schedule-action-menu-item"
+                    role="menuitem"
+                    onClick={() => {
+                      if (!arrivedAndReadyStatus) {
+                        showError("No status named Ready or Arrived found.");
+                        setActionMenu(null);
+                        return;
+                      }
+                      void updateAppointmentStatus(
+                        actionMenu.id,
+                        arrivedAndReadyStatus.id,
+                        arrivedAndReadyStatus.name
+                      );
+                      setActionMenu(null);
+                    }}
+                  >
+                    Arrived and Ready
+                  </button>
+                  <button
+                    type="button"
+                    className="schedule-action-menu-item"
+                    role="menuitem"
+                    onClick={() => {
+                      setActionMenu(null);
+                      openEditModal(actionMenu.id);
+                    }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="schedule-action-menu-item"
+                    role="menuitem"
+                    onClick={() => setActionMenuView("status")}
+                  >
+                    Change Status →
+                  </button>
+                  <button
+                    type="button"
+                    className="schedule-action-menu-item"
+                    role="menuitem"
+                    onClick={() => {
+                      setPinnedAppointmentId((current) => (current === actionMenu.id ? null : actionMenu.id));
+                      setActionMenu(null);
+                    }}
+                  >
+                    {pinnedAppointmentId === actionMenu.id ? "Unpin for rescheduling" : "Pin for rescheduling"}
+                  </button>
+                  <button
+                    type="button"
+                    className="schedule-action-menu-item"
+                    role="menuitem"
+                    onClick={() => {
+                      setActionMenu(null);
+                      openPatientTab(actionMenu.id, "Journal");
+                    }}
+                  >
+                    Create a journal entry
+                  </button>
+                  <button
+                    type="button"
+                    className="schedule-action-menu-item"
+                    role="menuitem"
+                    onClick={() => {
+                      setActionMenu(null);
+                      openPatientTab(actionMenu.id, "Details");
+                    }}
+                  >
+                    Patient Details
+                  </button>
+                  <button
+                    type="button"
+                    className="schedule-action-menu-item"
+                    role="menuitem"
+                    onClick={() => setActionMenu(null)}
+                  >
+                    Close
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="schedule-action-menu-item"
+                    role="menuitem"
+                    onClick={() => setActionMenuView("main")}
+                  >
+                    ← Back
+                  </button>
+                  {orderedStatusOptions.map((status) => (
+                    <button
+                      key={status.id}
+                      type="button"
+                      className="schedule-action-menu-item"
+                      role="menuitem"
+                      onClick={() => {
+                        void updateAppointmentStatus(actionMenu.id, status.id, status.name);
+                        setActionMenu(null);
+                      }}
+                    >
+                      {status.name}
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
+          ) : null}
           {viewType === "day" && dayGrid ? (
-            <div className="schedule-day-scroll">
+            <div className="schedule-day-scroll" style={{ height: `${dayGridHeight}px`, flex: "0 0 auto" }}>
               <div className="schedule-day-grid" data-testid="schedule-day-grid" style={dayGridStyles}>
                 <div className="schedule-day-corner" />
                 {visibleProviders.map((provider, index) => (
@@ -1301,7 +1768,7 @@ export function BigSchedule() {
                     data-testid="schedule-day-provider"
                     style={{ gridColumn: index + 2, gridRow: 1 }}
                   >
-                    {provider}
+                    {providerHeaderLabel(provider)}
                   </div>
                 ))}
                 {dayGrid.slots.map((slot, index) => {
@@ -1350,7 +1817,15 @@ export function BigSchedule() {
                 {dayGrid.dayEvents.map((event) => (
                   <div
                     key={`event-${event.id}`}
-                    className="schedule-day-event"
+                    className={`schedule-day-event${
+                      event.id === pinnedAppointmentId ? " is-pinned" : ""
+                    } ${
+                      event.durationMinutes <= 15
+                        ? "is-compact"
+                        : event.durationMinutes <= 30
+                        ? "is-short"
+                        : ""
+                    }`}
                     data-testid="schedule-event"
                     data-appointment-id={event.id}
                     data-date={event.start.format("YYYY-MM-DD")}
@@ -1362,9 +1837,26 @@ export function BigSchedule() {
                         draggingRef.current = false;
                       }, 0);
                     }}
-                    onClick={() => {
+                    onClick={(clickEvent) => {
                       if (draggingRef.current) return;
-                      openEditModal(event.id);
+                      if (clickTimeoutRef.current) {
+                        window.clearTimeout(clickTimeoutRef.current);
+                        clickTimeoutRef.current = null;
+                      }
+                      const rect = (clickEvent.currentTarget as HTMLElement).getBoundingClientRect();
+                      clickTimeoutRef.current = window.setTimeout(() => {
+                        openActionMenu(event.id, rect);
+                        clickTimeoutRef.current = null;
+                      }, 220);
+                    }}
+                    onDoubleClick={() => {
+                      if (draggingRef.current) return;
+                      if (clickTimeoutRef.current) {
+                        window.clearTimeout(clickTimeoutRef.current);
+                        clickTimeoutRef.current = null;
+                      }
+                      setActionMenu(null);
+                      openPatientFromAppointment(event.id);
                     }}
                     onDragOver={(dragEvent) => dragEvent.preventDefault()}
                     onDrop={(dragEvent) =>
@@ -1402,7 +1894,7 @@ export function BigSchedule() {
               </div>
             </div>
           ) : weekGrid ? (
-            <div className="schedule-week-scroll">
+            <div className="schedule-week-scroll" style={{ height: `${weekGridHeight}px`, flex: "0 0 auto" }}>
               <div className="schedule-week-grid" data-testid="schedule-week-grid" style={weekGridStyles}>
                 <div className="schedule-week-corner" style={{ gridColumn: 1, gridRow: "1 / 3" }} />
                 {weekGrid.weekDays.map((day, index) => (
@@ -1486,7 +1978,15 @@ export function BigSchedule() {
                 {weekGrid.weekEvents.map((event) => (
                   <div
                     key={`event-${event.id}`}
-                    className="schedule-week-event"
+                    className={`schedule-week-event${
+                      event.id === pinnedAppointmentId ? " is-pinned" : ""
+                    } ${
+                      event.durationMinutes <= 15
+                        ? "is-compact"
+                        : event.durationMinutes <= 30
+                        ? "is-short"
+                        : ""
+                    }`}
                     data-testid="schedule-event"
                     data-appointment-id={event.id}
                     data-date={event.start.format("YYYY-MM-DD")}
@@ -1498,9 +1998,26 @@ export function BigSchedule() {
                         draggingRef.current = false;
                       }, 0);
                     }}
-                    onClick={() => {
+                    onClick={(clickEvent) => {
                       if (draggingRef.current) return;
-                      openEditModal(event.id);
+                      if (clickTimeoutRef.current) {
+                        window.clearTimeout(clickTimeoutRef.current);
+                        clickTimeoutRef.current = null;
+                      }
+                      const rect = (clickEvent.currentTarget as HTMLElement).getBoundingClientRect();
+                      clickTimeoutRef.current = window.setTimeout(() => {
+                        openActionMenu(event.id, rect);
+                        clickTimeoutRef.current = null;
+                      }, 220);
+                    }}
+                    onDoubleClick={() => {
+                      if (draggingRef.current) return;
+                      if (clickTimeoutRef.current) {
+                        window.clearTimeout(clickTimeoutRef.current);
+                        clickTimeoutRef.current = null;
+                      }
+                      setActionMenu(null);
+                      openPatientFromAppointment(event.id);
                     }}
                     onDragOver={(dragEvent) => dragEvent.preventDefault()}
                     onDrop={(dragEvent) =>
