@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
 import isoWeek from "dayjs/plugin/isoWeek";
 import type { OpUnitType } from "dayjs";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -28,6 +29,7 @@ const typePalette = ["#DCEFF6", "#E6F6D9", "#FCE9D4", "#F4E6FA", "#FCE1EA", "#E5
 
 const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 
+dayjs.extend(utc);
 dayjs.extend(isoWeek);
 
 type ScheduleView = "day" | "week";
@@ -166,14 +168,16 @@ function buildSlots(base: dayjs.Dayjs) {
 function parseAppointmentTime(value: string | Date) {
   if (!value) return dayjs(value);
   if (typeof value === "string") {
-    const normalized = value.replace(/([zZ]|[+-]\d{2}:\d{2})$/, "");
-    return dayjs(normalized);
+    if (/[zZ]|[+-]\d{2}:\d{2}$/.test(value)) {
+      return dayjs.utc(value).local();
+    }
+    return dayjs(value);
   }
   return dayjs(value);
 }
 
 function formatLocalDateTime(value: dayjs.Dayjs) {
-  return value.format("YYYY-MM-DDTHH:mm:ss[Z]");
+  return value.format("YYYY-MM-DDTHH:mm:ss");
 }
 
 function getColumnMin(totalColumns: number) {
