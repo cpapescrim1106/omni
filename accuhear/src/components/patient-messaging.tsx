@@ -37,6 +37,21 @@ const STATUS_STYLES: Record<Message["status"], string> = {
   received: "bg-brand-orange/10 text-brand-ink",
 };
 
+const FOLDERS = [
+  { label: "Unanswered" },
+  { label: "Answered" },
+  { label: "Assigned to me" },
+  { label: "Drafts" },
+  { label: "Spam" },
+  { label: "Trash" },
+];
+
+const SNIPPETS = [
+  "Thanks for checking in — we can help schedule a follow-up.",
+  "We received your message and will respond shortly.",
+  "Please call the office if you need urgent assistance.",
+];
+
 export function PatientMessaging({ patientId }: { patientId: string }) {
   const [threads, setThreads] = useState<MessageThread[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,13 +66,11 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
     setLoadError(null);
     try {
       const response = await fetch(`/api/patients/${patientId}/messages`);
-      if (!response.ok) {
-        throw new Error("Unable to load messages.");
-      }
+      if (!response.ok) throw new Error("Unable to load messages.");
       const payload = await response.json();
       const data = (payload.threads ?? []) as MessageThread[];
       setThreads(data);
-    } catch (error) {
+    } catch {
       setLoadError("Unable to load messages.");
     } finally {
       setLoading(false);
@@ -90,9 +103,7 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
           body: JSON.stringify({ channel, body: messageBody }),
         });
 
-        if (!response.ok) {
-          throw new Error("Unable to send message.");
-        }
+        if (!response.ok) throw new Error("Unable to send message.");
 
         const payload = await response.json();
         const nextThread = payload.thread as MessageThread;
@@ -110,17 +121,11 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
             return updated;
           }
 
-          return [
-            {
-              ...nextThread,
-              messages: [nextMessage],
-            },
-            ...current,
-          ];
+          return [{ ...nextThread, messages: [nextMessage] }, ...current];
         });
 
         setMessageBody("");
-      } catch (error) {
+      } catch {
         setSendError("Unable to send message.");
       } finally {
         setSending(false);
@@ -136,10 +141,31 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
           <div className="section-title text-xs text-brand-ink">Messaging</div>
           <div className="text-sm text-ink-muted">Patient conversations across channels.</div>
         </div>
-        {loading ? <div className="text-xs text-ink-muted">Loading messages...</div> : null}
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+      <div className="mt-6 grid gap-6 lg:grid-cols-[220px_1.6fr_0.9fr]">
+        <div className="rounded-2xl border border-surface-2 bg-white/80 p-4">
+          <div className="text-xs font-semibold text-ink-muted">Quick find</div>
+          <div className="mt-2 flex items-center gap-2">
+            <input
+              type="search"
+              className="w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-xs"
+              placeholder="Search"
+            />
+          </div>
+          <div className="mt-3 text-xs text-ink-muted">Location</div>
+          <select className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-xs">
+            <option>&lt;All&gt;</option>
+          </select>
+          <div className="mt-4 grid gap-2">
+            {FOLDERS.map((folder) => (
+              <div key={folder.label} className="rounded-xl bg-white px-3 py-2 text-xs text-ink-muted shadow-sm">
+                {folder.label}
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="rounded-2xl border border-surface-2 bg-white/80">
           {loadError ? (
             <div className="px-4 py-4 text-sm text-danger">{loadError}</div>
@@ -185,23 +211,17 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
                               className={`mt-2 flex flex-wrap items-center gap-2 text-xs text-ink-muted ${
                                 isOutbound ? "justify-end" : "justify-start"
                               }`}
-                              data-testid="messaging-message-meta"
                             >
                               <span>{isOutbound ? "Outbound" : "Inbound"}</span>
                               <span>·</span>
                               <span>{dayjs(message.sentAt).format("MMM D, YYYY h:mm A")}</span>
                               <span>·</span>
-                              <span
-                                className={`badge ${STATUS_STYLES[message.status]}`}
-                                data-testid="messaging-message-status"
-                              >
+                              <span className={`badge ${STATUS_STYLES[message.status]}`}>
                                 {STATUS_LABELS[message.status]}
                               </span>
                             </div>
                             {isFailed ? (
-                              <div className="mt-2 text-xs text-danger" data-testid="messaging-message-error">
-                                Failed to send.
-                              </div>
+                              <div className="mt-2 text-xs text-danger">Failed to send.</div>
                             ) : null}
                           </div>
                         </div>
@@ -214,55 +234,59 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
           )}
         </div>
 
-        <form
-          className="rounded-2xl border border-surface-2 bg-white/80 p-4"
-          onSubmit={handleSend}
-          data-testid="messaging-compose"
-        >
-          <div className="text-sm font-semibold text-ink-strong">Compose message</div>
-          <div className="mt-4 grid gap-3">
-            <label className="grid gap-2 text-xs text-ink-muted" htmlFor="messaging-channel">
-              Channel
-              <select
-                id="messaging-channel"
-                data-testid="messaging-compose-channel"
-                className="rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
-                value={channel}
-                onChange={(event) => setChannel(event.target.value as MessageThread["channel"])}
-              >
-                {CHANNEL_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-2 text-xs text-ink-muted" htmlFor="messaging-body">
-              Message
-              <textarea
-                id="messaging-body"
-                data-testid="messaging-compose-body"
-                className="min-h-[120px] rounded-xl border border-surface-3 px-3 py-2 text-sm"
-                placeholder="Write a message..."
-                value={messageBody}
-                onChange={(event) => setMessageBody(event.target.value)}
-              />
-            </label>
-            {sendError ? (
-              <div className="text-xs text-danger" data-testid="messaging-compose-error">
-                {sendError}
-              </div>
-            ) : null}
-            <button
-              type="submit"
-              className="tab-pill text-xs"
-              data-testid="messaging-compose-submit"
-              disabled={sending}
-            >
-              {sending ? "Sending..." : "Send message"}
-            </button>
+        <div className="grid gap-4">
+          <form
+            className="rounded-2xl border border-surface-2 bg-white/80 p-4"
+            onSubmit={handleSend}
+            data-testid="messaging-compose"
+          >
+            <div className="text-sm font-semibold text-ink-strong">Compose message</div>
+            <div className="mt-4 grid gap-3">
+              <label className="grid gap-2 text-xs text-ink-muted" htmlFor="messaging-channel">
+                Channel
+                <select
+                  id="messaging-channel"
+                  data-testid="messaging-compose-channel"
+                  className="rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+                  value={channel}
+                  onChange={(event) => setChannel(event.target.value as MessageThread["channel"])}
+                >
+                  {CHANNEL_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-2 text-xs text-ink-muted" htmlFor="messaging-body">
+                Message
+                <textarea
+                  id="messaging-body"
+                  data-testid="messaging-compose-body"
+                  className="min-h-[120px] rounded-xl border border-surface-3 px-3 py-2 text-sm"
+                  placeholder="Write a message..."
+                  value={messageBody}
+                  onChange={(event) => setMessageBody(event.target.value)}
+                />
+              </label>
+              {sendError ? <div className="text-xs text-danger">{sendError}</div> : null}
+              <button type="submit" className="tab-pill text-xs" disabled={sending}>
+                {sending ? "Sending..." : "Send message"}
+              </button>
+            </div>
+          </form>
+
+          <div className="rounded-2xl border border-surface-2 bg-white/80 p-4">
+            <div className="text-xs font-semibold text-ink-muted">Text snippets</div>
+            <div className="mt-3 grid gap-2">
+              {SNIPPETS.map((snippet) => (
+                <div key={snippet} className="rounded-xl bg-white px-3 py-2 text-xs text-ink-muted shadow-sm">
+                  {snippet}
+                </div>
+              ))}
+            </div>
           </div>
-        </form>
+        </div>
       </div>
     </section>
   );

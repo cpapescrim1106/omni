@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import dayjs from "dayjs";
 import { getPatientById } from "@/lib/patient-data";
 import { PatientJournal } from "@/components/patient-journal";
 import { PatientMessaging } from "@/components/patient-messaging";
@@ -8,19 +9,33 @@ import { PatientSales } from "@/components/patient-sales";
 import { PatientAudiology } from "@/components/patient-audiology";
 import { PatientDevices } from "@/components/patient-devices";
 import { PatientPayers } from "@/components/patient-payers";
+import { PatientDetails } from "@/components/patient-details";
+import { PatientMarketing } from "@/components/patient-marketing";
 import { PatientTabRegistrar } from "@/components/patient-tabs";
 
 const tabs = [
   "Summary",
   "Details",
-  "Devices",
+  "Hearing aids",
   "Audiology",
   "Journal",
-  "Insurance/Payers",
+  "3rd party payers",
   "Messaging",
   "Marketing",
   "Sales history",
   "Documents",
+];
+
+const PLACEHOLDER_ADDRESS = "2387 Grandfather Mtn, Spring Hill, FL 34606";
+
+const APPOINTMENTS = [
+  { date: "05/19/2026 10:30 AM - 11:00 AM", type: "Clean and Check", provider: "SHD C + C" },
+  { date: "01/07/2026 01:15 PM - 02:00 PM", type: "Consult", provider: "Chris Pape" },
+];
+
+const LAST_AUDIOGRAM = [
+  { ear: "Right", severity: "Mild", type: "Sensorineural", shape: "Sloping" },
+  { ear: "Left", severity: "Moderately severe", type: "Sensorineural", shape: "Sloping" },
 ];
 
 export default async function PatientProfilePage({
@@ -36,47 +51,133 @@ export default async function PatientProfilePage({
   const patient = await getPatientById(resolvedParams.id);
   if (!patient) notFound();
   const activeTab = resolvedSearchParams?.tab ?? "Summary";
-  const patientLabel = `${patient.lastName}, ${patient.firstName}${
-    patient.preferredName ? ` (${patient.preferredName})` : ""
-  }`;
+  const patientLabel = `${patient.lastName}, ${patient.firstName}${patient.preferredName ? ` (${patient.preferredName})` : ""}`;
+
+  const age = patient.dateOfBirth ? dayjs().diff(dayjs(patient.dateOfBirth), "year") : null;
+  const phoneButtons = patient.phones.length
+    ? patient.phones.slice(0, 3).map((phone) => ({
+        label: phone.type || "Phone",
+        number: phone.number || phone.normalized,
+      }))
+    : [
+        { label: "Home", number: "(352)688-6322" },
+        { label: "Mobile", number: "(720)880-8948" },
+      ];
+
+  const payerTags = patient.payerPolicies.map((policy) => policy.payerName);
+
+  const aidRows = patient.devices.length
+    ? patient.devices.map((device) => ({
+        model: `${device.manufacturer} ${device.model}`.trim(),
+        battery: "Other",
+        notes: device.serial ? `Serial ${device.serial}` : "—",
+        purchase: device.createdAt ? dayjs(device.createdAt).format("MM/DD/YYYY") : "—",
+        status: device.status || "Active",
+      }))
+    : [
+        {
+          model: "Oticon More 3 miniRITE R",
+          battery: "Other",
+          notes: "extended warranty exp 1/15/27",
+          purchase: "01/17/2023",
+          status: "Active",
+        },
+      ];
 
   return (
     <div className="flex flex-col gap-6">
       <PatientTabRegistrar id={patient.id} label={patientLabel} status={patient.status} />
       <section className="card p-6">
-        <div className="flex flex-wrap items-center justify-between gap-6">
-          <div className="flex items-center gap-6">
-            <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-brand-blue/15 text-xl font-semibold text-brand-ink">
+        <div className="flex flex-wrap items-start justify-between gap-6">
+          <div className="flex items-start gap-6">
+            <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-brand-blue/15 text-xl font-semibold text-brand-ink">
               {patient.firstName.charAt(0)}
             </div>
             <div>
               <div className="text-xl font-semibold text-ink-strong">
                 {patient.lastName}, {patient.firstName}
-                {patient.preferredName ? ` (${patient.preferredName})` : ""}
               </div>
               <div className="text-sm text-ink-muted">
-                DOB {patient.dateOfBirth?.toLocaleDateString() || "—"} · ID {patient.legacyId || "—"}
+                {patient.dateOfBirth
+                  ? dayjs(patient.dateOfBirth).format("MM/DD/YYYY")
+                  : "—"}{" "}
+                {age ? `· ${age}` : ""}
               </div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <span className="badge">{patient.status || "Active"}</span>
-                {patient.providerName ? (
-                  <span className="badge bg-brand-orange/10 text-brand-ink">{patient.providerName}</span>
-                ) : null}
-                {patient.location ? <span className="badge">{patient.location}</span> : null}
+              <div className="mt-3 flex flex-wrap gap-2">
+                {phoneButtons.map((phone) => (
+                  <span
+                    key={`${phone.label}-${phone.number}`}
+                    className="rounded-full bg-success px-3 py-1 text-xs font-semibold text-white"
+                  >
+                    {phone.number}
+                  </span>
+                ))}
               </div>
             </div>
           </div>
-          <div className="grid gap-2 text-right text-xs text-ink-muted">
-            <div>
-              <div className="text-ink-soft">Patient balance</div>
-              <div className="text-lg font-semibold text-ink-strong">$0.00</div>
+
+          <div className="flex flex-col gap-2 text-right text-xs text-ink-muted">
+            <div className="flex items-center justify-between gap-4">
+              <span>Patient balance</span>
+              <span className="rounded-full bg-success px-3 py-1 text-xs font-semibold text-white">$0.00</span>
             </div>
-            <div>
-              <div className="text-ink-soft">Punctuality</div>
-              <div className="text-sm font-semibold text-success">1 min early</div>
+            <div className="flex items-center justify-between gap-4">
+              <span>Pending 3rd party reimbursement</span>
+              <span className="rounded-full bg-success px-3 py-1 text-xs font-semibold text-white">$0.00</span>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span>Punctuality</span>
+              <span className="rounded-full bg-success px-3 py-1 text-xs font-semibold text-white">
+                1min early (7)
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span>No show rate</span>
+              <span className="rounded-full bg-success px-3 py-1 text-xs font-semibold text-white">
+                0% (0/18)
+              </span>
             </div>
           </div>
         </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          {patient.providerName ? (
+            <span className="rounded-full bg-brand-blue/10 px-3 py-1 text-xs font-semibold text-brand-ink">
+              {patient.providerName}
+            </span>
+          ) : null}
+          {patient.location ? (
+            <span className="rounded-full bg-brand-blue/10 px-3 py-1 text-xs font-semibold text-brand-ink">
+              {patient.location}
+            </span>
+          ) : null}
+        </div>
+
+        <div className="mt-4 rounded-2xl bg-surface-1/70 px-4 py-3 text-sm text-ink-muted">
+          {PLACEHOLDER_ADDRESS}
+        </div>
+
+        <div className="mt-3 rounded-2xl bg-brand-blue/10 px-4 py-3 text-sm text-brand-ink">
+          Preferred Name: {patient.preferredName || "—"} · extended warranty exp 1/15/27
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          {payerTags.length ? (
+            payerTags.map((payer) => (
+              <span key={payer} className="rounded-full bg-brand-blue/10 px-3 py-1 text-xs text-brand-ink">
+                {payer}
+              </span>
+            ))
+          ) : (
+            <span className="rounded-full bg-brand-blue/10 px-3 py-1 text-xs text-brand-ink">Medicare</span>
+          )}
+          <span className="rounded-full bg-brand-blue/10 px-3 py-1 text-xs text-brand-ink">United Healthcare</span>
+          <span className="rounded-full bg-brand-blue/10 px-3 py-1 text-xs text-brand-ink">Current</span>
+          <span className="rounded-full bg-brand-blue/10 px-3 py-1 text-xs text-brand-ink">Jan MC Benefit</span>
+          <span className="rounded-full bg-brand-blue/10 px-3 py-1 text-xs text-brand-ink">Outreach - Seminar</span>
+          <span className="rounded-full bg-brand-blue/10 px-3 py-1 text-xs text-brand-ink">Patient Service - Repair / Service</span>
+        </div>
+
         <div className="mt-6 flex flex-wrap gap-2">
           {tabs.map((tab) => (
             <Link
@@ -93,7 +194,7 @@ export default async function PatientProfilePage({
 
       {activeTab === "Audiology" ? (
         <PatientAudiology patientId={patient.id} />
-      ) : activeTab === "Devices" ? (
+      ) : activeTab === "Devices" || activeTab === "Hearing aids" ? (
         <PatientDevices patientId={patient.id} />
       ) : activeTab === "Journal" ? (
         <PatientJournal patientId={patient.id} />
@@ -105,65 +206,80 @@ export default async function PatientProfilePage({
         <PatientSales patientId={patient.id} />
       ) : activeTab === "Documents" ? (
         <PatientDocuments patientId={patient.id} />
+      ) : activeTab === "Details" ? (
+        <PatientDetails patient={patient} />
+      ) : activeTab === "Marketing" ? (
+        <PatientMarketing />
       ) : (
-        <section className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
+        <section className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
           <div className="card p-6">
-            <div className="section-title text-xs text-brand-ink">Summary</div>
-            <div className="mt-4 grid gap-4">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <InfoBlock label="Primary phone" value={patient.phones[0]?.normalized || "—"} />
-                <InfoBlock label="Email" value={patient.email || "—"} />
-                <InfoBlock label="Referral source" value={"—"} />
-                <InfoBlock label="Referrer type" value={"—"} />
+            <div className="section-title text-xs text-brand-ink">Appointments</div>
+            <div className="mt-4 overflow-hidden rounded-2xl border border-surface-2 bg-white/80">
+              <div className="grid grid-cols-[1.5fr_1fr_1fr] gap-3 bg-surface-1/60 px-4 py-3 text-[11px] uppercase tracking-[0.2em] text-ink-soft">
+                <span>Appointment date</span>
+                <span>Appointment type</span>
+                <span>Provider</span>
               </div>
-              <div className="rounded-2xl bg-surface-1 p-4 text-sm text-ink-muted">
-                Next appointment: Wed, Feb 3 · 2:15 PM · Consult
+              {APPOINTMENTS.map((appointment) => (
+                <div
+                  key={appointment.date}
+                  className="grid grid-cols-[1.5fr_1fr_1fr] gap-3 border-t border-surface-2 px-4 py-3 text-sm"
+                >
+                  <span className="text-ink-muted">{appointment.date}</span>
+                  <span className="text-ink-strong">{appointment.type}</span>
+                  <span className="text-ink-muted">{appointment.provider}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-surface-2 bg-white/80">
+              <div className="px-4 py-3 text-xs font-semibold text-ink-muted">
+                Last audiogram 01/07/2026
               </div>
+              <div className="grid grid-cols-[120px_1fr_1fr_1fr] gap-3 bg-surface-1/60 px-4 py-3 text-[11px] uppercase tracking-[0.2em] text-ink-soft">
+                <span></span>
+                <span>Severity</span>
+                <span>Type</span>
+                <span>Shape</span>
+              </div>
+              {LAST_AUDIOGRAM.map((row) => (
+                <div
+                  key={row.ear}
+                  className="grid grid-cols-[120px_1fr_1fr_1fr] gap-3 border-t border-surface-2 px-4 py-3 text-sm"
+                >
+                  <span className="text-ink-muted">{row.ear}</span>
+                  <span className="text-ink-strong">{row.severity}</span>
+                  <span className="text-ink-muted">{row.type}</span>
+                  <span className="text-ink-muted">{row.shape}</span>
+                </div>
+              ))}
             </div>
           </div>
 
-          <div className="glass-panel p-6">
-            <div className="section-title text-xs text-brand-ink">Active devices</div>
-            <div className="mt-4 space-y-3 text-sm">
-              {patient.devices.length ? (
-                patient.devices.slice(0, 2).map((device) => (
-                  <DeviceRow
-                    key={device.id}
-                    name={`${device.manufacturer} ${device.model}`.trim()}
-                    detail={`Serial ${device.serial || "—"}`}
-                    status={device.status || "Active"}
-                  />
-                ))
-              ) : (
-                <div className="rounded-2xl bg-white/80 px-4 py-3 text-xs text-ink-muted">
-                  No devices recorded yet.
+          <div className="card p-6">
+            <div className="section-title text-xs text-brand-ink">Current aids</div>
+            <div className="mt-4 overflow-hidden rounded-2xl border border-surface-2 bg-white/80">
+              <div className="grid grid-cols-[1.4fr_1fr_1fr_0.8fr] gap-3 bg-surface-1/60 px-4 py-3 text-[11px] uppercase tracking-[0.2em] text-ink-soft">
+                <span>Model</span>
+                <span>Battery/Notes</span>
+                <span>Purchase date</span>
+                <span>Status</span>
+              </div>
+              {aidRows.map((row) => (
+                <div
+                  key={row.model}
+                  className="grid grid-cols-[1.4fr_1fr_1fr_0.8fr] gap-3 border-t border-surface-2 px-4 py-3 text-sm"
+                >
+                  <span className="text-ink-strong">{row.model}</span>
+                  <span className="text-ink-muted">{row.notes}</span>
+                  <span className="text-ink-muted">{row.purchase}</span>
+                  <span className="text-ink-muted">{row.status}</span>
                 </div>
-              )}
+              ))}
             </div>
           </div>
         </section>
       )}
-    </div>
-  );
-}
-
-function InfoBlock({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl bg-white/80 p-4 shadow-[0_8px_16px_rgba(24,20,50,0.08)]">
-      <div className="text-[11px] uppercase tracking-[0.2em] text-ink-soft">{label}</div>
-      <div className="mt-2 text-sm font-semibold text-ink-strong">{value}</div>
-    </div>
-  );
-}
-
-function DeviceRow({ name, detail, status }: { name: string; detail: string; status: string }) {
-  return (
-    <div className="flex items-center justify-between rounded-2xl bg-white/80 px-4 py-3 shadow-[0_8px_16px_rgba(24,20,50,0.08)]">
-      <div>
-        <div className="text-sm font-semibold text-ink-strong">{name}</div>
-        <div className="text-xs text-ink-muted">{detail}</div>
-      </div>
-      <span className="badge bg-brand-blue/10">{status}</span>
     </div>
   );
 }
