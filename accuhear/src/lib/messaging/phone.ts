@@ -7,6 +7,15 @@ export type ResolvedPatientPhone = {
   isPrimary: boolean;
 };
 
+export function normalizeToE164(value: string) {
+  const digits = String(value ?? "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  if (value.trim().startsWith("+")) return `+${digits}`;
+  return `+${digits}`;
+}
+
 function scorePhone(phone: { isPrimary: boolean; type: string }) {
   if (phone.isPrimary) return 100;
   const t = (phone.type ?? "").trim().toLowerCase();
@@ -45,8 +54,9 @@ export async function resolvePatientSmsPhone(patientId: string): Promise<Resolve
 }
 
 export async function findPatientByPhone(normalizedPhone: string) {
+  const normalized = normalizeToE164(normalizedPhone);
   const phone = await prisma.phoneNumber.findFirst({
-    where: { normalized: normalizedPhone },
+    where: { normalized },
     select: {
       id: true,
       normalized: true,
@@ -66,4 +76,3 @@ export async function findPatientByPhone(normalizedPhone: string) {
   if (!phone) return null;
   return phone;
 }
-

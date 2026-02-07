@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getValidationToken, verifyRingCentralSignature } from "@/lib/ringcentral/webhook-verify";
 import { claimWebhookEvent, markWebhookEventFailed, markWebhookEventProcessed } from "@/lib/messaging/webhook-events";
 import { detectConsentKeyword, updateSmsConsent } from "@/lib/messaging/consent";
-import { findPatientByPhone } from "@/lib/messaging/phone";
+import { findPatientByPhone, normalizeToE164 } from "@/lib/messaging/phone";
 import { recordInboundMessage, updateMessageStatusByProviderMessageId, type MessageStatus } from "@/lib/messaging";
 
 export const runtime = "nodejs";
@@ -116,16 +116,17 @@ export async function POST(request: NextRequest) {
     const providerMessageId = String(recordObj.id ?? recordObj.messageId ?? "").trim();
 
     const fromObj = asObject(recordObj.from);
-    const fromNumber = String(fromObj?.phoneNumber ?? recordObj.from ?? "").trim();
+    const fromNumberRaw = String(fromObj?.phoneNumber ?? recordObj.from ?? "").trim();
+    const fromNumber = normalizeToE164(fromNumberRaw);
 
     const toValue = recordObj.to;
     let toNumber = "";
     if (Array.isArray(toValue) && toValue.length) {
       const first = asObject(toValue[0]);
-      toNumber = String(first?.phoneNumber ?? "").trim();
+      toNumber = normalizeToE164(String(first?.phoneNumber ?? "").trim());
     } else {
       const toObj = asObject(toValue);
-      toNumber = String(toObj?.phoneNumber ?? toValue ?? "").trim();
+      toNumber = normalizeToE164(String(toObj?.phoneNumber ?? toValue ?? "").trim());
     }
 
     const body = String(recordObj.subject ?? recordObj.text ?? recordObj.body ?? "").trim();
