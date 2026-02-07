@@ -32,6 +32,7 @@ model Patient {
   sales            SaleTransaction[]
   messageThreads   MessageThread[]
   audiograms       Audiogram[]
+  smsConsents      SmsConsent[]
 
   @@index([lastName, firstName])
   @@index([email])
@@ -215,8 +216,20 @@ model Message {
   sentAt    DateTime @default(now())
   status    MessageStatus
 
+  provider          String?
+  providerMessageId String?
+  fromNumber        String?
+  toNumber          String?
+  statusUpdatedAt   DateTime?
+  deliveredAt       DateTime?
+  failedAt          DateTime?
+  errorCode         String?
+  errorMessage      String?
+  rawPayload        Json?
+
   @@index([threadId, sentAt])
   @@index([status, sentAt])
+  @@unique([provider, providerMessageId])
 }
 
 enum MessageChannel {
@@ -232,6 +245,7 @@ enum MessageDirection {
 enum MessageStatus {
   queued
   sent
+  delivered
   failed
   received
 }
@@ -239,6 +253,46 @@ enum MessageStatus {
 enum MessageThreadStatus {
   open
   closed
+}
+
+model SmsConsent {
+  id        String           @id @default(cuid())
+  patientId String
+  patient   Patient          @relation(fields: [patientId], references: [id])
+  phone     String
+  status    SmsConsentStatus @default(opted_in)
+  updatedAt DateTime         @updatedAt
+  createdAt DateTime         @default(now())
+
+  @@unique([patientId, phone])
+  @@index([phone, status])
+}
+
+enum SmsConsentStatus {
+  opted_in
+  opted_out
+}
+
+model WebhookEvent {
+  id        String             @id @default(cuid())
+  provider  String
+  eventId   String
+  eventType String
+  status    WebhookEventStatus @default(received)
+  attempts  Int                @default(0)
+  lastError String?
+  payload   Json?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@unique([provider, eventId])
+  @@index([status, updatedAt])
+}
+
+enum WebhookEventStatus {
+  received
+  processed
+  failed
 }
 
 model Device {

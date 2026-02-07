@@ -26,7 +26,7 @@ const tabs = [
   "Documents",
 ];
 
-const PLACEHOLDER_ADDRESS = "2387 Grandfather Mtn, Spring Hill, FL 34606";
+const PLACEHOLDER_ADDRESS = "123 Example St, Washington, DC 20001";
 
 const APPOINTMENTS = [
   { date: "05/19/2026 10:30 AM - 11:00 AM", type: "Clean and Check", provider: "SHD C + C" },
@@ -60,8 +60,8 @@ export default async function PatientProfilePage({
         number: phone.number || phone.normalized,
       }))
     : [
-        { label: "Home", number: "(352)688-6322" },
-        { label: "Mobile", number: "(720)880-8948" },
+        { label: "Home", number: "(202) 555-0100" },
+        { label: "Mobile", number: "(202) 555-0101" },
       ];
 
   const payerTags = patient.payerPolicies.map((policy) => policy.payerName);

@@ -77,6 +77,7 @@ export async function searchPatients(query: string, options?: { status?: string 
   const dob = parseDob(q);
   const serialQuery = lower.length >= 2 ? lower : "";
   const useTrigram = lower.length >= 3;
+  const trigramThreshold = 0.2;
   const statusFilter = normalizeStatusFilter(options?.status);
   const statusFilterAll = statusFilter === "all";
   const statusValues =
@@ -106,8 +107,8 @@ export async function searchPatients(query: string, options?: { status?: string 
           FROM patient_search
           WHERE (
             (${normalizedPhone} <> '' AND ${normalizedPhone} = ANY(phones_e164))
-            OR (name_search % ${lower})
-            OR (payer_search % ${lower})
+            OR (public.similarity(name_search, ${lower}) > ${trigramThreshold})
+            OR (public.similarity(payer_search, ${lower}) > ${trigramThreshold})
             OR (legacy_id = ${lower})
             OR (email ILIKE ${`%${lower}%`})
             OR (${dob}::date IS NOT NULL AND date_of_birth = ${dob}::date)
@@ -119,7 +120,7 @@ export async function searchPatients(query: string, options?: { status?: string 
           AND (${statusFilterAll} OR lower(status) = ANY(${statusValues}))
           ORDER BY
             (${normalizedPhone} <> '' AND ${normalizedPhone} = ANY(phones_e164)) DESC,
-            GREATEST(similarity(name_search, ${lower}), similarity(payer_search, ${lower})) DESC NULLS LAST,
+            GREATEST(public.similarity(name_search, ${lower}), public.similarity(payer_search, ${lower})) DESC NULLS LAST,
             last_name ASC,
             first_name ASC
           LIMIT 25;

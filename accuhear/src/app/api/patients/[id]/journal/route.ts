@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 
-const ALLOWED_TYPES = ["note", "call", "email", "appointment", "sale", "recall"] as const;
+const ALLOWED_TYPES = ["note", "call", "email", "sms", "appointment", "sale", "recall"] as const;
 
 function parseDateParam(value: string | null, endOfDay = false) {
   if (!value) return null;

@@ -16,15 +16,17 @@ async function cleanup() {
       where: { legacyId: { startsWith: testTag } },
       select: { id: true },
     });
-    const patientIds = patients.map((patient) => patient.id);
+	    const patientIds = patients.map((patient) => patient.id);
 
-    if (patientIds.length) {
-      await tx.message.deleteMany({ where: { thread: { patientId: { in: patientIds } } } });
-      await tx.messageThread.deleteMany({ where: { patientId: { in: patientIds } } });
-      await tx.patient.deleteMany({ where: { id: { in: patientIds } } });
-    }
-  });
-}
+	    if (patientIds.length) {
+	      await tx.journalEntry.deleteMany({ where: { patientId: { in: patientIds } } });
+	      await tx.message.deleteMany({ where: { thread: { patientId: { in: patientIds } } } });
+	      await tx.messageThread.deleteMany({ where: { patientId: { in: patientIds } } });
+	      await tx.phoneNumber.deleteMany({ where: { patientId: { in: patientIds } } });
+	      await tx.patient.deleteMany({ where: { id: { in: patientIds } } });
+	    }
+	  });
+	}
 
 before(async () => {
   await cleanup();
@@ -42,7 +44,7 @@ after(async () => {
 
 async function readJson(response: Response) {
   const payload = await response.json();
-  return payload as Record<string, any>;
+  return payload as Record<string, unknown>;
 }
 
 test("create outbound message - saved and linked to patient thread", async () => {
@@ -51,6 +53,15 @@ test("create outbound message - saved and linked to patient thread", async () =>
       legacyId: `${testTag}-outbound`,
       firstName: "Nora",
       lastName: "Diaz",
+    },
+  });
+  await prisma.phoneNumber.create({
+    data: {
+      patientId: patient.id,
+      type: "MOBILE",
+      number: "(202) 555-0100",
+      normalized: "+12025550100",
+      isPrimary: true,
     },
   });
 
@@ -228,6 +239,15 @@ test("adapter stub called on outbound send", async () => {
       lastName: "Rivera",
     },
   });
+  await prisma.phoneNumber.create({
+    data: {
+      patientId: patient.id,
+      type: "MOBILE",
+      number: "(202) 555-0101",
+      normalized: "+12025550101",
+      isPrimary: true,
+    },
+  });
 
   const payload = {
     channel: "sms",
@@ -248,4 +268,5 @@ test("adapter stub called on outbound send", async () => {
   assert.equal(calls.length, 1);
   assert.equal(calls[0]?.patientId, patient.id);
   assert.equal(calls[0]?.body, payload.body);
+  assert.equal(calls[0]?.to, "+12025550101");
 });

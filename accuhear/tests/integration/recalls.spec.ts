@@ -47,7 +47,7 @@ after(async () => {
 
 async function readJson(response: Response) {
   const payload = await response.json();
-  return payload as Record<string, any>;
+  return payload as Record<string, unknown>;
 }
 
 test("create recall rule - saves to database with all fields", async () => {

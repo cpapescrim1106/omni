@@ -40,10 +40,10 @@ export async function ensurePatientSearchSchema() {
       `);
 
         await prisma.$executeRawUnsafe(
-        "CREATE INDEX IF NOT EXISTS patient_search_name_trgm_idx ON patient_search USING GIN (name_search gin_trgm_ops);"
+        'CREATE INDEX IF NOT EXISTS patient_search_name_trgm_idx ON patient_search USING GIN (name_search public.gin_trgm_ops);'
       );
         await prisma.$executeRawUnsafe(
-        "CREATE INDEX IF NOT EXISTS patient_search_payer_trgm_idx ON patient_search USING GIN (payer_search gin_trgm_ops);"
+        'CREATE INDEX IF NOT EXISTS patient_search_payer_trgm_idx ON patient_search USING GIN (payer_search public.gin_trgm_ops);'
       );
         await prisma.$executeRawUnsafe(
         "CREATE INDEX IF NOT EXISTS patient_search_phone_idx ON patient_search USING GIN (phones_e164);"

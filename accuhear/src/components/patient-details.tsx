@@ -22,17 +22,17 @@ type PatientDetailsProps = {
 const PLACEHOLDER_ADDRESS = {
   aptUnit: "",
   streetNumber: "2387",
-  street: "Grandfather Mtn",
-  city: "Spring Hill",
-  state: "FL",
-  zip: "34606",
+  street: "Example St",
+  city: "Washington",
+  state: "DC",
+  zip: "20001",
   country: "USA",
 };
 
 const PLACEHOLDER_PHONES = [
-  { type: "Home", number: "(352) 688-6322", extension: "" },
+  { type: "Home", number: "(202) 555-0100", extension: "" },
   { type: "Work", number: "", extension: "" },
-  { type: "Mobile", number: "(720) 880-8948", extension: "" },
+  { type: "Mobile", number: "(202) 555-0101", extension: "" },
 ];
 
 export function PatientDetails({ patient }: PatientDetailsProps) {

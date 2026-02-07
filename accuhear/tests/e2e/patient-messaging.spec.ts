@@ -12,17 +12,29 @@ type MessageSeed = {
   direction: "inbound" | "outbound";
   body: string;
   sentAt: Date;
-  status: "queued" | "sent" | "failed" | "received";
+  status: "queued" | "sent" | "delivered" | "failed" | "received";
 };
 
 async function createPatient(label: string) {
-  return prisma.patient.create({
+  const patient = await prisma.patient.create({
     data: {
       firstName: "E2E",
       lastName: `${label} ${e2eTag}`,
       status: "Active",
     },
   });
+
+  await prisma.phoneNumber.create({
+    data: {
+      patientId: patient.id,
+      type: "MOBILE",
+      number: "(202) 555-0102",
+      normalized: "+12025550102",
+      isPrimary: true,
+    },
+  });
+
+  return patient;
 }
 
 async function seedThread(patientId: string, channel: "sms" | "email", messages: MessageSeed[]) {
@@ -53,6 +65,7 @@ async function cleanupPatients(patientIds: string[]) {
   if (!patientIds.length) return;
   await prisma.message.deleteMany({ where: { thread: { patientId: { in: patientIds } } } });
   await prisma.messageThread.deleteMany({ where: { patientId: { in: patientIds } } });
+  await prisma.phoneNumber.deleteMany({ where: { patientId: { in: patientIds } } });
   await prisma.patient.deleteMany({ where: { id: { in: patientIds } } });
 }
 

@@ -3,13 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "predev": "prisma generate",
+    "dev": "next dev -p 3100",
+    "dev:3000": "next dev -p 3000",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx scripts/seed.ts",
     "db:push": "prisma db push",
+    "rc:setup-webhook": "tsx scripts/setup-rc-webhook.ts",
     "test:e2e": "playwright test",
     "test:integration": "node --test --import tsx --import ./tests/helpers/test-setup.ts tests/integration/*.spec.ts"
   },

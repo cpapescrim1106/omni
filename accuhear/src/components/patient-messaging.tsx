@@ -8,7 +8,8 @@ type Message = {
   direction: "inbound" | "outbound";
   body: string;
   sentAt: string;
-  status: "queued" | "sent" | "failed" | "received";
+  status: "queued" | "sent" | "delivered" | "failed" | "received";
+  errorMessage?: string | null;
 };
 
 type MessageThread = {
@@ -26,6 +27,7 @@ const CHANNEL_OPTIONS = [
 const STATUS_LABELS: Record<Message["status"], string> = {
   queued: "Queued",
   sent: "Sent",
+  delivered: "Delivered",
   failed: "Failed",
   received: "Received",
 };
@@ -33,6 +35,7 @@ const STATUS_LABELS: Record<Message["status"], string> = {
 const STATUS_STYLES: Record<Message["status"], string> = {
   queued: "bg-surface-2 text-ink-muted",
   sent: "bg-brand-blue/10 text-brand-ink",
+  delivered: "bg-success/10 text-success",
   failed: "bg-danger/10 text-danger",
   received: "bg-brand-orange/10 text-brand-ink",
 };
@@ -52,9 +55,14 @@ const SNIPPETS = [
   "Please call the office if you need urgent assistance.",
 ];
 
+function formatSendFailure(message?: string | null) {
+  if (!message) return null;
+  const oneLine = message.replace(/\s+/g, " ").trim();
+  return oneLine.length > 220 ? `${oneLine.slice(0, 217)}...` : oneLine;
+}
+
 export function PatientMessaging({ patientId }: { patientId: string }) {
   const [threads, setThreads] = useState<MessageThread[]>([]);
-  const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [channel, setChannel] = useState<MessageThread["channel"]>("sms");
   const [messageBody, setMessageBody] = useState("");
@@ -62,7 +70,6 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
   const [sendError, setSendError] = useState<string | null>(null);
 
   const loadThreads = useCallback(async () => {
-    setLoading(true);
     setLoadError(null);
     try {
       const response = await fetch(`/api/patients/${patientId}/messages`);
@@ -72,8 +79,6 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
       setThreads(data);
     } catch {
       setLoadError("Unable to load messages.");
-    } finally {
-      setLoading(false);
     }
   }, [patientId]);
 
@@ -103,7 +108,16 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
           body: JSON.stringify({ channel, body: messageBody }),
         });
 
-        if (!response.ok) throw new Error("Unable to send message.");
+        if (!response.ok) {
+          let message = "Unable to send message.";
+          try {
+            const payload = (await response.json()) as { error?: unknown };
+            if (typeof payload.error === "string" && payload.error.trim()) message = payload.error;
+          } catch {
+            // ignore
+          }
+          throw new Error(message);
+        }
 
         const payload = await response.json();
         const nextThread = payload.thread as MessageThread;
@@ -125,8 +139,8 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
         });
 
         setMessageBody("");
-      } catch {
-        setSendError("Unable to send message.");
+      } catch (error) {
+        setSendError(error instanceof Error ? error.message : "Unable to send message.");
       } finally {
         setSending(false);
       }
@@ -187,6 +201,7 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
                     {thread.messages.map((message) => {
                       const isOutbound = message.direction === "outbound";
                       const isFailed = message.status === "failed";
+                      const failureDetails = isFailed ? formatSendFailure(message.errorMessage) : null;
                       return (
                         <div
                           key={message.id}
@@ -221,7 +236,9 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
                               </span>
                             </div>
                             {isFailed ? (
-                              <div className="mt-2 text-xs text-danger">Failed to send.</div>
+                              <div className="mt-2 text-xs text-danger">
+                                Failed to send{failureDetails ? `: ${failureDetails}` : "."}
+                              </div>
                             ) : null}
                           </div>
                         </div>

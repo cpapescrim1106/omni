@@ -63,15 +63,15 @@ test("search by phone - finds exact match", async () => {
     data: {
       patientId: patient.id,
       type: "MOBILE",
-      number: "(415) 555-1212",
-      normalized: "+14155551212",
+      number: "(202) 555-0107",
+      normalized: "+12025550107",
       isPrimary: true,
     },
   });
 
   await refreshSearch();
 
-  const results = await searchPatients("415-555-1212");
+  const results = await searchPatients("202-555-0107");
   assert.ok(results.some((result) => result.id === patient.id));
 });
 
