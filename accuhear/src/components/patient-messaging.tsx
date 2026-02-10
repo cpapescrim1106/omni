@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dayjs from "dayjs";
 
 type Message = {
@@ -55,6 +55,8 @@ const SNIPPETS = [
   "Please call the office if you need urgent assistance.",
 ];
 
+const THREAD_POLL_MS = 5_000;
+
 function formatSendFailure(message?: string | null) {
   if (!message) return null;
   const oneLine = message.replace(/\s+/g, " ").trim();
@@ -68,22 +70,45 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
   const [messageBody, setMessageBody] = useState("");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const isLoadingRef = useRef(false);
 
   const loadThreads = useCallback(async () => {
+    if (isLoadingRef.current) return;
+    isLoadingRef.current = true;
     setLoadError(null);
     try {
-      const response = await fetch(`/api/patients/${patientId}/messages`);
+      const response = await fetch(`/api/patients/${patientId}/messages`, { cache: "no-store" });
       if (!response.ok) throw new Error("Unable to load messages.");
       const payload = await response.json();
       const data = (payload.threads ?? []) as MessageThread[];
       setThreads(data);
     } catch {
       setLoadError("Unable to load messages.");
+    } finally {
+      isLoadingRef.current = false;
     }
   }, [patientId]);
 
   useEffect(() => {
     void loadThreads();
+  }, [loadThreads]);
+
+  useEffect(() => {
+    // Inbound SMS arrives asynchronously via webhook; poll while the tab is visible
+    // so the Messaging UI updates without requiring a hard refresh.
+    const tick = () => {
+      if (document.visibilityState !== "visible") return;
+      void loadThreads();
+    };
+
+    const interval = window.setInterval(tick, THREAD_POLL_MS);
+    const onVisibility = () => tick();
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [loadThreads]);
 
   const totalMessages = useMemo(
