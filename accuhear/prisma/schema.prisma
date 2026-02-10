@@ -200,6 +200,7 @@ model MessageThread {
   channel   MessageChannel
   status    MessageThreadStatus @default(open)
   createdAt DateTime            @default(now())
+  lastSeenAt DateTime           @default(now())
 
   messages Message[]
 

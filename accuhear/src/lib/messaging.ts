@@ -33,6 +33,7 @@ export async function getOrCreateMessageThread(patientId: string, channel: Messa
       patientId,
       channel,
       status: "open",
+      lastSeenAt: new Date(),
     },
   });
 }
@@ -135,6 +136,12 @@ export async function createOutboundMessage(input: OutboundMessageInput) {
       ...(rawPayload ? { rawPayload: rawPayload as Prisma.InputJsonValue } : {}),
       statusUpdatedAt: new Date(),
     },
+  });
+
+  // Sending (or attempting to send) an outbound message implies the thread has been seen by staff.
+  await prisma.messageThread.update({
+    where: { id: thread.id },
+    data: { lastSeenAt: new Date() },
   });
 
   if (channel === "sms") {
