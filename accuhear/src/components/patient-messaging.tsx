@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import dayjs from "dayjs";
 
 type Message = {
@@ -71,6 +71,9 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const isLoadingRef = useRef(false);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const stickToBottomRef = useRef(true);
 
   const loadThreads = useCallback(async () => {
     if (isLoadingRef.current) return;
@@ -115,6 +118,35 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
     () => threads.reduce((count, thread) => count + thread.messages.length, 0),
     [threads]
   );
+
+  const latestMessageKey = useMemo(() => {
+    let latest: { id: string; sentAt: string } | null = null;
+    for (const thread of threads) {
+      for (const message of thread.messages) {
+        if (!latest) {
+          latest = { id: message.id, sentAt: message.sentAt };
+          continue;
+        }
+        if (new Date(message.sentAt).getTime() >= new Date(latest.sentAt).getTime()) {
+          latest = { id: message.id, sentAt: message.sentAt };
+        }
+      }
+    }
+    return latest ? `${latest.sentAt}:${latest.id}` : "";
+  }, [threads]);
+
+  const scrollToBottom = useCallback(() => {
+    // Use scrollIntoView on a sentinel to avoid messing with container math.
+    bottomRef.current?.scrollIntoView({ block: "end" });
+  }, []);
+
+  useLayoutEffect(() => {
+    // On initial load and when new messages arrive, keep the view pinned to the bottom
+    // if the user hasn't scrolled up.
+    if (!latestMessageKey) return;
+    if (!stickToBottomRef.current) return;
+    scrollToBottom();
+  }, [latestMessageKey, scrollToBottom]);
 
   const handleSend = useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {
@@ -164,13 +196,15 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
         });
 
         setMessageBody("");
+        stickToBottomRef.current = true;
+        scrollToBottom();
       } catch (error) {
         setSendError(error instanceof Error ? error.message : "Unable to send message.");
       } finally {
         setSending(false);
       }
     },
-    [channel, messageBody, patientId]
+    [channel, messageBody, patientId, scrollToBottom]
   );
 
   return (
@@ -213,7 +247,17 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
               No messages yet.
             </div>
           ) : (
-            <div className="max-h-[520px] overflow-y-auto">
+            <div
+              ref={scrollRef}
+              className="max-h-[520px] overflow-y-auto"
+              onScroll={() => {
+                const el = scrollRef.current;
+                if (!el) return;
+                const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+                // Small threshold so we still "stick" if the user is basically at the bottom.
+                stickToBottomRef.current = distanceToBottom < 24;
+              }}
+            >
               {threads.map((thread) => (
                 <div key={thread.id} data-testid="messaging-thread" data-channel={thread.channel}>
                   <div className="flex items-center justify-between border-b border-surface-2 px-4 py-3">
@@ -272,6 +316,7 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
                   </div>
                 </div>
               ))}
+              <div ref={bottomRef} />
             </div>
           )}
         </div>
