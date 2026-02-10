@@ -28,7 +28,8 @@ function canUseLiveRingCentral() {
     process.env.RC_CLIENT_ID &&
       process.env.RC_CLIENT_SECRET &&
       process.env.RC_SERVER_URL &&
-      process.env.RC_JWT_TOKEN
+      process.env.RC_JWT_TOKEN &&
+      process.env.RC_FROM_NUMBER
   );
 }
 
@@ -37,6 +38,9 @@ async function ringCentralAdapter(payload: SmsSendPayload): Promise<SmsSendResul
   const token = await getRingCentralToken();
   const serverUrl = String(process.env.RC_SERVER_URL).replace(/\/+$/, "");
   const fromNumber = process.env.RC_FROM_NUMBER ? String(process.env.RC_FROM_NUMBER) : "";
+  if (!fromNumber) {
+    throw new Error("Missing required env var RC_FROM_NUMBER (E.164, e.g. +15551234567)");
+  }
 
   const response = await fetch(`${serverUrl}/restapi/v1.0/account/~/extension/~/sms`, {
     method: "POST",
@@ -45,7 +49,7 @@ async function ringCentralAdapter(payload: SmsSendPayload): Promise<SmsSendResul
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      ...(fromNumber ? { from: { phoneNumber: fromNumber } } : {}),
+      from: { phoneNumber: fromNumber },
       to: [{ phoneNumber: payload.to }],
       text: payload.body,
     }),
