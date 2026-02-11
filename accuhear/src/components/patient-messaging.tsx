@@ -318,26 +318,27 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
               </div>
 
               {sendError ? <div className="px-4 pt-3 text-xs text-danger">{sendError}</div> : null}
-              <MessageResponseBar
-                value={messageBody}
-                onChange={setMessageBody}
-                onSend={() => {
+                <MessageResponseBar
+                  value={messageBody}
+                  onChange={setMessageBody}
+                  onSend={() => {
                   // Reuse existing form submission logic by calling the handler directly.
                   // We keep validation + error handling centralized there.
                   const fakeEvent = { preventDefault() {} } as unknown as React.FormEvent<HTMLFormElement>;
                   void handleSend(fakeEvent);
-                }}
-                disabled={sending}
-                placeholder="Write a message..."
-                sendLabel={sending ? "Sending..." : "Send"}
-                leading={
-                  <select
-                    aria-label="Channel"
-                    className="rounded-xl border border-surface-3 bg-white px-3 py-2 text-xs"
-                    value={channel}
-                    onChange={(event) => setChannel(event.target.value as MessageThread["channel"])}
-                  >
-                    {CHANNEL_OPTIONS.map((option) => (
+                  }}
+                  disabled={sending}
+                  placeholder="Write a message..."
+                  sendLabel={sending ? "Sending..." : "Send"}
+                  hint="Enter to send · Shift+Enter for a new line"
+                  leading={
+                    <select
+                      aria-label="Channel"
+                      className="h-[38px] rounded-xl border border-surface-2 bg-white px-3 py-2 text-xs"
+                      value={channel}
+                      onChange={(event) => setChannel(event.target.value as MessageThread["channel"])}
+                    >
+                      {CHANNEL_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>

@@ -290,6 +290,7 @@ export function MessagesInbox() {
                 disabled={sending}
                 placeholder="Write a reply..."
                 sendLabel={sending ? "Sending..." : "Send"}
+                hint={`Auto-updates every ${POLL_MS / 1000}s · Enter to send · Shift+Enter for a new line`}
               />
             </div>
           ) : (
