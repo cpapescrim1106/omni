@@ -160,7 +160,11 @@ export function MessagesInbox() {
   }, [loadInbox, loadThread, selectedThread]);
 
   return (
-    <section className="card flex min-h-0 flex-1 flex-col p-6" data-testid="messages-inbox">
+    <section
+      className="card flex min-h-0 flex-col p-6"
+      style={{ height: "calc((100vh - 32px) * 0.8)" }}
+      data-testid="messages-inbox"
+    >
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="section-title text-xs text-brand-ink">{headerLabel}</div>
