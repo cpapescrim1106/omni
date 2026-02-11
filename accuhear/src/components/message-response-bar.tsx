@@ -22,6 +22,9 @@ function useAutosizeTextarea(value: string) {
     if (!el) return;
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
+    // Hide scrollbars/grip unless we hit the max height.
+    const maxPx = 160;
+    el.style.overflowY = el.scrollHeight > maxPx ? "auto" : "hidden";
   }, []);
 
   useEffect(() => {
@@ -54,7 +57,7 @@ export function MessageResponseBar({
             <textarea
               ref={ref}
               rows={1}
-              className="max-h-[160px] w-full resize-none overflow-hidden rounded-xl border border-transparent bg-transparent px-3 py-2 text-sm text-ink-strong placeholder:text-ink-soft focus:border-surface-3 focus:bg-white focus:outline-none"
+              className="max-h-[160px] w-full resize-none appearance-none overflow-y-hidden rounded-xl border border-transparent bg-transparent px-3 py-2 text-sm text-ink-strong placeholder:text-ink-soft focus:border-surface-3 focus:bg-white focus:outline-none"
               placeholder={placeholder}
               value={value}
               onChange={(e) => {
