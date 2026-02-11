@@ -209,7 +209,7 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
   );
 
   return (
-    <section className="card p-6">
+    <section className="card flex min-h-0 flex-col p-6" style={{ height: "95vh" }}>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="section-title text-xs text-brand-ink">Messaging</div>
@@ -217,7 +217,7 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
         </div>
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[220px_1.6fr_0.9fr]">
+      <div className="mt-6 grid min-h-0 flex-1 gap-6 lg:grid-cols-[220px_1.6fr_0.9fr]">
         <div className="rounded-2xl border border-surface-2 bg-white/80 p-4">
           <div className="text-xs font-semibold text-ink-muted">Quick find</div>
           <div className="mt-2 flex items-center gap-2">
