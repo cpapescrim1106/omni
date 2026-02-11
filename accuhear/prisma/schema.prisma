@@ -201,6 +201,9 @@ model MessageThread {
   status    MessageThreadStatus @default(open)
   createdAt DateTime            @default(now())
   lastSeenAt DateTime           @default(now())
+  // Used for "needs attention" notifications: if an inbound message is newer than lastHandledAt,
+  // the thread will be considered awaiting staff action until replied-to or explicitly marked as read.
+  lastHandledAt DateTime?
 
   messages Message[]
 

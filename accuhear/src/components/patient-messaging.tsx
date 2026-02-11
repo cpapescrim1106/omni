@@ -85,15 +85,6 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
       const payload = await response.json();
       const data = (payload.threads ?? []) as MessageThread[];
       setThreads(data);
-
-      // Mark all loaded threads as "seen" globally so badges clear across the app.
-      // This is intentionally global (shared across staff).
-      const threadIds = data.map((thread) => thread.id);
-      void fetch("/api/messages/threads/seen", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ threadIds }),
-      });
     } catch {
       setLoadError("Unable to load messages.");
     } finally {

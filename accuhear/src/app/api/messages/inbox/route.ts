@@ -8,6 +8,7 @@ type InboxThread = {
   channel: "sms" | "email";
   status: "open" | "closed";
   lastSeenAt: string;
+  lastHandledAt: string | null;
   patient: {
     id: string;
     firstName: string;
@@ -21,8 +22,7 @@ type InboxThread = {
     body: string;
     status: string;
   } | null;
-  isUnanswered: boolean;
-  isUnseen: boolean;
+  needsAttention: boolean;
 };
 
 function toDisplayName(patient: InboxThread["patient"]) {
@@ -53,14 +53,17 @@ export async function GET(_request: NextRequest) {
   const mapped: InboxThread[] = threads.map((thread) => {
     const last = thread.messages[0] ?? null;
     const lastSeenAt = thread.lastSeenAt ?? thread.createdAt;
-    const isUnanswered = Boolean(last && last.direction === "inbound");
-    const isUnseen = Boolean(last && last.direction === "inbound" && last.sentAt.getTime() > lastSeenAt.getTime());
+    const lastHandledAt = thread.lastHandledAt ?? null;
+    const needsAttention =
+      Boolean(last && last.direction === "inbound") &&
+      (!lastHandledAt || last.sentAt.getTime() > lastHandledAt.getTime());
 
     return {
       id: thread.id,
       channel: thread.channel,
       status: thread.status,
       lastSeenAt: lastSeenAt.toISOString(),
+      lastHandledAt: lastHandledAt ? lastHandledAt.toISOString() : null,
       patient: thread.patient,
       lastMessage: last
         ? {
@@ -71,26 +74,22 @@ export async function GET(_request: NextRequest) {
             status: last.status,
           }
         : null,
-      isUnanswered,
-      isUnseen,
+      needsAttention,
     };
   });
 
   mapped.sort((a, b) => {
-    // Prominence: unseen first, then unanswered, then newest.
-    if (a.isUnseen !== b.isUnseen) return a.isUnseen ? -1 : 1;
-    if (a.isUnanswered !== b.isUnanswered) return a.isUnanswered ? -1 : 1;
+    // Prominence: threads needing attention first, then newest.
+    if (a.needsAttention !== b.needsAttention) return a.needsAttention ? -1 : 1;
     const at = a.lastMessage ? new Date(a.lastMessage.sentAt).getTime() : 0;
     const bt = b.lastMessage ? new Date(b.lastMessage.sentAt).getTime() : 0;
     return bt - at;
   });
 
-  const unseenCount = mapped.reduce((sum, thread) => sum + (thread.isUnseen ? 1 : 0), 0);
-  const unansweredCount = mapped.reduce((sum, thread) => sum + (thread.isUnanswered ? 1 : 0), 0);
+  const needsAttentionCount = mapped.reduce((sum, thread) => sum + (thread.needsAttention ? 1 : 0), 0);
 
   return NextResponse.json({
-    unseenCount,
-    unansweredCount,
+    needsAttentionCount,
     threads: mapped.map((t) => ({
       ...t,
       patient: {
@@ -100,4 +99,3 @@ export async function GET(_request: NextRequest) {
     })),
   });
 }
-

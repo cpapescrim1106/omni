@@ -138,10 +138,10 @@ export async function createOutboundMessage(input: OutboundMessageInput) {
     },
   });
 
-  // Sending (or attempting to send) an outbound message implies the thread has been seen by staff.
+  // Sending (or attempting to send) an outbound message implies the thread has been seen/handled by staff.
   await prisma.messageThread.update({
     where: { id: thread.id },
-    data: { lastSeenAt: new Date() },
+    data: { lastSeenAt: new Date(), lastHandledAt: new Date() },
   });
 
   if (channel === "sms") {

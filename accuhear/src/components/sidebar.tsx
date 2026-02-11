@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 
 type InboxSummary = {
-  unseenCount: number;
+  needsAttentionCount: number;
 };
 
 const POLL_MS = 5_000;
@@ -29,7 +29,7 @@ function isActive(pathname: string, href: string) {
 
 export function Sidebar() {
   const pathname = usePathname();
-  const [inboxSummary, setInboxSummary] = useState<InboxSummary>({ unseenCount: 0 });
+  const [inboxSummary, setInboxSummary] = useState<InboxSummary>({ needsAttentionCount: 0 });
 
   useEffect(() => {
     let active = true;
@@ -41,7 +41,7 @@ export function Sidebar() {
         if (!res.ok) return;
         const payload = (await res.json()) as Partial<InboxSummary>;
         if (!active) return;
-        setInboxSummary({ unseenCount: Number(payload.unseenCount ?? 0) });
+        setInboxSummary({ needsAttentionCount: Number(payload.needsAttentionCount ?? 0) });
       } catch {
         // ignore
       }
@@ -60,10 +60,10 @@ export function Sidebar() {
   }, []);
 
   const badge = useMemo(() => {
-    const count = inboxSummary.unseenCount;
+    const count = inboxSummary.needsAttentionCount;
     if (!Number.isFinite(count) || count <= 0) return null;
     return count > 99 ? "99+" : String(count);
-  }, [inboxSummary.unseenCount]);
+  }, [inboxSummary.needsAttentionCount]);
 
   return (
     <aside className="flex h-full flex-col gap-6 rounded-[28px] bg-white/80 p-6 shadow-[0_22px_40px_rgba(24,20,50,0.12)]">
@@ -115,4 +115,3 @@ export function Sidebar() {
     </aside>
   );
 }
-

@@ -8,6 +8,7 @@ type InboxThread = {
   channel: "sms" | "email";
   status: "open" | "closed";
   lastSeenAt: string;
+  lastHandledAt: string | null;
   patient: {
     id: string;
     firstName: string;
@@ -22,8 +23,7 @@ type InboxThread = {
     body: string;
     status: string;
   } | null;
-  isUnanswered: boolean;
-  isUnseen: boolean;
+  needsAttention: boolean;
 };
 
 type ThreadDetails = {
@@ -49,16 +49,13 @@ type ThreadDetails = {
 
 const POLL_MS = 5_000;
 
-function badgeClass(isUnseen: boolean, isUnanswered: boolean) {
-  if (isUnseen) return "bg-brand-orange/15 text-brand-ink";
-  if (isUnanswered) return "bg-surface-2 text-ink-muted";
-  return "bg-surface-1 text-ink-muted";
+function attentionBadgeClass() {
+  return "bg-brand-orange/15 text-brand-ink";
 }
 
 export function MessagesInbox() {
   const [threads, setThreads] = useState<InboxThread[]>([]);
-  const [unseenCount, setUnseenCount] = useState(0);
-  const [unansweredCount, setUnansweredCount] = useState(0);
+  const [needsAttentionCount, setNeedsAttentionCount] = useState(0);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [selectedThread, setSelectedThread] = useState<ThreadDetails | null>(null);
   const [loading, setLoading] = useState(false);
@@ -73,10 +70,9 @@ export function MessagesInbox() {
     try {
       const res = await fetch("/api/messages/inbox", { cache: "no-store" });
       if (!res.ok) return;
-      const payload = (await res.json()) as { threads?: InboxThread[]; unseenCount?: number; unansweredCount?: number };
+      const payload = (await res.json()) as { threads?: InboxThread[]; needsAttentionCount?: number };
       setThreads(payload.threads ?? []);
-      setUnseenCount(Number(payload.unseenCount ?? 0));
-      setUnansweredCount(Number(payload.unansweredCount ?? 0));
+      setNeedsAttentionCount(Number(payload.needsAttentionCount ?? 0));
 
       // Auto-select the top-most thread if nothing is selected.
       if (!selectedThreadId && payload.threads?.length) setSelectedThreadId(payload.threads[0].id);
@@ -97,13 +93,6 @@ export function MessagesInbox() {
     const payload = (await res.json()) as { thread?: ThreadDetails };
     if (!payload.thread) return;
     setSelectedThread(payload.thread);
-
-    // Mark as seen globally (shared across staff).
-    void fetch("/api/messages/threads/seen", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ threadIds: [threadId] }),
-    });
   }, []);
 
   useEffect(() => {
@@ -116,16 +105,16 @@ export function MessagesInbox() {
   }, [selectedThread?.messages.length]);
 
   const groups = useMemo(() => {
-    const needsReply = threads.filter((t) => t.isUnanswered);
-    const rest = threads.filter((t) => !t.isUnanswered);
+    const needsReply = threads.filter((t) => t.needsAttention);
+    const rest = threads.filter((t) => !t.needsAttention);
     return { needsReply, rest };
   }, [threads]);
 
   const headerLabel = useMemo(() => {
     const base = "Messages";
-    const bubble = unseenCount > 0 ? ` (${unseenCount} new)` : unansweredCount > 0 ? ` (${unansweredCount} unanswered)` : "";
+    const bubble = needsAttentionCount > 0 ? ` (${needsAttentionCount} needs attention)` : "";
     return `${base}${bubble}`;
-  }, [unseenCount, unansweredCount]);
+  }, [needsAttentionCount]);
 
   const handleSend = useCallback(async () => {
     setSendError(null);
@@ -152,6 +141,17 @@ export function MessagesInbox() {
       setSending(false);
     }
   }, [compose, loadInbox, loadThread, selectedThread]);
+
+  const handleMarkRead = useCallback(async () => {
+    if (!selectedThread) return;
+    await fetch("/api/messages/threads/handled", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ threadIds: [selectedThread.id] }),
+    });
+    await loadThread(selectedThread.id);
+    await loadInbox();
+  }, [loadInbox, loadThread, selectedThread]);
 
   return (
     <section className="card p-6" data-testid="messages-inbox">
@@ -181,17 +181,17 @@ export function MessagesInbox() {
                     <div className="truncate text-sm font-semibold text-ink-strong">{thread.patient.displayName}</div>
                     <div className="mt-1 truncate text-xs text-ink-muted">{thread.lastMessage?.body ?? "No messages yet"}</div>
                   </div>
-                  <div className="shrink-0 text-right">
-                    <div className="text-[11px] text-ink-muted">
-                      {thread.lastMessage ? dayjs(thread.lastMessage.sentAt).format("h:mm A") : ""}
+                    <div className="shrink-0 text-right">
+                      <div className="text-[11px] text-ink-muted">
+                        {thread.lastMessage ? dayjs(thread.lastMessage.sentAt).format("h:mm A") : ""}
+                      </div>
+                      <div className={`mt-2 inline-flex rounded-full px-2 py-1 text-[11px] ${attentionBadgeClass()}`}>
+                        Needs attention
+                      </div>
                     </div>
-                    <div className={`mt-2 inline-flex rounded-full px-2 py-1 text-[11px] ${badgeClass(thread.isUnseen, thread.isUnanswered)}`}>
-                      {thread.isUnseen ? "New" : "Unanswered"}
-                    </div>
-                  </div>
-                </button>
-              ))
-            ) : (
+                  </button>
+                ))
+              ) : (
               <div className="px-4 py-4 text-sm text-ink-muted">No unanswered threads.</div>
             )}
           </div>
@@ -216,8 +216,8 @@ export function MessagesInbox() {
                     <div className="text-[11px] text-ink-muted">
                       {thread.lastMessage ? dayjs(thread.lastMessage.sentAt).format("MMM D") : ""}
                     </div>
-                    {thread.isUnseen ? (
-                      <div className="mt-2 inline-flex rounded-full bg-brand-orange/15 px-2 py-1 text-[11px] text-brand-ink">New</div>
+                    {thread.needsAttention ? (
+                      <div className="mt-2 inline-flex rounded-full bg-brand-orange/15 px-2 py-1 text-[11px] text-brand-ink">Needs attention</div>
                     ) : null}
                   </div>
                 </button>
@@ -241,13 +241,18 @@ export function MessagesInbox() {
                     {selectedThread.channel.toUpperCase()} thread · {selectedThread.status}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  className="text-xs text-brand-ink underline"
-                  onClick={() => window.open(`/patients/${selectedThread.patientId}?tab=Messaging`, "_blank", "noopener,noreferrer")}
-                >
-                  Open profile
-                </button>
+                <div className="flex items-center gap-3">
+                  <button type="button" className="tab-pill text-xs bg-surface-1" onClick={handleMarkRead}>
+                    Mark as read
+                  </button>
+                  <button
+                    type="button"
+                    className="text-xs text-brand-ink underline"
+                    onClick={() => window.open(`/patients/${selectedThread.patientId}?tab=Messaging`, "_blank", "noopener,noreferrer")}
+                  >
+                    Open profile
+                  </button>
+                </div>
               </div>
 
               <div className="flex-1 overflow-y-auto px-4 py-4">
@@ -293,4 +298,3 @@ export function MessagesInbox() {
     </section>
   );
 }
-
