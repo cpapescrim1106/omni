@@ -162,7 +162,7 @@ export function MessagesInbox() {
   return (
     <section
       className="card flex min-h-0 flex-col p-6"
-      style={{ height: "calc((100vh - 32px) * 0.8)" }}
+      style={{ height: "90vh" }}
       data-testid="messages-inbox"
     >
       <div className="flex flex-wrap items-center justify-between gap-4">
