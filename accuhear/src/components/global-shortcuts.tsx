@@ -24,6 +24,7 @@ export function GlobalShortcuts() {
     { keys: ["P", "S"], label: "Scheduling" },
     { keys: ["P", "M"], label: "Marketing" },
     { keys: ["P", "R"], label: "Recalls" },
+    { keys: ["P", "I"], label: "Messages inbox" },
     { keys: ["?", "?"], label: "Shortcuts menu" },
   ];
 
@@ -102,6 +103,17 @@ export function GlobalShortcuts() {
           lastKeyRef.current = null;
           if (pathname !== "/recalls") {
             router.push("/recalls");
+          }
+          return;
+        }
+      }
+
+      if (key === "i") {
+        if (last?.key === "p" && withinSequence) {
+          event.preventDefault();
+          lastKeyRef.current = null;
+          if (pathname !== "/messages") {
+            router.push("/messages");
           }
           return;
         }
