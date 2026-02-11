@@ -11,6 +11,7 @@ type Props = {
   leading?: React.ReactNode;
   sendLabel?: string;
   hint?: string;
+  showSendButton?: boolean;
 };
 
 function useAutosizeTextarea(value: string) {
@@ -39,6 +40,7 @@ export function MessageResponseBar({
   leading,
   sendLabel = "Send",
   hint = "Enter to send · Shift+Enter for a new line",
+  showSendButton = false,
 }: Props) {
   const { ref, resize } = useAutosizeTextarea(value);
   const canSend = !disabled && value.trim().length > 0;
@@ -67,16 +69,20 @@ export function MessageResponseBar({
               }}
             />
           </div>
-          <button
-            type="button"
-            className="rounded-full bg-brand-blue px-4 py-2 text-xs font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50 hover:bg-brand-blue/90"
-            disabled={!canSend}
-            onClick={onSend}
-          >
-            {sendLabel}
-          </button>
+          {showSendButton ? (
+            <button
+              type="button"
+              aria-label="Send message"
+              className="grid h-9 w-9 place-items-center rounded-full bg-brand-blue text-xs font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50 hover:bg-brand-blue/90"
+              disabled={!canSend}
+              onClick={onSend}
+              title={sendLabel}
+            >
+              →
+            </button>
+          ) : null}
         </div>
-        <div className="px-3 pb-1 pt-1 text-[11px] text-ink-soft">{hint}</div>
+        {hint ? <div className="px-3 pb-1 pt-1 text-[11px] text-ink-soft">{hint}</div> : null}
       </div>
     </div>
   );

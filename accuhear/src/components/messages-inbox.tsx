@@ -132,7 +132,7 @@ export function MessagesInbox() {
       const res = await fetch(`/api/patients/${selectedThread.patientId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ channel: selectedThread.channel, body: compose }),
+        body: JSON.stringify({ channel: "sms", body: compose }),
       });
       if (!res.ok) {
         const payload = (await res.json().catch(() => null)) as { error?: string } | null;
@@ -291,6 +291,7 @@ export function MessagesInbox() {
                 placeholder="Write a reply..."
                 sendLabel={sending ? "Sending..." : "Send"}
                 hint={`Auto-updates every ${POLL_MS / 1000}s · Enter to send · Shift+Enter for a new line`}
+                showSendButton={false}
               />
             </div>
           ) : (

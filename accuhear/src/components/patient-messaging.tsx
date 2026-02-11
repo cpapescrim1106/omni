@@ -20,11 +20,6 @@ type MessageThread = {
   messages: Message[];
 };
 
-const CHANNEL_OPTIONS = [
-  { value: "sms", label: "SMS" },
-  { value: "email", label: "Email" },
-];
-
 const STATUS_LABELS: Record<Message["status"], string> = {
   queued: "Queued",
   sent: "Sent",
@@ -67,7 +62,6 @@ function formatSendFailure(message?: string | null) {
 export function PatientMessaging({ patientId }: { patientId: string }) {
   const [threads, setThreads] = useState<MessageThread[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [channel, setChannel] = useState<MessageThread["channel"]>("sms");
   const [messageBody, setMessageBody] = useState("");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
@@ -84,7 +78,7 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
       const response = await fetch(`/api/patients/${patientId}/messages`, { cache: "no-store" });
       if (!response.ok) throw new Error("Unable to load messages.");
       const payload = await response.json();
-      const data = (payload.threads ?? []) as MessageThread[];
+      const data = ((payload.threads ?? []) as MessageThread[]).filter((t) => t.channel === "sms");
       setThreads(data);
     } catch {
       setLoadError("Unable to load messages.");
@@ -163,7 +157,7 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
         const response = await fetch(`/api/patients/${patientId}/messages`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ channel, body: messageBody }),
+          body: JSON.stringify({ channel: "sms", body: messageBody }),
         });
 
         if (!response.ok) {
@@ -205,7 +199,7 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
         setSending(false);
       }
     },
-    [channel, messageBody, patientId, scrollToBottom]
+    [messageBody, patientId, scrollToBottom]
   );
 
   return (
@@ -318,33 +312,20 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
               </div>
 
               {sendError ? <div className="px-4 pt-3 text-xs text-danger">{sendError}</div> : null}
-                <MessageResponseBar
-                  value={messageBody}
-                  onChange={setMessageBody}
-                  onSend={() => {
+              <MessageResponseBar
+                value={messageBody}
+                onChange={setMessageBody}
+                onSend={() => {
                   // Reuse existing form submission logic by calling the handler directly.
                   // We keep validation + error handling centralized there.
                   const fakeEvent = { preventDefault() {} } as unknown as React.FormEvent<HTMLFormElement>;
                   void handleSend(fakeEvent);
-                  }}
-                  disabled={sending}
-                  placeholder="Write a message..."
-                  sendLabel={sending ? "Sending..." : "Send"}
-                  hint="Enter to send · Shift+Enter for a new line"
-                  leading={
-                    <select
-                      aria-label="Channel"
-                      className="h-[38px] rounded-xl border border-surface-2 bg-white px-3 py-2 text-xs"
-                      value={channel}
-                      onChange={(event) => setChannel(event.target.value as MessageThread["channel"])}
-                    >
-                      {CHANNEL_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                }
+                }}
+                disabled={sending}
+                placeholder="Write a message..."
+                sendLabel={sending ? "Sending..." : "Send"}
+                hint="Enter to send · Shift+Enter for a new line"
+                showSendButton={false}
               />
             </>
           )}

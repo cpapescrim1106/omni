@@ -37,6 +37,7 @@ function snippet(text: string) {
 
 export async function GET(_request: NextRequest) {
   const threads = await prisma.messageThread.findMany({
+    where: { channel: "sms" },
     include: {
       patient: {
         select: { id: true, firstName: true, lastName: true, preferredName: true },
