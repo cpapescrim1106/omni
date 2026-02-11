@@ -209,7 +209,7 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
   );
 
   return (
-    <section className="card flex min-h-0 flex-col p-6" style={{ height: "95vh" }}>
+    <section className="card flex min-h-0 flex-col p-6" style={{ height: "80vh" }}>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="section-title text-xs text-brand-ink">Messaging</div>
