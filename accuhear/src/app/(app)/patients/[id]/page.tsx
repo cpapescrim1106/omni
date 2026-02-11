@@ -87,103 +87,76 @@ export default async function PatientProfilePage({
   return (
     <div className="flex flex-col gap-6">
       <PatientTabRegistrar id={patient.id} label={patientLabel} status={patient.status} />
-      <section className="card p-6">
-        <div className="flex flex-wrap items-start justify-between gap-6">
-          <div className="flex items-start gap-6">
-            <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-brand-blue/15 text-xl font-semibold text-brand-ink">
+      <section className="card p-4">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-blue/15 text-base font-semibold text-brand-ink">
               {patient.firstName.charAt(0)}
             </div>
-            <div>
-              <div className="text-xl font-semibold text-ink-strong">
+            <div className="min-w-0">
+              <div className="truncate text-lg font-semibold text-ink-strong">
                 {patient.lastName}, {patient.firstName}
               </div>
-              <div className="text-sm text-ink-muted">
+              <div className="text-xs text-ink-muted">
                 {patient.dateOfBirth
                   ? dayjs(patient.dateOfBirth).format("MM/DD/YYYY")
                   : "—"}{" "}
                 {age ? `· ${age}` : ""}
               </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {phoneButtons.map((phone) => (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {phoneButtons.slice(0, 2).map((phone) => (
                   <span
                     key={`${phone.label}-${phone.number}`}
-                    className="rounded-full bg-success px-3 py-1 text-xs font-semibold text-white"
+                    className="rounded-full bg-success px-2.5 py-1 text-[11px] font-semibold text-white"
                   >
                     {phone.number}
                   </span>
                 ))}
               </div>
+
+              {patient.providerName || patient.location ? (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {patient.providerName ? (
+                    <span className="rounded-full bg-brand-blue/10 px-2.5 py-1 text-[11px] font-semibold text-brand-ink">
+                      {patient.providerName}
+                    </span>
+                  ) : null}
+                  {patient.location ? (
+                    <span className="rounded-full bg-brand-blue/10 px-2.5 py-1 text-[11px] font-semibold text-brand-ink">
+                      {patient.location}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           </div>
 
-          <div className="flex flex-col gap-2 text-right text-xs text-ink-muted">
-            <div className="flex items-center justify-between gap-4">
-              <span>Patient balance</span>
-              <span className="rounded-full bg-success px-3 py-1 text-xs font-semibold text-white">$0.00</span>
+          <div className="grid grid-cols-2 gap-2 text-xs text-ink-muted">
+            <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/70 px-3 py-2">
+              <span>Balance</span>
+              <span className="rounded-full bg-success px-2.5 py-1 text-[11px] font-semibold text-white">$0.00</span>
             </div>
-            <div className="flex items-center justify-between gap-4">
-              <span>Pending 3rd party reimbursement</span>
-              <span className="rounded-full bg-success px-3 py-1 text-xs font-semibold text-white">$0.00</span>
+            <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/70 px-3 py-2">
+              <span>Reimb.</span>
+              <span className="rounded-full bg-success px-2.5 py-1 text-[11px] font-semibold text-white">$0.00</span>
             </div>
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/70 px-3 py-2">
               <span>Punctuality</span>
-              <span className="rounded-full bg-success px-3 py-1 text-xs font-semibold text-white">
-                1min early (7)
-              </span>
+              <span className="rounded-full bg-success px-2.5 py-1 text-[11px] font-semibold text-white">1m early</span>
             </div>
-            <div className="flex items-center justify-between gap-4">
-              <span>No show rate</span>
-              <span className="rounded-full bg-success px-3 py-1 text-xs font-semibold text-white">
-                0% (0/18)
-              </span>
+            <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/70 px-3 py-2">
+              <span>No-shows</span>
+              <span className="rounded-full bg-success px-2.5 py-1 text-[11px] font-semibold text-white">0%</span>
             </div>
           </div>
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          {patient.providerName ? (
-            <span className="rounded-full bg-brand-blue/10 px-3 py-1 text-xs font-semibold text-brand-ink">
-              {patient.providerName}
-            </span>
-          ) : null}
-          {patient.location ? (
-            <span className="rounded-full bg-brand-blue/10 px-3 py-1 text-xs font-semibold text-brand-ink">
-              {patient.location}
-            </span>
-          ) : null}
-        </div>
-
-        <div className="mt-4 rounded-2xl bg-surface-1/70 px-4 py-3 text-sm text-ink-muted">
-          {PLACEHOLDER_ADDRESS}
-        </div>
-
-        <div className="mt-3 rounded-2xl bg-brand-blue/10 px-4 py-3 text-sm text-brand-ink">
-          Preferred Name: {patient.preferredName || "—"} · extended warranty exp 1/15/27
-        </div>
-
-        <div className="mt-3 flex flex-wrap gap-2">
-          {payerTags.length ? (
-            payerTags.map((payer) => (
-              <span key={payer} className="rounded-full bg-brand-blue/10 px-3 py-1 text-xs text-brand-ink">
-                {payer}
-              </span>
-            ))
-          ) : (
-            <span className="rounded-full bg-brand-blue/10 px-3 py-1 text-xs text-brand-ink">Medicare</span>
-          )}
-          <span className="rounded-full bg-brand-blue/10 px-3 py-1 text-xs text-brand-ink">United Healthcare</span>
-          <span className="rounded-full bg-brand-blue/10 px-3 py-1 text-xs text-brand-ink">Current</span>
-          <span className="rounded-full bg-brand-blue/10 px-3 py-1 text-xs text-brand-ink">Jan MC Benefit</span>
-          <span className="rounded-full bg-brand-blue/10 px-3 py-1 text-xs text-brand-ink">Outreach - Seminar</span>
-          <span className="rounded-full bg-brand-blue/10 px-3 py-1 text-xs text-brand-ink">Patient Service - Repair / Service</span>
-        </div>
-
-        <div className="mt-6 flex flex-wrap gap-2">
           {tabs.map((tab) => (
             <Link
               key={tab}
               href={`/patients/${patient.id}?tab=${encodeURIComponent(tab)}`}
-              className="tab-pill"
+              className="tab-pill !px-3 !py-1.5 text-[11px]"
               data-active={activeTab === tab}
             >
               {tab}
@@ -211,7 +184,25 @@ export default async function PatientProfilePage({
       ) : activeTab === "Marketing" ? (
         <PatientMarketing />
       ) : (
-        <section className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+        <div className="grid gap-6">
+          <section className="card p-4">
+            <div className="section-title text-xs text-brand-ink">Patient context</div>
+            <div className="mt-3 grid gap-2 text-sm text-ink-muted">
+              <div className="rounded-2xl bg-surface-1/70 px-4 py-3">{PLACEHOLDER_ADDRESS}</div>
+              <div className="rounded-2xl bg-brand-blue/10 px-4 py-3 text-brand-ink">
+                Preferred Name: {patient.preferredName || "—"} · extended warranty exp 1/15/27
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(payerTags.length ? payerTags : ["Medicare"]).map((payer) => (
+                  <span key={payer} className="rounded-full bg-brand-blue/10 px-3 py-1 text-xs text-brand-ink">
+                    {payer}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
           <div className="card p-6">
             <div className="section-title text-xs text-brand-ink">Appointments</div>
             <div className="mt-4 overflow-hidden rounded-2xl border border-surface-2 bg-white/80">
@@ -278,7 +269,8 @@ export default async function PatientProfilePage({
               ))}
             </div>
           </div>
-        </section>
+          </section>
+        </div>
       )}
     </div>
   );
