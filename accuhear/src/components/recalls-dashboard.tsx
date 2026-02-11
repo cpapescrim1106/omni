@@ -150,88 +150,90 @@ export function RecallsDashboard() {
       ) : null}
 
       {tab === "queue" ? (
-      <div className="mt-4 grid gap-3 rounded-2xl border border-surface-2 bg-white/80 p-4">
-        <div className="flex flex-wrap items-center gap-3 text-xs text-ink-muted">
-          <label className="flex items-center gap-2">
-            <span>Status</span>
-            <select
-              className="rounded-xl border border-surface-3 bg-white px-3 py-2 text-xs"
-              value={statusFilter}
-              data-testid="recalls-filter-status"
-              onChange={(event) => setStatusFilter(event.target.value)}
-            >
-              {STATUS_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex items-center gap-2">
-            <span>From</span>
-            <input
-              type="date"
-              className="rounded-xl border border-surface-3 bg-white px-3 py-2 text-xs"
-              value={startDate}
-              data-testid="recalls-filter-start"
-              onChange={(event) => setStartDate(event.target.value)}
-            />
-          </label>
-          <label className="flex items-center gap-2">
-            <span>To</span>
-            <input
-              type="date"
-              className="rounded-xl border border-surface-3 bg-white px-3 py-2 text-xs"
-              value={endDate}
-              data-testid="recalls-filter-end"
-              onChange={(event) => setEndDate(event.target.value)}
-            />
-          </label>
-        </div>
-      </div>
+        <>
+          <div className="mt-4 grid gap-3 rounded-2xl border border-surface-2 bg-white/80 p-4">
+            <div className="flex flex-wrap items-center gap-3 text-xs text-ink-muted">
+              <label className="flex items-center gap-2">
+                <span>Status</span>
+                <select
+                  className="rounded-xl border border-surface-3 bg-white px-3 py-2 text-xs"
+                  value={statusFilter}
+                  data-testid="recalls-filter-status"
+                  onChange={(event) => setStatusFilter(event.target.value)}
+                >
+                  {STATUS_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-2">
+                <span>From</span>
+                <input
+                  type="date"
+                  className="rounded-xl border border-surface-3 bg-white px-3 py-2 text-xs"
+                  value={startDate}
+                  data-testid="recalls-filter-start"
+                  onChange={(event) => setStartDate(event.target.value)}
+                />
+              </label>
+              <label className="flex items-center gap-2">
+                <span>To</span>
+                <input
+                  type="date"
+                  className="rounded-xl border border-surface-3 bg-white px-3 py-2 text-xs"
+                  value={endDate}
+                  data-testid="recalls-filter-end"
+                  onChange={(event) => setEndDate(event.target.value)}
+                />
+              </label>
+            </div>
+          </div>
 
-      <div className="mt-4 overflow-hidden rounded-2xl border border-surface-2">
-        <table className="table" data-testid="recalls-table">
-          <thead>
-            <tr>
-              <th>Patient</th>
-              <th>Due date</th>
-              <th>Rule</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {recalls.length ? (
-              recalls.map((recall) => {
-                const displayName = `${recall.patient.lastName}, ${recall.patient.firstName}${
-                  recall.patient.preferredName ? ` (${recall.patient.preferredName})` : ""
-                }`;
-                return (
-                  <tr
-                    key={recall.id}
-                    data-testid="recall-row"
-                    className="cursor-pointer transition-colors hover:bg-surface-1"
-                    onClick={() => handleRowClick(recall.patient.id)}
-                  >
-                    <td className="font-medium text-ink-strong">{displayName}</td>
-                    <td>{dayjs(recall.dueDate).format("MMM D, YYYY")}</td>
-                    <td>{recall.recallRule?.name ?? "—"}</td>
-                    <td>
-                      <span className="badge">{STATUS_LABELS.get(recall.status) ?? recall.status}</span>
+          <div className="mt-4 overflow-hidden rounded-2xl border border-surface-2">
+            <table className="table" data-testid="recalls-table">
+              <thead>
+                <tr>
+                  <th>Patient</th>
+                  <th>Due date</th>
+                  <th>Rule</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recalls.length ? (
+                  recalls.map((recall) => {
+                    const displayName = `${recall.patient.lastName}, ${recall.patient.firstName}${
+                      recall.patient.preferredName ? ` (${recall.patient.preferredName})` : ""
+                    }`;
+                    return (
+                      <tr
+                        key={recall.id}
+                        data-testid="recall-row"
+                        className="cursor-pointer transition-colors hover:bg-surface-1"
+                        onClick={() => handleRowClick(recall.patient.id)}
+                      >
+                        <td className="font-medium text-ink-strong">{displayName}</td>
+                        <td>{dayjs(recall.dueDate).format("MMM D, YYYY")}</td>
+                        <td>{recall.recallRule?.name ?? "—"}</td>
+                        <td>
+                          <span className="badge">{STATUS_LABELS.get(recall.status) ?? recall.status}</span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : hasLoaded ? (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-6 text-sm text-ink-muted" data-testid="recalls-empty">
+                      No recalls match these filters.
                     </td>
                   </tr>
-                );
-              })
-            ) : hasLoaded ? (
-              <tr>
-                <td colSpan={4} className="px-4 py-6 text-sm text-ink-muted" data-testid="recalls-empty">
-                  No recalls match these filters.
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </>
       ) : null}
     </section>
   );
