@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import dayjs from "dayjs";
+import { MessageResponseBar } from "@/components/message-response-bar";
 
 type Message = {
   id: string;
@@ -239,7 +240,7 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-surface-2 bg-white/80">
+        <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-surface-2 bg-white/80">
           {loadError ? (
             <div className="px-4 py-4 text-sm text-danger">{loadError}</div>
           ) : totalMessages === 0 ? (
@@ -247,131 +248,122 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
               No messages yet.
             </div>
           ) : (
-            <div
-              ref={scrollRef}
-              className="max-h-[520px] overflow-y-auto"
-              onScroll={() => {
-                const el = scrollRef.current;
-                if (!el) return;
-                const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-                // Small threshold so we still "stick" if the user is basically at the bottom.
-                stickToBottomRef.current = distanceToBottom < 24;
-              }}
-            >
-              {threads.map((thread) => (
-                <div key={thread.id} data-testid="messaging-thread" data-channel={thread.channel}>
-                  <div className="flex items-center justify-between border-b border-surface-2 px-4 py-3">
-                    <div className="text-sm font-semibold text-ink-strong">
-                      {thread.channel.toUpperCase()} thread
+            <>
+              <div
+                ref={scrollRef}
+                className="min-h-0 flex-1 overflow-y-auto"
+                onScroll={() => {
+                  const el = scrollRef.current;
+                  if (!el) return;
+                  const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+                  // Small threshold so we still "stick" if the user is basically at the bottom.
+                  stickToBottomRef.current = distanceToBottom < 24;
+                }}
+              >
+                {threads.map((thread) => (
+                  <div key={thread.id} data-testid="messaging-thread" data-channel={thread.channel}>
+                    <div className="flex items-center justify-between border-b border-surface-2 px-4 py-3">
+                      <div className="text-sm font-semibold text-ink-strong">{thread.channel.toUpperCase()} thread</div>
+                      <span className="badge bg-surface-2 text-ink-muted">{thread.status}</span>
                     </div>
-                    <span className="badge bg-surface-2 text-ink-muted">{thread.status}</span>
-                  </div>
-                  <div className="grid gap-4 px-4 py-4">
-                    {thread.messages.map((message) => {
-                      const isOutbound = message.direction === "outbound";
-                      const isFailed = message.status === "failed";
-                      const failureDetails = isFailed ? formatSendFailure(message.errorMessage) : null;
-                      return (
-                        <div
-                          key={message.id}
-                          data-testid="messaging-message"
-                          data-direction={message.direction}
-                          data-status={message.status}
-                          className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}
-                        >
-                          <div className="max-w-[80%]">
-                            <div
-                              className={`rounded-2xl px-4 py-3 text-sm shadow-sm ${
-                                isFailed
-                                  ? "border border-danger/30 bg-danger/10 text-danger"
-                                  : isOutbound
-                                    ? "bg-brand-blue/10 text-ink-strong"
-                                    : "bg-white text-ink-strong"
-                              }`}
-                            >
-                              {message.body}
-                            </div>
-                            <div
-                              className={`mt-2 flex flex-wrap items-center gap-2 text-xs text-ink-muted ${
-                                isOutbound ? "justify-end" : "justify-start"
-                              }`}
-                            >
-                              <span>{isOutbound ? "Outbound" : "Inbound"}</span>
-                              <span>·</span>
-                              <span>{dayjs(message.sentAt).format("MMM D, YYYY h:mm A")}</span>
-                              <span>·</span>
-                              <span className={`badge ${STATUS_STYLES[message.status]}`}>
-                                {STATUS_LABELS[message.status]}
-                              </span>
-                            </div>
-                            {isFailed ? (
-                              <div className="mt-2 text-xs text-danger">
-                                Failed to send{failureDetails ? `: ${failureDetails}` : "."}
+                    <div className="grid gap-4 px-4 py-4">
+                      {thread.messages.map((message) => {
+                        const isOutbound = message.direction === "outbound";
+                        const isFailed = message.status === "failed";
+                        const failureDetails = isFailed ? formatSendFailure(message.errorMessage) : null;
+                        return (
+                          <div
+                            key={message.id}
+                            data-testid="messaging-message"
+                            data-direction={message.direction}
+                            data-status={message.status}
+                            className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}
+                          >
+                            <div className="max-w-[80%]">
+                              <div
+                                className={`rounded-2xl px-4 py-3 text-sm shadow-sm ${
+                                  isFailed
+                                    ? "border border-danger/30 bg-danger/10 text-danger"
+                                    : isOutbound
+                                      ? "bg-brand-blue/10 text-ink-strong"
+                                      : "bg-white text-ink-strong"
+                                }`}
+                              >
+                                {message.body}
                               </div>
-                            ) : null}
+                              <div
+                                className={`mt-2 flex flex-wrap items-center gap-2 text-xs text-ink-muted ${
+                                  isOutbound ? "justify-end" : "justify-start"
+                                }`}
+                              >
+                                <span>{isOutbound ? "Outbound" : "Inbound"}</span>
+                                <span>·</span>
+                                <span>{dayjs(message.sentAt).format("MMM D, YYYY h:mm A")}</span>
+                                <span>·</span>
+                                <span className={`badge ${STATUS_STYLES[message.status]}`}>{STATUS_LABELS[message.status]}</span>
+                              </div>
+                              {isFailed ? (
+                                <div className="mt-2 text-xs text-danger">
+                                  Failed to send{failureDetails ? `: ${failureDetails}` : "."}
+                                </div>
+                              ) : null}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
-              <div ref={bottomRef} />
-            </div>
+                ))}
+                <div ref={bottomRef} />
+              </div>
+
+              {sendError ? <div className="px-4 pt-3 text-xs text-danger">{sendError}</div> : null}
+              <MessageResponseBar
+                value={messageBody}
+                onChange={setMessageBody}
+                onSend={() => {
+                  // Reuse existing form submission logic by calling the handler directly.
+                  // We keep validation + error handling centralized there.
+                  const fakeEvent = { preventDefault() {} } as unknown as React.FormEvent<HTMLFormElement>;
+                  void handleSend(fakeEvent);
+                }}
+                disabled={sending}
+                placeholder="Write a message..."
+                sendLabel={sending ? "Sending..." : "Send"}
+                leading={
+                  <select
+                    aria-label="Channel"
+                    className="rounded-xl border border-surface-3 bg-white px-3 py-2 text-xs"
+                    value={channel}
+                    onChange={(event) => setChannel(event.target.value as MessageThread["channel"])}
+                  >
+                    {CHANNEL_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                }
+              />
+            </>
           )}
         </div>
 
-        <div className="grid gap-4">
-          <form
-            className="rounded-2xl border border-surface-2 bg-white/80 p-4"
-            onSubmit={handleSend}
-            data-testid="messaging-compose"
-          >
-            <div className="text-sm font-semibold text-ink-strong">Compose message</div>
-            <div className="mt-4 grid gap-3">
-              <label className="grid gap-2 text-xs text-ink-muted" htmlFor="messaging-channel">
-                Channel
-                <select
-                  id="messaging-channel"
-                  data-testid="messaging-compose-channel"
-                  className="rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
-                  value={channel}
-                  onChange={(event) => setChannel(event.target.value as MessageThread["channel"])}
-                >
-                  {CHANNEL_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="grid gap-2 text-xs text-ink-muted" htmlFor="messaging-body">
-                Message
-                <textarea
-                  id="messaging-body"
-                  data-testid="messaging-compose-body"
-                  className="min-h-[120px] rounded-xl border border-surface-3 px-3 py-2 text-sm"
-                  placeholder="Write a message..."
-                  value={messageBody}
-                  onChange={(event) => setMessageBody(event.target.value)}
-                />
-              </label>
-              {sendError ? <div className="text-xs text-danger">{sendError}</div> : null}
-              <button type="submit" className="tab-pill text-xs" disabled={sending}>
-                {sending ? "Sending..." : "Send message"}
+        <div className="rounded-2xl border border-surface-2 bg-white/80 p-4">
+          <div className="text-xs font-semibold text-ink-muted">Text snippets</div>
+          <div className="mt-3 grid gap-2">
+            {SNIPPETS.map((snippet) => (
+              <button
+                key={snippet}
+                type="button"
+                className="rounded-xl bg-white px-3 py-2 text-left text-xs text-ink-muted shadow-sm transition hover:bg-surface-1"
+                onClick={() => {
+                  setMessageBody((current) => (current.trim().length ? `${current.trimEnd()} ${snippet}` : snippet));
+                }}
+              >
+                {snippet}
               </button>
-            </div>
-          </form>
-
-          <div className="rounded-2xl border border-surface-2 bg-white/80 p-4">
-            <div className="text-xs font-semibold text-ink-muted">Text snippets</div>
-            <div className="mt-3 grid gap-2">
-              {SNIPPETS.map((snippet) => (
-                <div key={snippet} className="rounded-xl bg-white px-3 py-2 text-xs text-ink-muted shadow-sm">
-                  {snippet}
-                </div>
-              ))}
-            </div>
+            ))}
           </div>
         </div>
       </div>

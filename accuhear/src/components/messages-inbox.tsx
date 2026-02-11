@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dayjs from "dayjs";
+import { MessageResponseBar } from "@/components/message-response-bar";
 
 type InboxThread = {
   id: string;
@@ -48,6 +49,11 @@ type ThreadDetails = {
 };
 
 const POLL_MS = 5_000;
+const SNIPPETS = [
+  "We received your message and will respond shortly.",
+  "Thanks for checking in — we can help schedule a follow-up.",
+  "Please call the office if you need urgent assistance.",
+];
 
 function attentionBadgeClass() {
   return "bg-brand-orange/15 text-brand-ink";
@@ -163,7 +169,7 @@ export function MessagesInbox() {
         <div className="text-xs text-ink-muted">{loading ? "Syncing..." : `${threads.length} threads`}</div>
       </div>
 
-      <div className="mt-6 grid min-h-0 flex-1 gap-6 lg:grid-cols-[360px_1fr]">
+      <div className="mt-6 grid min-h-0 flex-1 gap-6 lg:grid-cols-[280px_minmax(0,1fr)_280px]">
         <div className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)_auto_minmax(0,1fr)] overflow-hidden rounded-2xl border border-surface-2 bg-white/80">
           <div className="border-b border-surface-2 px-4 py-3 text-xs font-semibold text-ink-muted">Needs reply</div>
           <div className="min-h-0 overflow-y-auto">
@@ -272,27 +278,42 @@ export function MessagesInbox() {
                 </div>
               </div>
 
-              <div className="border-t border-surface-2 p-4">
-                <div className="grid gap-2">
-                  <textarea
-                    className="min-h-[84px] w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
-                    placeholder="Write a reply..."
-                    value={compose}
-                    onChange={(e) => setCompose(e.target.value)}
-                  />
-                  {sendError ? <div className="text-xs text-danger">{sendError}</div> : null}
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs text-ink-muted">Auto-updates every {POLL_MS / 1000}s.</div>
-                    <button type="button" className="tab-pill text-xs" disabled={sending || !compose.trim()} onClick={handleSend}>
-                      {sending ? "Sending..." : "Send"}
-                    </button>
-                  </div>
-                </div>
-              </div>
+              {sendError ? <div className="px-4 pt-3 text-xs text-danger">{sendError}</div> : null}
+              <MessageResponseBar
+                value={compose}
+                onChange={setCompose}
+                onSend={handleSend}
+                disabled={sending}
+                placeholder="Write a reply..."
+                sendLabel={sending ? "Sending..." : "Send"}
+              />
             </div>
           ) : (
             <div className="px-4 py-6 text-sm text-ink-muted">Select a thread to view messages.</div>
           )}
+        </div>
+
+        <div className="hidden min-h-0 overflow-hidden rounded-2xl border border-surface-2 bg-white/80 lg:block">
+          <div className="border-b border-surface-2 px-4 py-3 text-xs font-semibold text-ink-muted">Text snippets</div>
+          <div className="min-h-0 overflow-y-auto p-4">
+            <div className="grid gap-2">
+              {SNIPPETS.map((snippet) => (
+                <button
+                  key={snippet}
+                  type="button"
+                  className="rounded-xl bg-white px-3 py-2 text-left text-xs text-ink-muted shadow-sm transition hover:bg-surface-1"
+                  onClick={() => {
+                    setCompose((current) => {
+                      const next = current.trim().length ? `${current.trimEnd()} ${snippet}` : snippet;
+                      return next;
+                    });
+                  }}
+                >
+                  {snippet}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </section>
