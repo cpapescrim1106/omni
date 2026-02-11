@@ -154,7 +154,7 @@ export function MessagesInbox() {
   }, [loadInbox, loadThread, selectedThread]);
 
   return (
-    <section className="card p-6" data-testid="messages-inbox">
+    <section className="card flex min-h-0 flex-1 flex-col p-6" data-testid="messages-inbox">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="section-title text-xs text-brand-ink">{headerLabel}</div>
@@ -163,10 +163,10 @@ export function MessagesInbox() {
         <div className="text-xs text-ink-muted">{loading ? "Syncing..." : `${threads.length} threads`}</div>
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[360px_1fr]">
-        <div className="rounded-2xl border border-surface-2 bg-white/80">
+      <div className="mt-6 grid min-h-0 flex-1 gap-6 lg:grid-cols-[360px_1fr]">
+        <div className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)_auto_minmax(0,1fr)] overflow-hidden rounded-2xl border border-surface-2 bg-white/80">
           <div className="border-b border-surface-2 px-4 py-3 text-xs font-semibold text-ink-muted">Needs reply</div>
-          <div className="max-h-[520px] overflow-y-auto">
+          <div className="min-h-0 overflow-y-auto">
             {groups.needsReply.length ? (
               groups.needsReply.map((thread) => (
                 <button
@@ -191,13 +191,13 @@ export function MessagesInbox() {
                     </div>
                   </button>
                 ))
-              ) : (
+            ) : (
               <div className="px-4 py-4 text-sm text-ink-muted">No unanswered threads.</div>
             )}
           </div>
 
           <div className="border-t border-surface-2 px-4 py-3 text-xs font-semibold text-ink-muted">All conversations</div>
-          <div className="max-h-[520px] overflow-y-auto">
+          <div className="min-h-0 overflow-y-auto">
             {groups.rest.length ? (
               groups.rest.map((thread) => (
                 <button
@@ -228,7 +228,7 @@ export function MessagesInbox() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-surface-2 bg-white/80">
+        <div className="min-h-0 overflow-hidden rounded-2xl border border-surface-2 bg-white/80">
           {selectedThread ? (
             <div className="flex h-full flex-col">
               <div className="flex items-center justify-between border-b border-surface-2 px-4 py-3">
@@ -255,7 +255,7 @@ export function MessagesInbox() {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-4 py-4">
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
                 <div className="grid gap-3">
                   {selectedThread.messages.map((m) => {
                     const isOutbound = m.direction === "outbound";
