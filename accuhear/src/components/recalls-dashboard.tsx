@@ -45,6 +45,24 @@ export function RecallsDashboard() {
   const [inboxSummary, setInboxSummary] = useState<InboxSummary>({ unseenCount: 0, unansweredCount: 0 });
 
   useEffect(() => {
+    // Allow deep-linking directly to the inbox: `/recalls?tab=messages`
+    const params = new URLSearchParams(window.location.search);
+    const raw = (params.get("tab") ?? "").toLowerCase();
+    if (raw === "messages") setTab("messages");
+  }, []);
+
+  const setTabWithUrl = (next: "queue" | "messages") => {
+    setTab(next);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", next);
+      window.history.replaceState(null, "", url.toString());
+    } catch {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
     let active = true;
     const load = async () => {
       try {
@@ -125,14 +143,14 @@ export function RecallsDashboard() {
         <button
           type="button"
           className={`tab-pill text-xs ${tab === "queue" ? "bg-white text-ink-strong" : "bg-surface-1 text-ink-muted"}`}
-          onClick={() => setTab("queue")}
+          onClick={() => setTabWithUrl("queue")}
         >
           Queue
         </button>
         <button
           type="button"
           className={`tab-pill text-xs ${tab === "messages" ? "bg-white text-ink-strong" : "bg-surface-1 text-ink-muted"}`}
-          onClick={() => setTab("messages")}
+          onClick={() => setTabWithUrl("messages")}
         >
           Messages
           {messagesBadge > 0 ? (
