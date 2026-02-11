@@ -43,7 +43,7 @@ export function MessageResponseBar({
   leading,
   sendLabel = "Send",
   hint = "Enter to send · Shift+Enter for a new line",
-  showSendButton = false,
+  showSendButton = true,
 }: Props) {
   const { ref, resize } = useAutosizeTextarea(value);
   const canSend = !disabled && value.trim().length > 0;
@@ -76,12 +76,17 @@ export function MessageResponseBar({
             <button
               type="button"
               aria-label="Send message"
-              className="grid h-9 w-9 place-items-center rounded-full bg-brand-blue text-xs font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50 hover:bg-brand-blue/90"
+              className="grid h-8 w-8 place-items-center rounded-full bg-brand-blue text-white shadow-sm transition hover:bg-brand-blue/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/40 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={!canSend}
               onClick={onSend}
               title={sendLabel}
             >
-              →
+              <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                <path
+                  fill="currentColor"
+                  d="M12 4l6 6-1.41 1.41L13 7.83V20h-2V7.83L7.41 11.41 6 10l6-6z"
+                />
+              </svg>
             </button>
           ) : null}
         </div>

@@ -325,7 +325,6 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
                 placeholder="Write a message..."
                 sendLabel={sending ? "Sending..." : "Send"}
                 hint="Enter to send · Shift+Enter for a new line"
-                showSendButton={false}
               />
             </>
           )}
