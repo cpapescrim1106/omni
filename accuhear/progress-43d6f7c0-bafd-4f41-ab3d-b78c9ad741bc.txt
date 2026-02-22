@@ -1,0 +1,18 @@
+# Progress Log
+Run: 43d6f7c0-bafd-4f41-ab3d-b78c9ad741bc
+Task: Build In-clinic monitoring in Omni (Blueprint page 582123521)
+Started: 2026-02-22T13:30:00-05:00
+
+## Codebase Patterns
+- Prisma schema migrations are defined directly in `prisma/schema.prisma` and validated with `npx prisma validate`.
+- Integration tests are colocated under `tests/integration/*.spec.ts` and can be executed with `npm run test:integration`.
+---
+
+## 2026-02-22T13:35:00-05:00 - US-001: Establish in-clinic status schema and seed baseline data
+- Added `AppointmentStatusTransition` model to Prisma schema with FK fields: `appointmentId`, `fromStatusId` (nullable), `toStatusId`, `actor`, and `createdAt`.
+- Added reverse relations so each `Appointment` has transition history and added indexes for transition lookup.
+- Updated seed helpers to canonicalize status values (`Canceled` -> `Cancelled`, `In progress` -> `In Progress`) and ensure required statuses are always present without manual DB edits.
+- Added `SEED_BASELINE_STATUSES`, `normalizeStatusName`, `normalizeLegacyAppointmentStatuses`, and `ensureSeedAppointmentStatuses` exports for reuse and testing.
+- Added integration tests in `tests/integration/seed-status.spec.ts` for status normalization, baseline seeding, legacy normalization behavior, and schema-shape assertions.
+- Added file-level migration alignment checks via `npx prisma validate` in verification.
+---

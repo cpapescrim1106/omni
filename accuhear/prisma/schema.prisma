@@ -66,7 +66,9 @@ model AppointmentStatus {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
-  appointments Appointment[]
+  appointments   Appointment[]
+  fromTransitions AppointmentStatusTransition[] @relation("AppointmentStatusTransitionFrom")
+  toTransitions  AppointmentStatusTransition[] @relation("AppointmentStatusTransitionTo")
 }
 
 model Appointment {
@@ -86,8 +88,28 @@ model Appointment {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
+  transitions AppointmentStatusTransition[] @relation("AppointmentStatusTransition")
+
   @@index([providerName, startTime])
   @@index([patientId])
+  @@index([statusId])
+}
+
+model AppointmentStatusTransition {
+  id            String              @id @default(cuid())
+  appointmentId String
+  fromStatusId  String?
+  toStatusId    String
+  actor         String
+  createdAt     DateTime            @default(now())
+  appointment   Appointment         @relation("AppointmentStatusTransition", fields: [appointmentId], references: [id], onDelete: Cascade)
+  fromStatus    AppointmentStatus?  @relation("AppointmentStatusTransitionFrom", fields: [fromStatusId], references: [id], onDelete: SetNull)
+  toStatus      AppointmentStatus   @relation("AppointmentStatusTransitionTo", fields: [toStatusId], references: [id], onDelete: Restrict)
+
+  @@index([appointmentId])
+  @@index([fromStatusId])
+  @@index([toStatusId])
+  @@index([appointmentId, createdAt])
 }
 
 model ProviderSchedule {

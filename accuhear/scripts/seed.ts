@@ -1,6 +1,7 @@
 import "dotenv/config";
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { parse } from "csv-parse/sync";
 import { prisma } from "../src/lib/db";
 
@@ -8,6 +9,18 @@ const DATA_DIR = path.resolve(process.cwd(), "..", "data");
 const DAILY_SCHEDULE_FILE = "dailyschedule.csv";
 const IMPORT_TAG = "[Imported schedule]";
 const SAMPLE_TAG = "Seeded schedule";
+export const SEED_BASELINE_STATUSES = [
+  "Scheduled",
+  "Arrived",
+  "Arrived & Ready",
+  "Ready",
+  "In Progress",
+  "Completed",
+  "Cancelled",
+  "No-show",
+  "Rescheduled",
+];
+
 
 function readCsv(fileName: string) {
   const filePath = path.join(DATA_DIR, fileName);
@@ -89,15 +102,17 @@ function parsePatientName(value?: string) {
   return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
 }
 
-function normalizeStatusName(value?: string) {
+export function normalizeStatusName(value?: string) {
   if (!value) return "";
   const trimmed = value.trim();
   if (!trimmed) return "";
-  const normalized = trimmed.toLowerCase().replace(/\s+/g, " ");
+  const normalized = trimmed.replace(/[-_]/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
+
   if (normalized === "canceled" || normalized === "cancelled") return "Cancelled";
+  if (normalized === "in progress" || normalized === "inprogress") return "In Progress";
   if (normalized === "no-show" || normalized === "no show" || normalized === "noshow") return "No show";
-  if (normalized === "in-progress") return "In progress";
-  return trimmed;
+
+  return trimmed.replace(/\s+/g, " ").trim();
 }
 
 function buildNotes(row: Record<string, string>) {
@@ -116,6 +131,66 @@ function getReferralSource(row: Record<string, string>) {
   );
 }
 
+export async function normalizeLegacyAppointmentStatuses(prismaClient: typeof prisma = prisma) {
+  const statuses = await prismaClient.appointmentStatus.findMany({
+    select: { id: true, name: true },
+  });
+
+  for (const status of statuses) {
+    const canonical = normalizeStatusName(status.name);
+    if (!canonical || canonical === status.name) continue;
+
+    const canonicalStatus = await prismaClient.appointmentStatus.findFirst({
+      where: {
+        name: {
+          equals: canonical,
+          mode: "insensitive",
+        },
+      },
+    });
+
+    if (canonicalStatus) {
+      if (canonicalStatus.id === status.id) continue;
+
+      await prismaClient.appointment.updateMany({
+        where: { statusId: status.id },
+        data: { statusId: canonicalStatus.id },
+      });
+      await prismaClient.appointmentStatus.delete({ where: { id: status.id } });
+      continue;
+    }
+
+    await prismaClient.appointmentStatus.update({
+      where: { id: status.id },
+      data: { name: canonical },
+    });
+  }
+}
+
+export async function ensureSeedAppointmentStatuses(
+  statusNames: Iterable<string>,
+  prismaClient: typeof prisma = prisma
+) {
+  await normalizeLegacyAppointmentStatuses(prismaClient);
+
+  const requiredStatuses = new Set<string>(SEED_BASELINE_STATUSES);
+  for (const statusName of statusNames) {
+    const normalized = normalizeStatusName(statusName);
+    if (normalized) requiredStatuses.add(normalized);
+  }
+
+  for (const name of requiredStatuses) {
+    await prismaClient.appointmentStatus.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    });
+  }
+
+  return requiredStatuses;
+}
+
+
 async function seedAppointmentMeta() {
   const appointmentTypes = new Set<string>();
   const appointmentStatuses = new Set<string>();
@@ -130,19 +205,11 @@ async function seedAppointmentMeta() {
 
   const defaultTypes = ["Consult", "Hearing Exam", "Adjustment", "Clean and Check"];
   defaultTypes.forEach((type) => appointmentTypes.add(type));
-  const defaultStatuses = ["Scheduled", "Completed", "No-show", "Canceled", "Rescheduled"];
-  defaultStatuses.forEach((status) => appointmentStatuses.add(status));
+
+  await ensureSeedAppointmentStatuses(appointmentStatuses);
 
   for (const name of appointmentTypes) {
     await prisma.appointmentType.upsert({
-      where: { name },
-      update: {},
-      create: { name },
-    });
-  }
-
-  for (const name of appointmentStatuses) {
-    await prisma.appointmentStatus.upsert({
       where: { name },
       update: {},
       create: { name },
@@ -306,13 +373,7 @@ async function seedDailySchedule() {
     });
   }
 
-  for (const name of appointmentStatuses) {
-    await prisma.appointmentStatus.upsert({
-      where: { name },
-      update: {},
-      create: { name },
-    });
-  }
+  await ensureSeedAppointmentStatuses(appointmentStatuses);
 
   const [types, statuses] = await Promise.all([
     prisma.appointmentType.findMany(),
@@ -490,12 +551,14 @@ async function main() {
   }
 }
 
-main()
-  .then(async () => {
-    await prisma.$disconnect();
-  })
-  .catch(async (error) => {
-    console.error(error);
-    await prisma.$disconnect();
-    process.exit(1);
-  });
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main()
+    .then(async () => {
+      await prisma.$disconnect();
+    })
+    .catch(async (error) => {
+      console.error(error);
+      await prisma.$disconnect();
+      process.exit(1);
+    });
+}
