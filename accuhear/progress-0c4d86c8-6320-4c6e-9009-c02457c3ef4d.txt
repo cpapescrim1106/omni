@@ -8,6 +8,7 @@ Started: 2026-02-22T16:05:00-05:00
 - Story-level schema migrations are stored in `prisma/migrations/<timestamp>_<name>/migration.sql`.
 - Seed normalization helpers live in `scripts/seed.ts`; baseline statuses should be centralized there and reused by tests.
 - In-clinic appointment state changes should flow through `src/lib/appointments/status-transition.ts` so guard rules, lifecycle timestamps, and `AppointmentStatusEvent` audit writes remain consistent.
+- Monitor feed filtering + timing derivation should live in `src/lib/appointments/monitor-feed.ts`; API routes should stay thin wrappers around that query service.
 
 ---
 
@@ -27,4 +28,12 @@ Started: 2026-02-22T16:05:00-05:00
 - Updated `src/app/api/appointments/[id]/route.ts` to route in-clinic status changes through the transition engine while preserving existing scheduling updates.
 - Added integration coverage in `tests/integration/appointment-status-transition.spec.ts` for transition legality, Arrived/Arrived & Ready timestamp behavior, terminal-state rejection, and audit persistence through API path.
 - **Learnings:** Route-level status updates in this codebase still require provider/start/end payloads; centralizing status-only logic in a dedicated service avoids drift while keeping schedule PATCH flow intact.
+---
+
+## 2026-02-22T16:31:30-05:00 - US-003: Expose monitor data endpoint/query for active in-clinic patients
+- Added monitor query service (`src/lib/appointments/monitor-feed.ts`) that filters appointments to active in-clinic statuses (`Arrived`, `Arrived & Ready`, `Ready`, `In Progress`) and excludes terminal/other statuses.
+- Added monitor API endpoint (`GET /api/appointments/monitor`) that returns persisted monitor rows with derived timing payload fields for wait duration and in-progress duration, including `timing.mode` and `timing.waitWarning` (>= 5 min).
+- Added deterministic integration coverage (`tests/integration/appointment-monitor.spec.ts`) for status visibility filtering, timing derivation, and refresh behavior across persisted status transitions (`Scheduled -> Arrived -> In Progress -> Completed`).
+- **Files changed:** `src/lib/appointments/monitor-feed.ts`, `src/app/api/appointments/monitor/route.ts`, `tests/integration/appointment-monitor.spec.ts`, `progress-0c4d86c8-6320-4c6e-9009-c02457c3ef4d.txt`.
+- **Learnings:** Date-only monitor queries should parse `YYYY-MM-DD` into local calendar dates before constructing day boundaries to avoid UTC offset drift in range filtering.
 ---
