@@ -1,5 +1,10 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import {
+  sortAppointmentTransitionHistory,
+  toLifecycleStatusLabel,
+  type AppointmentTransitionHistoryItem,
+} from "@/lib/appointments/transition-history";
 
 export const ACTIVE_IN_CLINIC_MONITOR_STATUSES = ["Arrived", "Arrived & Ready", "Ready", "In Progress"] as const;
 
@@ -10,6 +15,7 @@ type MonitorAppointmentRecord = Prisma.AppointmentGetPayload<{
     patient: true;
     type: true;
     status: true;
+    statusEvents: true;
   };
 }>;
 
@@ -44,6 +50,7 @@ export type MonitorAppointment = {
     inProgressDurationSeconds: number | null;
     waitWarning: boolean;
   };
+  history: AppointmentTransitionHistoryItem[];
 };
 
 function toIso(value: Date | null) {
@@ -59,6 +66,20 @@ function safeDurationSeconds(from: Date | null, to: Date) {
 
 function isWaitModeStatus(statusName: string) {
   return statusName === "Arrived" || statusName === "Arrived & Ready" || statusName === "Ready";
+}
+
+function toTransitionHistory(appointment: MonitorAppointmentRecord) {
+  const history = appointment.statusEvents.map((event) => {
+    return {
+      id: event.id,
+      fromStatus: toLifecycleStatusLabel(event.fromStatus),
+      toStatus: toLifecycleStatusLabel(event.toStatus) ?? "Unknown",
+      actorId: event.actorId,
+      timestamp: event.createdAt.toISOString(),
+    } satisfies AppointmentTransitionHistoryItem;
+  });
+
+  return sortAppointmentTransitionHistory(history);
 }
 
 function toMonitorAppointment(appointment: MonitorAppointmentRecord, now: Date): MonitorAppointment {
@@ -109,6 +130,7 @@ function toMonitorAppointment(appointment: MonitorAppointmentRecord, now: Date):
       inProgressDurationSeconds,
       waitWarning,
     },
+    history: toTransitionHistory(appointment),
   };
 }
 
@@ -162,6 +184,9 @@ export async function fetchMonitorAppointments(params: {
       patient: true,
       type: true,
       status: true,
+      statusEvents: {
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      },
     },
     orderBy: [{ arrivedAt: "asc" }, { startTime: "asc" }],
   });

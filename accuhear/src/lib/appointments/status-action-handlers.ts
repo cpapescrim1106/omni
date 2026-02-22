@@ -7,6 +7,7 @@ import {
   getAvailableTransitionActionsForStatus,
   transitionAppointmentStatus,
 } from "@/lib/appointments/status-transition";
+import { fetchAppointmentTransitionHistory } from "@/lib/appointments/transition-history-query";
 
 const ACTIVE_MONITOR_STATUS_NAMES = new Set<string>(ACTIVE_IN_CLINIC_MONITOR_STATUSES);
 
@@ -188,12 +189,14 @@ export async function getEntryPointActionSnapshot(params: {
     entryPoint: params.entryPoint,
     referenceDate: params.referenceDate ?? new Date(),
   });
+  const history = await fetchAppointmentTransitionHistory(params.appointmentId);
 
   return {
     appointment: toActionPayload(appointment),
     availableActions: availability.availableActions,
     isToday: availability.isToday,
     monitorEligible: availability.monitorEligible,
+    history,
   };
 }
 
@@ -247,11 +250,13 @@ export async function runEntryPointActionTransition(params: {
     entryPoint: params.entryPoint,
     referenceDate: params.referenceDate ?? new Date(),
   });
+  const history = await fetchAppointmentTransitionHistory(updated.id);
 
   return {
     appointment: toActionPayload(updated),
     availableActions: updatedAvailability.availableActions,
     isToday: updatedAvailability.isToday,
     monitorEligible: updatedAvailability.monitorEligible,
+    history,
   };
 }

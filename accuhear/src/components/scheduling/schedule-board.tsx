@@ -6,6 +6,12 @@ import utc from "dayjs/plugin/utc";
 import isoWeek from "dayjs/plugin/isoWeek";
 import type { OpUnitType } from "dayjs";
 import { useRouter, useSearchParams } from "next/navigation";
+import {
+  formatTransitionHistoryMeta,
+  formatTransitionHistoryStatus,
+  type AppointmentTransitionHistoryItem,
+} from "@/lib/appointments/transition-history";
+
 const DATE_FORMAT = "YYYY-MM-DD";
 
 const DAY_START_HOUR = 8;
@@ -205,6 +211,21 @@ function toInClinicActionTestId(action: InClinicScheduleAction) {
   return action.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
 
+function isAppointmentTransitionHistoryItem(value: unknown): value is AppointmentTransitionHistoryItem {
+  if (!value || typeof value !== "object") return false;
+
+  const event = value as Partial<AppointmentTransitionHistoryItem>;
+  const hasFromStatus = event.fromStatus === null || typeof event.fromStatus === "string";
+
+  return (
+    typeof event.id === "string" &&
+    hasFromStatus &&
+    typeof event.toStatus === "string" &&
+    typeof event.actorId === "string" &&
+    typeof event.timestamp === "string"
+  );
+}
+
 function getColumnMin(totalColumns: number) {
   if (totalColumns >= 15) return 80;
   if (totalColumns >= 10) return 95;
@@ -247,6 +268,7 @@ export function BigSchedule() {
     appointmentId: string;
     isToday: boolean;
     availableActions: InClinicScheduleAction[];
+    history: AppointmentTransitionHistoryItem[];
     isLoading: boolean;
     pendingAction: InClinicScheduleAction | null;
   } | null>(null);
@@ -688,13 +710,14 @@ export function BigSchedule() {
   }, [actionMenu, scheduleContextState]);
 
   const isInClinicActionPending = Boolean(scheduleContextState?.pendingAction);
+  const scheduleContextHistory = scheduleContextState?.history ?? [];
 
   const openActionMenu = useCallback((appointmentId: string, rect: DOMRect) => {
     const board = scheduleBoardRef.current;
     if (!board) return;
     const boardRect = board.getBoundingClientRect();
-    const menuWidth = 240;
-    const menuHeight = 360;
+    const menuWidth = 260;
+    const menuHeight = 520;
     const padding = 8;
     let x = rect.right - boardRect.left + 8;
     if (x + menuWidth > boardRect.width - padding) {
@@ -735,6 +758,7 @@ export function BigSchedule() {
       appointmentId,
       isToday: false,
       availableActions: [],
+      history: [],
       isLoading: true,
       pendingAction: null,
     });
@@ -748,16 +772,19 @@ export function BigSchedule() {
         return response.json() as Promise<{
           isToday?: boolean;
           availableActions?: string[];
+          history?: unknown[];
         }>;
       })
       .then((payload) => {
         setScheduleContextState((current) => {
           if (!current || current.appointmentId !== appointmentId) return current;
           const availableActions = (payload.availableActions ?? []).filter(isInClinicScheduleAction);
+          const history = (payload.history ?? []).filter(isAppointmentTransitionHistoryItem);
           return {
             appointmentId,
             isToday: Boolean(payload.isToday),
             availableActions,
+            history,
             isLoading: false,
             pendingAction: null,
           };
@@ -1805,6 +1832,28 @@ export function BigSchedule() {
                       <div className="schedule-action-menu-divider" />
                     </>
                   ) : null}
+                  {!scheduleContextState?.isLoading ? (
+                    <div className="schedule-action-history" data-testid="schedule-transition-history">
+                      <div className="schedule-action-history-title">Transition history</div>
+                      {scheduleContextHistory.length ? (
+                        <div className="schedule-action-history-list">
+                          {scheduleContextHistory.map((event) => (
+                            <div
+                              key={event.id}
+                              className="schedule-action-history-row"
+                              data-testid="schedule-transition-history-row"
+                            >
+                              <div className="schedule-action-history-status">{formatTransitionHistoryStatus(event)}</div>
+                              <div className="schedule-action-history-meta">{formatTransitionHistoryMeta(event)}</div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="schedule-action-history-empty">No transition history yet.</div>
+                      )}
+                    </div>
+                  ) : null}
+                  <div className="schedule-action-menu-divider" />
                   <button
                     type="button"
                     className="schedule-action-menu-item"

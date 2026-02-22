@@ -7,6 +7,11 @@ import {
   getMonitorStatusTone,
   getMonitorTimerPresentation,
 } from "@/lib/appointments/monitor-ui";
+import {
+  formatTransitionHistoryMeta,
+  formatTransitionHistoryStatus,
+  type AppointmentTransitionHistoryItem,
+} from "@/lib/appointments/transition-history";
 
 type MonitorAppointment = {
   id: string;
@@ -25,6 +30,7 @@ type MonitorAppointment = {
   } | null;
   arrivedAt: string | null;
   inProgressAt: string | null;
+  history: AppointmentTransitionHistoryItem[];
 };
 
 type MonitorPayload = {
@@ -81,7 +87,12 @@ export function InClinicMonitor() {
         return;
       }
 
-      setAppointments(filterActiveMonitorAppointments(payload.appointments));
+      const normalizedAppointments = payload.appointments.map((appointment) => ({
+        ...appointment,
+        history: Array.isArray(appointment.history) ? appointment.history : [],
+      }));
+
+      setAppointments(filterActiveMonitorAppointments(normalizedAppointments));
       setError(null);
       setNowMs(Date.now());
     } catch (_error) {
@@ -181,6 +192,26 @@ export function InClinicMonitor() {
                       {timer.mode === "wait" ? "Waiting" : "In progress"} {formatMonitorDuration(timer.elapsedSeconds)}
                     </span>
                   ) : null}
+                </div>
+
+                <div className="in-clinic-monitor-history" data-testid="monitor-transition-history">
+                  <div className="in-clinic-monitor-history-title">Transition history</div>
+                  {appointment.history.length ? (
+                    <div className="in-clinic-monitor-history-list">
+                      {appointment.history.map((event) => (
+                        <div
+                          key={event.id}
+                          className="in-clinic-monitor-history-row"
+                          data-testid="monitor-transition-history-row"
+                        >
+                          <div className="in-clinic-monitor-history-status">{formatTransitionHistoryStatus(event)}</div>
+                          <div className="in-clinic-monitor-history-meta">{formatTransitionHistoryMeta(event)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="in-clinic-monitor-history-empty">No transition history yet.</div>
+                  )}
                 </div>
 
                 {actions.length > 0 ? (

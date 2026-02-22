@@ -12,6 +12,7 @@ Started: 2026-02-22T16:05:00-05:00
 - Entry-point-specific status actions should route through `src/lib/appointments/status-action-handlers.ts` so schedule-context and monitor-list handlers enforce the same transition availability matrix.
 - Schedule UI should load in-clinic actions from `GET /api/appointments/[id]/schedule-context` on menu open and submit transitions to `POST /api/appointments/[id]/schedule-context` instead of patching status IDs directly.
 - Keep monitor card semantics (active filtering, status color tones, wait/in-progress timer math) in a shared helper (`src/lib/appointments/monitor-ui.ts`) so React rendering and tests stay deterministic.
+- Entry-point appointment snapshots (`schedule-context`/`monitor-actions`) are a good place to attach transition history payloads so schedule + monitor UIs can stay refresh-safe without extra client orchestration.
 
 ---
 
@@ -68,4 +69,13 @@ Started: 2026-02-22T16:05:00-05:00
 - Added integration tests covering wait-threshold boundary behavior, ready/in-progress color+mode semantics, and active-only visibility filtering (`tests/integration/appointment-monitor-ui.spec.ts`).
 - **Files changed:** `src/app/(app)/scheduling/page.tsx`, `src/components/scheduling/in-clinic-monitor.tsx`, `src/lib/appointments/monitor-ui.ts`, `src/app/globals.css`, `tests/integration/appointment-monitor-ui.spec.ts`, `progress-0c4d86c8-6320-4c6e-9009-c02457c3ef4d.txt`.
 - **Learnings:** Keep monitor timing derived from persisted lifecycle timestamps on every render tick; this avoids stale API-duration drift while preserving refresh-safe server truth.
+---
+## 2026-02-22T17:03:41-05:00 - US-007: Surface transition audit/event history in appointment views
+- Added a reusable transition history helper/query path (`src/lib/appointments/transition-history.ts`, `src/lib/appointments/transition-history-query.ts`) that returns deterministic history rows with from/to status labels, actor identity, and timestamps ordered by event time.
+- Added `GET /api/appointments/[id]/history` and extended schedule/monitor action snapshot payloads to include transition history so schedule context and monitor workflows can render audit rows from refresh-safe server state.
+- Updated schedule action menu and in-clinic monitor UI to render transition history rows in appointment detail context (status flow + actor + timestamp) using shared formatting helpers.
+- Extended monitor feed payloads to include ordered transition history per active appointment.
+- Added integration coverage for transition history retrieval through endpoint and schedule/monitor snapshots, plus rendering helper tests for deterministic ordering and row formatting.
+- **Files changed:** `src/lib/appointments/transition-history.ts`, `src/lib/appointments/transition-history-query.ts`, `src/app/api/appointments/[id]/history/route.ts`, `src/lib/appointments/status-action-handlers.ts`, `src/lib/appointments/monitor-feed.ts`, `src/components/scheduling/schedule-board.tsx`, `src/components/scheduling/in-clinic-monitor.tsx`, `src/app/globals.css`, `tests/integration/appointment-transition-history.spec.ts`, `tests/integration/appointment-transition-history-ui.spec.ts`, `progress-0c4d86c8-6320-4c6e-9009-c02457c3ef4d.txt`.
+- **Learnings:** Running appointment integration tests with `--test-concurrency=1` avoids race conditions in shared status seed normalization hooks while still validating schedule/monitor regressions.
 ---

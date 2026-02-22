@@ -613,7 +613,9 @@ a {
 .schedule-action-menu {
   position: absolute;
   z-index: 70;
-  width: 240px;
+  width: 260px;
+  max-height: min(72vh, 540px);
+  overflow: auto;
   border-radius: 14px;
   border: 1px solid rgba(31, 149, 184, 0.25);
   background: rgba(255, 255, 255, 0.95);
@@ -656,6 +658,52 @@ a {
 .schedule-action-menu-item:hover {
   background: rgba(31, 149, 184, 0.12);
   border-color: rgba(31, 149, 184, 0.25);
+}
+
+.schedule-action-history {
+  display: grid;
+  gap: 6px;
+}
+
+.schedule-action-history-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+}
+
+.schedule-action-history-list {
+  display: grid;
+  gap: 6px;
+  max-height: 148px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.schedule-action-history-row {
+  border: 1px solid rgba(38, 34, 96, 0.1);
+  border-radius: 10px;
+  padding: 6px 8px;
+  background: rgba(247, 249, 255, 0.8);
+  display: grid;
+  gap: 2px;
+}
+
+.schedule-action-history-status {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.schedule-action-history-meta {
+  font-size: 10px;
+  color: var(--ink-soft);
+}
+
+.schedule-action-history-empty {
+  font-size: 11px;
+  color: var(--ink-soft);
 }
 
 .appointment-modal-overlay {
@@ -986,6 +1034,49 @@ a {
 
 .in-clinic-timer.is-in-progress {
   color: #0f5f78;
+}
+
+.in-clinic-monitor-history {
+  display: grid;
+  gap: 6px;
+}
+
+.in-clinic-monitor-history-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
+.in-clinic-monitor-history-list {
+  display: grid;
+  gap: 6px;
+}
+
+.in-clinic-monitor-history-row {
+  border: 1px solid rgba(38, 34, 96, 0.08);
+  border-radius: 10px;
+  background: rgba(247, 249, 255, 0.65);
+  padding: 6px 8px;
+  display: grid;
+  gap: 2px;
+}
+
+.in-clinic-monitor-history-status {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.in-clinic-monitor-history-meta {
+  font-size: 10px;
+  color: var(--ink-soft);
+}
+
+.in-clinic-monitor-history-empty {
+  font-size: 11px;
+  color: var(--ink-muted);
 }
 
 .in-clinic-monitor-actions {
