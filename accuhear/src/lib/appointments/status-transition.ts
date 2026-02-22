@@ -117,6 +117,12 @@ function parseLifecycleStatus(statusName: string) {
   return STATUS_NAME_TO_LIFECYCLE.get(normalized) ?? null;
 }
 
+export function getAvailableTransitionActionsForStatus(statusName: string): AppointmentTransitionAction[] {
+  const lifecycleStatus = parseLifecycleStatus(statusName);
+  if (!lifecycleStatus) return [];
+  return Array.from(ALLOWED_TRANSITIONS[lifecycleStatus] ?? []);
+}
+
 export function isInClinicTransitionAction(value: string): value is AppointmentTransitionAction {
   return IN_CLINIC_ACTIONS.has(value as AppointmentTransitionAction);
 }
