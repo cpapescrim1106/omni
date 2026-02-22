@@ -13,6 +13,7 @@ Started: 2026-02-22T16:05:00-05:00
 - Schedule UI should load in-clinic actions from `GET /api/appointments/[id]/schedule-context` on menu open and submit transitions to `POST /api/appointments/[id]/schedule-context` instead of patching status IDs directly.
 - Keep monitor card semantics (active filtering, status color tones, wait/in-progress timer math) in a shared helper (`src/lib/appointments/monitor-ui.ts`) so React rendering and tests stay deterministic.
 - Entry-point appointment snapshots (`schedule-context`/`monitor-actions`) are a good place to attach transition history payloads so schedule + monitor UIs can stay refresh-safe without extra client orchestration.
+- Schedule PATCH regression coverage should exercise a non in-clinic target status (for example `Rescheduled`) to assert legacy scheduling updates still bypass transition-audit writes.
 
 ---
 
@@ -78,4 +79,12 @@ Started: 2026-02-22T16:05:00-05:00
 - Added integration coverage for transition history retrieval through endpoint and schedule/monitor snapshots, plus rendering helper tests for deterministic ordering and row formatting.
 - **Files changed:** `src/lib/appointments/transition-history.ts`, `src/lib/appointments/transition-history-query.ts`, `src/app/api/appointments/[id]/history/route.ts`, `src/lib/appointments/status-action-handlers.ts`, `src/lib/appointments/monitor-feed.ts`, `src/components/scheduling/schedule-board.tsx`, `src/components/scheduling/in-clinic-monitor.tsx`, `src/app/globals.css`, `tests/integration/appointment-transition-history.spec.ts`, `tests/integration/appointment-transition-history-ui.spec.ts`, `progress-0c4d86c8-6320-4c6e-9009-c02457c3ef4d.txt`.
 - **Learnings:** Running appointment integration tests with `--test-concurrency=1` avoids race conditions in shared status seed normalization hooks while still validating schedule/monitor regressions.
+---
+## 2026-02-22T17:28:00-05:00 - US-008: Add end-to-end regression coverage for schedule and monitor flows
+- Added integration regression suite (`tests/integration/appointment-schedule-monitor-regression.spec.ts`) that exercises full lifecycle transitions across schedule-context + monitor-action entry points and validates monitor visibility updates from `Scheduled -> Arrived -> In Progress -> Completed`.
+- Added explicit cancellation regression coverage to confirm monitor feed remains active-only and removes appointments transitioned to `Cancelled`.
+- Added schedule PATCH regression coverage to verify non in-clinic schedule updates (e.g. `Rescheduled`) still work with in-clinic features enabled, do not emit transition audit events, and still enforce scheduling conflict checks.
+- Executed build/typecheck path via `npm run build` and ran focused schedule/monitor integration tests (including prior suites) to confirm no regression in schedule behavior.
+- **Files changed:** `tests/integration/appointment-schedule-monitor-regression.spec.ts`, `progress-0c4d86c8-6320-4c6e-9009-c02457c3ef4d.txt`.
+- **Learnings:** Chaining schedule-context + monitor-actions route handlers in a single integration test gives stable end-to-end lifecycle coverage without flaky UI orchestration.
 ---
