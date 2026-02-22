@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
-import { BigSchedule } from "@/components/scheduling/big-schedule";
+import { BigSchedule } from "@/components/scheduling/schedule-board";
 
 export default function SchedulingPage() {
   return (

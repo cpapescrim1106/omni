@@ -13,9 +13,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </div>
         <PatientTabsProvider>
           <GlobalShortcuts />
-          <div className="flex min-w-0 flex-col gap-3">
+          <div className="flex min-h-0 min-w-0 flex-col gap-3">
             <MobileNav />
-            <main className="flex min-h-[calc(100vh-40px)] flex-1 flex-col gap-4">
+            <main className="flex min-h-0 flex-1 flex-col gap-4">
               <div className="xl:hidden">
                 <PatientTabsBar />
               </div>

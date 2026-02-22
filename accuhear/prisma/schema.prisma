@@ -1,0 +1,481 @@
+generator client {
+  provider = "prisma-client-js"
+  }
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Patient {
+  id              String   @id @default(cuid())
+  legacyId        String?  @unique
+  firstName       String
+  lastName        String
+  preferredName   String?
+  dateOfBirth     DateTime?
+  email           String?
+  status          String?
+  providerName    String?
+  location        String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  phones           PhoneNumber[]
+  appointments     Appointment[]
+  journalEntries   JournalEntry[]
+  marketingContacts MarketingContact[]
+  recalls          Recall[]
+  devices          Device[]
+  documents        Document[]
+  payerPolicies    PayerPolicy[]
+  sales            SaleTransaction[]
+  messageThreads   MessageThread[]
+  audiograms       Audiogram[]
+  smsConsents      SmsConsent[]
+
+  @@index([lastName, firstName])
+  @@index([email])
+}
+
+model PhoneNumber {
+  id         String  @id @default(cuid())
+  patientId  String
+  patient    Patient @relation(fields: [patientId], references: [id])
+  type       String
+  number     String
+  normalized String
+  isPrimary  Boolean @default(false)
+
+  @@index([normalized])
+}
+
+model AppointmentType {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  color     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  appointments Appointment[]
+}
+
+model AppointmentStatus {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  appointments   Appointment[]
+  fromTransitions AppointmentStatusTransition[] @relation("AppointmentStatusTransitionFrom")
+  toTransitions  AppointmentStatusTransition[] @relation("AppointmentStatusTransitionTo")
+}
+
+model Appointment {
+  id           String   @id @default(cuid())
+  patientId    String?
+  patient      Patient? @relation(fields: [patientId], references: [id])
+  providerName String
+  location     String
+  referralSource String?
+  typeId       String
+  type         AppointmentType @relation(fields: [typeId], references: [id])
+  statusId     String
+  status       AppointmentStatus @relation(fields: [statusId], references: [id])
+  startTime    DateTime
+  endTime      DateTime
+  notes        String?
+  arrivedAt    DateTime?
+  readyAt      DateTime?
+  inProgressAt DateTime?
+  completedAt  DateTime?
+  cancelledAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  transitions  AppointmentStatusTransition[] @relation("AppointmentStatusTransition")
+  statusEvents AppointmentStatusEvent[]      @relation("AppointmentStatusEvent")
+
+  @@index([providerName, startTime])
+  @@index([patientId])
+  @@index([statusId])
+}
+
+model AppointmentStatusTransition {
+  id            String              @id @default(cuid())
+  appointmentId String
+  fromStatusId  String?
+  toStatusId    String
+  actor         String
+  createdAt     DateTime            @default(now())
+  appointment   Appointment         @relation("AppointmentStatusTransition", fields: [appointmentId], references: [id], onDelete: Cascade)
+  fromStatus    AppointmentStatus?  @relation("AppointmentStatusTransitionFrom", fields: [fromStatusId], references: [id], onDelete: SetNull)
+  toStatus      AppointmentStatus   @relation("AppointmentStatusTransitionTo", fields: [toStatusId], references: [id], onDelete: Restrict)
+
+  @@index([appointmentId])
+  @@index([fromStatusId])
+  @@index([toStatusId])
+  @@index([appointmentId, createdAt])
+}
+
+enum AppointmentLifecycleStatus {
+  Scheduled
+  Arrived
+  ArrivedAndReady @map("Arrived & Ready")
+  Ready
+  InProgress      @map("In Progress")
+  Completed
+  Cancelled
+}
+
+model AppointmentStatusEvent {
+  id            String                    @id @default(cuid())
+  appointmentId String
+  fromStatus    AppointmentLifecycleStatus?
+  toStatus      AppointmentLifecycleStatus
+  actorId       String
+  createdAt     DateTime                  @default(now())
+  appointment   Appointment               @relation("AppointmentStatusEvent", fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([appointmentId])
+  @@index([toStatus])
+  @@index([actorId])
+  @@index([appointmentId, createdAt])
+}
+
+model ProviderSchedule {
+  id          String   @id @default(cuid())
+  providerName String
+  dayOfWeek   Int
+  startMinute Int
+  endMinute   Int
+  isActive    Boolean @default(true)
+  createdAt   DateTime @default(now())
+
+  @@index([providerName, dayOfWeek])
+  @@unique([providerName, dayOfWeek])
+}
+
+model MarketingContact {
+  id           String           @id @default(cuid())
+  patientId    String
+  patient      Patient          @relation(fields: [patientId], references: [id])
+  campaignName String
+  channel      MarketingChannel
+  contactDate  DateTime
+  outcome      MarketingOutcome
+  notes        String?
+  createdBy    String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([patientId, contactDate])
+  @@index([outcome, contactDate])
+}
+
+model RecallRule {
+  id              String             @id @default(cuid())
+  name            String
+  triggerType     RecallTriggerType
+  triggerDays     Int?
+  appointmentType String?
+  messageTemplate String?
+  active          Boolean            @default(true)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  recalls Recall[]
+}
+
+model Recall {
+  id                     String        @id @default(cuid())
+  patientId              String
+  patient                Patient       @relation(fields: [patientId], references: [id])
+  recallRuleId           String
+  recallRule             RecallRule    @relation(fields: [recallRuleId], references: [id])
+  dueDate                DateTime
+  status                 RecallStatus  @default(pending)
+  statusUpdatedAt        DateTime      @default(now())
+  scheduledAppointmentId String?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  @@index([patientId, dueDate])
+  @@index([status, dueDate])
+  @@index([recallRuleId])
+}
+
+enum RecallTriggerType {
+  days_after_visit
+  days_after_purchase
+  annual
+}
+
+enum RecallStatus {
+  pending
+  sent
+  scheduled
+  completed
+  cancelled
+}
+
+enum MarketingChannel {
+  phone
+  email
+  mail
+  walk_in
+  referral
+}
+
+enum MarketingOutcome {
+  no_answer
+  scheduled
+  not_interested
+  callback
+}
+
+model JournalEntry {
+  id        String   @id @default(cuid())
+  patientId String
+  patient   Patient  @relation(fields: [patientId], references: [id])
+  type      String
+  content   String?
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  @@index([patientId, createdAt])
+}
+
+model MessageThread {
+  id        String   @id @default(cuid())
+  patientId String
+  patient   Patient  @relation(fields: [patientId], references: [id])
+  channel   MessageChannel
+  status    MessageThreadStatus @default(open)
+  createdAt DateTime            @default(now())
+  lastSeenAt DateTime           @default(now())
+  // Used for "needs attention" notifications: if an inbound message is newer than lastHandledAt,
+  // the thread will be considered awaiting staff action until replied-to or explicitly marked as read.
+  lastHandledAt DateTime?
+
+  messages Message[]
+
+  @@index([patientId, channel])
+  @@index([status, createdAt])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  threadId  String
+  thread    MessageThread @relation(fields: [threadId], references: [id])
+  direction MessageDirection
+  body      String
+  sentAt    DateTime @default(now())
+  status    MessageStatus
+
+  provider          String?
+  providerMessageId String?
+  fromNumber        String?
+  toNumber          String?
+  statusUpdatedAt   DateTime?
+  deliveredAt       DateTime?
+  failedAt          DateTime?
+  errorCode         String?
+  errorMessage      String?
+  rawPayload        Json?
+
+  @@index([threadId, sentAt])
+  @@index([status, sentAt])
+  @@unique([provider, providerMessageId])
+}
+
+enum MessageChannel {
+  sms
+  email
+}
+
+enum MessageDirection {
+  inbound
+  outbound
+}
+
+enum MessageStatus {
+  queued
+  sent
+  delivered
+  failed
+  received
+}
+
+enum MessageThreadStatus {
+  open
+  closed
+}
+
+model SmsConsent {
+  id        String           @id @default(cuid())
+  patientId String
+  patient   Patient          @relation(fields: [patientId], references: [id])
+  phone     String
+  status    SmsConsentStatus @default(opted_in)
+  updatedAt DateTime         @updatedAt
+  createdAt DateTime         @default(now())
+
+  @@unique([patientId, phone])
+  @@index([phone, status])
+}
+
+enum SmsConsentStatus {
+  opted_in
+  opted_out
+}
+
+model WebhookEvent {
+  id        String             @id @default(cuid())
+  provider  String
+  eventId   String
+  eventType String
+  status    WebhookEventStatus @default(received)
+  attempts  Int                @default(0)
+  lastError String?
+  payload   Json?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@unique([provider, eventId])
+  @@index([status, updatedAt])
+}
+
+enum WebhookEventStatus {
+  received
+  processed
+  failed
+}
+
+model Device {
+  id           String   @id @default(cuid())
+  patientId    String
+  patient      Patient  @relation(fields: [patientId], references: [id])
+  ear          String
+  manufacturer String
+  model        String
+  serial       String
+  warrantyEnd  DateTime
+  status       String
+  createdAt    DateTime @default(now())
+
+  statusHistory DeviceStatusHistory[]
+
+  @@index([patientId])
+  @@index([serial])
+}
+
+model DeviceStatusHistory {
+  id        String   @id @default(cuid())
+  deviceId  String
+  device    Device   @relation(fields: [deviceId], references: [id])
+  status    String
+  changedAt DateTime @default(now())
+  notes     String?
+
+  @@index([deviceId, changedAt])
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  patientId String
+  patient   Patient  @relation(fields: [patientId], references: [id])
+  title     String
+  category  String
+  addedBy   String?
+  fileName  String?
+  contentType String?
+  sizeBytes Int?
+  storageProvider String?
+  storageKey String?
+  createdAt DateTime @default(now())
+
+  @@index([patientId])
+}
+
+model SaleTransaction {
+  id        String   @id @default(cuid())
+  patientId String?
+  patient   Patient? @relation(fields: [patientId], references: [id])
+  txnId     String
+  txnType   String
+  date      DateTime
+  location  String?
+  provider  String?
+  total     Float?
+  createdAt DateTime @default(now())
+
+  lineItems SaleLineItem[]
+  payments  Payment[]
+
+  @@index([patientId])
+  @@index([txnId])
+}
+
+model SaleLineItem {
+  id            String   @id @default(cuid())
+  transactionId String
+  transaction   SaleTransaction @relation(fields: [transactionId], references: [id])
+  item          String
+  cptCode       String?
+  quantity      Int?
+  revenue       Float?
+  discount      Float?
+  tax           Float?
+  serialNumber  String?
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  transactionId String
+  transaction   SaleTransaction @relation(fields: [transactionId], references: [id])
+  amount        Float
+  method        String?
+}
+
+model PayerPolicy {
+  id        String   @id @default(cuid())
+  patientId String
+  patient   Patient  @relation(fields: [patientId], references: [id])
+  payerName String
+  memberId  String?
+  groupId   String?
+  priority  Int?
+
+  @@index([patientId])
+  @@index([payerName])
+  @@unique([patientId, payerName])
+}
+
+model Audiogram {
+  id        String       @id @default(cuid())
+  patientId String
+  patient   Patient      @relation(fields: [patientId], references: [id])
+  ear       AudiogramEar
+  createdAt DateTime     @default(now())
+  notes     String?
+
+  points AudiogramPoint[]
+
+  @@index([patientId, createdAt])
+}
+
+model AudiogramPoint {
+  id          String    @id @default(cuid())
+  audiogramId String
+  audiogram   Audiogram @relation(fields: [audiogramId], references: [id])
+  frequencyHz Int
+  decibel     Int
+
+  @@index([audiogramId])
+}
+
+enum AudiogramEar {
+  L
+  R
+}
