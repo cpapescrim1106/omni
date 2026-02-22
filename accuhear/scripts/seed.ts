@@ -9,14 +9,19 @@ const DATA_DIR = path.resolve(process.cwd(), "..", "data");
 const DAILY_SCHEDULE_FILE = "dailyschedule.csv";
 const IMPORT_TAG = "[Imported schedule]";
 const SAMPLE_TAG = "Seeded schedule";
-export const SEED_BASELINE_STATUSES = [
-  "Scheduled",
+
+export const IN_CLINIC_STATUSES = [
   "Arrived",
   "Arrived & Ready",
   "Ready",
   "In Progress",
   "Completed",
   "Cancelled",
+] as const;
+
+export const SEED_BASELINE_STATUSES = [
+  "Scheduled",
+  ...IN_CLINIC_STATUSES,
   "No-show",
   "Rescheduled",
 ];
@@ -109,6 +114,13 @@ export function normalizeStatusName(value?: string) {
   const normalized = trimmed.replace(/[-_]/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
 
   if (normalized === "canceled" || normalized === "cancelled") return "Cancelled";
+  if (
+    normalized === "arrived and ready" ||
+    normalized === "arrived & ready" ||
+    normalized === "arrived ready"
+  ) {
+    return "Arrived & Ready";
+  }
   if (normalized === "in progress" || normalized === "inprogress") return "In Progress";
   if (normalized === "no-show" || normalized === "no show" || normalized === "noshow") return "No show";
 

@@ -1,0 +1,20 @@
+# Progress Log
+Run: 0c4d86c8-6320-4c6e-9009-c02457c3ef4d
+Task: Build In-clinic monitoring in Omni (Blueprint page 582123521)
+Started: 2026-02-22T16:05:00-05:00
+
+## Codebase Patterns
+- Prisma schema is source-of-truth at `prisma/schema.prisma`; run `npx prisma validate` after schema edits.
+- Story-level schema migrations are stored in `prisma/migrations/<timestamp>_<name>/migration.sql`.
+- Seed normalization helpers live in `scripts/seed.ts`; baseline statuses should be centralized there and reused by tests.
+
+---
+
+## 2026-02-22T16:20:00-05:00 - US-001: Add in-clinic status schema and transition audit storage
+- Added in-clinic lifecycle timestamps to `Appointment`: `arrivedAt`, `readyAt`, `inProgressAt`, `completedAt`, `cancelledAt`.
+- Added `AppointmentLifecycleStatus` enum and new `AppointmentStatusEvent` audit model with `appointmentId`, `fromStatus`, `toStatus`, `actorId`, and `createdAt`.
+- Added a Prisma SQL migration to create enum + event table and alter appointment timestamp columns.
+- Extended seed status normalization to canonicalize "Arrived and Ready" to "Arrived & Ready" and exported `IN_CLINIC_STATUSES` for reusable status guarantees.
+- Expanded integration tests to validate canonical statuses, schema contract, and migration SQL contract for lifecycle/audit storage.
+- **Learnings:** Existing repository has unrelated typecheck/build failures from in-progress scanner work; schema-specific validation and focused integration tests are reliable for this story.
+---

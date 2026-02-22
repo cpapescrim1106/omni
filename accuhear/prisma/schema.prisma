@@ -72,23 +72,29 @@ model AppointmentStatus {
 }
 
 model Appointment {
-  id         String   @id @default(cuid())
-  patientId  String?
-  patient    Patient? @relation(fields: [patientId], references: [id])
+  id           String   @id @default(cuid())
+  patientId    String?
+  patient      Patient? @relation(fields: [patientId], references: [id])
   providerName String
-  location   String
+  location     String
   referralSource String?
-  typeId     String
-  type       AppointmentType @relation(fields: [typeId], references: [id])
-  statusId   String
-  status     AppointmentStatus @relation(fields: [statusId], references: [id])
-  startTime  DateTime
-  endTime    DateTime
-  notes      String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  typeId       String
+  type         AppointmentType @relation(fields: [typeId], references: [id])
+  statusId     String
+  status       AppointmentStatus @relation(fields: [statusId], references: [id])
+  startTime    DateTime
+  endTime      DateTime
+  notes        String?
+  arrivedAt    DateTime?
+  readyAt      DateTime?
+  inProgressAt DateTime?
+  completedAt  DateTime?
+  cancelledAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  transitions AppointmentStatusTransition[] @relation("AppointmentStatusTransition")
+  transitions  AppointmentStatusTransition[] @relation("AppointmentStatusTransition")
+  statusEvents AppointmentStatusEvent[]      @relation("AppointmentStatusEvent")
 
   @@index([providerName, startTime])
   @@index([patientId])
@@ -109,6 +115,31 @@ model AppointmentStatusTransition {
   @@index([appointmentId])
   @@index([fromStatusId])
   @@index([toStatusId])
+  @@index([appointmentId, createdAt])
+}
+
+enum AppointmentLifecycleStatus {
+  Scheduled
+  Arrived
+  ArrivedAndReady @map("Arrived & Ready")
+  Ready
+  InProgress      @map("In Progress")
+  Completed
+  Cancelled
+}
+
+model AppointmentStatusEvent {
+  id            String                    @id @default(cuid())
+  appointmentId String
+  fromStatus    AppointmentLifecycleStatus?
+  toStatus      AppointmentLifecycleStatus
+  actorId       String
+  createdAt     DateTime                  @default(now())
+  appointment   Appointment               @relation("AppointmentStatusEvent", fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([appointmentId])
+  @@index([toStatus])
+  @@index([actorId])
   @@index([appointmentId, createdAt])
 }
 
