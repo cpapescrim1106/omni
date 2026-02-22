@@ -9,6 +9,7 @@ Started: 2026-02-22T16:05:00-05:00
 - Seed normalization helpers live in `scripts/seed.ts`; baseline statuses should be centralized there and reused by tests.
 - In-clinic appointment state changes should flow through `src/lib/appointments/status-transition.ts` so guard rules, lifecycle timestamps, and `AppointmentStatusEvent` audit writes remain consistent.
 - Monitor feed filtering + timing derivation should live in `src/lib/appointments/monitor-feed.ts`; API routes should stay thin wrappers around that query service.
+- Entry-point-specific status actions should route through `src/lib/appointments/status-action-handlers.ts` so schedule-context and monitor-list handlers enforce the same transition availability matrix.
 
 ---
 
@@ -36,4 +37,14 @@ Started: 2026-02-22T16:05:00-05:00
 - Added deterministic integration coverage (`tests/integration/appointment-monitor.spec.ts`) for status visibility filtering, timing derivation, and refresh behavior across persisted status transitions (`Scheduled -> Arrived -> In Progress -> Completed`).
 - **Files changed:** `src/lib/appointments/monitor-feed.ts`, `src/app/api/appointments/monitor/route.ts`, `tests/integration/appointment-monitor.spec.ts`, `progress-0c4d86c8-6320-4c6e-9009-c02457c3ef4d.txt`.
 - **Learnings:** Date-only monitor queries should parse `YYYY-MM-DD` into local calendar dates before constructing day boundaries to avoid UTC offset drift in range filtering.
+---
+
+## 2026-02-22T16:40:50-05:00 - US-004: Wire status actions into schedule context and monitor list handlers
+- Added entry-point action handler service (`src/lib/appointments/status-action-handlers.ts`) that centralizes schedule-context and monitor-list availability gates while routing transitions through `transitionAppointmentStatus`.
+- Added schedule-context handlers (`GET/POST /api/appointments/[id]/schedule-context`) with today-only enforcement for transitions and action snapshot responses.
+- Added monitor-list handlers (`GET/POST /api/appointments/[id]/monitor-actions`) with monitor-applicability enforcement for active in-clinic statuses.
+- Exposed shared transition availability helper in `status-transition.ts` so both entry points use the same transition-rule matrix.
+- Added integration coverage (`tests/integration/appointment-action-handlers.spec.ts`) for schedule/monitor action availability parity, today/monitor gate rules, and audit/event writes via both handlers.
+- **Files changed:** `src/lib/appointments/status-transition.ts`, `src/lib/appointments/status-action-handlers.ts`, `src/app/api/appointments/[id]/schedule-context/route.ts`, `src/app/api/appointments/[id]/monitor-actions/route.ts`, `tests/integration/appointment-action-handlers.spec.ts`, `progress-0c4d86c8-6320-4c6e-9009-c02457c3ef4d.txt`.
+- **Learnings:** Deterministic entry-point tests are easiest when handlers accept optional `today`/`now` reference inputs and still default to runtime `new Date()` in production.
 ---
