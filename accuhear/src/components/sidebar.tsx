@@ -10,7 +10,13 @@ type InboxSummary = {
 
 const POLL_MS = 5_000;
 
-const navItems = [
+type NavItem = {
+  label: string;
+  href: string;
+  showsBadge?: boolean;
+};
+
+const navItems: readonly NavItem[] = [
   { label: "Patients", href: "/patients" },
   { label: "Scheduling", href: "/scheduling" },
   { label: "Marketing", href: "/marketing" },
@@ -20,7 +26,7 @@ const navItems = [
   { label: "Sales", href: "/sales" },
   { label: "Documents", href: "/documents" },
   { label: "Settings", href: "/settings" },
-] as const;
+];
 
 function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
