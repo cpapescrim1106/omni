@@ -7,6 +7,7 @@ Started: 2026-02-22T16:05:00-05:00
 - Prisma schema is source-of-truth at `prisma/schema.prisma`; run `npx prisma validate` after schema edits.
 - Story-level schema migrations are stored in `prisma/migrations/<timestamp>_<name>/migration.sql`.
 - Seed normalization helpers live in `scripts/seed.ts`; baseline statuses should be centralized there and reused by tests.
+- In-clinic appointment state changes should flow through `src/lib/appointments/status-transition.ts` so guard rules, lifecycle timestamps, and `AppointmentStatusEvent` audit writes remain consistent.
 
 ---
 
@@ -17,4 +18,13 @@ Started: 2026-02-22T16:05:00-05:00
 - Extended seed status normalization to canonicalize "Arrived and Ready" to "Arrived & Ready" and exported `IN_CLINIC_STATUSES` for reusable status guarantees.
 - Expanded integration tests to validate canonical statuses, schema contract, and migration SQL contract for lifecycle/audit storage.
 - **Learnings:** Existing repository has unrelated typecheck/build failures from in-progress scanner work; schema-specific validation and focused integration tests are reliable for this story.
+---
+
+## 2026-02-22T16:22:47-05:00 - US-002: Implement backend transition engine with guard rules and audit writes
+- Added central transition engine at `src/lib/appointments/status-transition.ts` supporting actions: Arrived, Arrived & Ready, Ready, In Progress, Completed, Cancelled.
+- Encoded guard rules for allowed state progression and enforced Completed/Cancelled as terminal states.
+- Implemented lifecycle timestamp persistence (`arrivedAt`, `readyAt`, `inProgressAt`, `completedAt`, `cancelledAt`) with transactional `AppointmentStatusEvent` audit inserts that capture actor + timestamp.
+- Updated `src/app/api/appointments/[id]/route.ts` to route in-clinic status changes through the transition engine while preserving existing scheduling updates.
+- Added integration coverage in `tests/integration/appointment-status-transition.spec.ts` for transition legality, Arrived/Arrived & Ready timestamp behavior, terminal-state rejection, and audit persistence through API path.
+- **Learnings:** Route-level status updates in this codebase still require provider/start/end payloads; centralizing status-only logic in a dedicated service avoids drift while keeping schedule PATCH flow intact.
 ---

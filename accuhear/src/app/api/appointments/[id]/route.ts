@@ -1,13 +1,51 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { emitEvent } from "@/lib/event-bus";
+import {
+  AppointmentTransitionError,
+  toInClinicTransitionAction,
+  transitionAppointmentStatus,
+} from "@/lib/appointments/status-transition";
+
+type AppointmentPatchBody = {
+  providerName?: string;
+  startTime?: string;
+  endTime?: string;
+  patientId?: string | null;
+  typeId?: string;
+  statusId?: string;
+  notes?: string | null;
+  location?: string;
+  actorId?: string;
+};
+
+function isTerminalStatus(statusName: string) {
+  const normalized = statusName.trim().toLowerCase();
+  return normalized === "completed" || normalized === "cancelled" || normalized === "canceled";
+}
+
+function resolveActorId(request: NextRequest, body: AppointmentPatchBody) {
+  const candidates = [
+    body.actorId,
+    request.headers.get("x-actor-id") ?? undefined,
+    request.headers.get("x-user-id") ?? undefined,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+
+  return "System";
+}
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const body = await request.json();
+  const body = (await request.json()) as AppointmentPatchBody;
   const { providerName, startTime, endTime, patientId, typeId, statusId, notes, location } = body;
 
   if (!providerName || !startTime || !endTime) {
@@ -16,6 +54,9 @@ export async function PATCH(
 
   const start = new Date(startTime);
   const end = new Date(endTime);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+    return NextResponse.json({ error: "Invalid appointment time range" }, { status: 400 });
+  }
 
   const conflict = await prisma.appointment.findFirst({
     where: {
@@ -30,6 +71,54 @@ export async function PATCH(
     return NextResponse.json({ error: "Scheduling conflict" }, { status: 409 });
   }
 
+  const current = await prisma.appointment.findUnique({
+    where: { id },
+    include: { status: true },
+  });
+
+  if (!current) {
+    return NextResponse.json({ error: "Appointment not found" }, { status: 404 });
+  }
+
+  const actorId = resolveActorId(request, body);
+  let statusHandledByTransitionEngine = false;
+
+  if (statusId && statusId !== current.statusId) {
+    if (isTerminalStatus(current.status.name)) {
+      return NextResponse.json(
+        { error: `Appointment is already ${current.status.name} and cannot transition further.` },
+        { status: 409 }
+      );
+    }
+
+    const targetStatus = await prisma.appointmentStatus.findUnique({
+      where: { id: statusId },
+      select: { id: true, name: true },
+    });
+
+    if (!targetStatus) {
+      return NextResponse.json({ error: "Unknown appointment status" }, { status: 400 });
+    }
+
+    const transitionAction = toInClinicTransitionAction(targetStatus.name);
+
+    if (transitionAction) {
+      try {
+        await transitionAppointmentStatus({
+          appointmentId: id,
+          action: transitionAction,
+          actorId,
+        });
+      } catch (error) {
+        if (error instanceof AppointmentTransitionError) {
+          return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
+        }
+        throw error;
+      }
+      statusHandledByTransitionEngine = true;
+    }
+  }
+
   const appointment = await prisma.appointment.update({
     where: { id },
     data: {
@@ -38,7 +127,7 @@ export async function PATCH(
       endTime: end,
       patientId: patientId === "" ? null : patientId ?? undefined,
       typeId: typeId ?? undefined,
-      statusId: statusId ?? undefined,
+      statusId: statusHandledByTransitionEngine ? undefined : statusId ?? undefined,
       location: location ?? undefined,
       notes: notes ?? undefined,
     },
