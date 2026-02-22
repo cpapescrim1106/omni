@@ -42,6 +42,23 @@ const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: "cancelled", label: "Cancelled" },
 ];
 
+type InClinicScheduleAction =
+  | "Arrived"
+  | "Arrived & Ready"
+  | "Ready"
+  | "In Progress"
+  | "Completed"
+  | "Cancelled";
+
+const IN_CLINIC_ACTION_ORDER: InClinicScheduleAction[] = [
+  "Arrived",
+  "Arrived & Ready",
+  "Ready",
+  "In Progress",
+  "Completed",
+  "Cancelled",
+];
+
 type Appointment = {
   id: string;
   providerName: string;
@@ -180,6 +197,14 @@ function formatLocalDateTime(value: dayjs.Dayjs) {
   return value.format("YYYY-MM-DDTHH:mm:ss");
 }
 
+function isInClinicScheduleAction(value: string): value is InClinicScheduleAction {
+  return IN_CLINIC_ACTION_ORDER.includes(value as InClinicScheduleAction);
+}
+
+function toInClinicActionTestId(action: InClinicScheduleAction) {
+  return action.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
 function getColumnMin(totalColumns: number) {
   if (totalColumns >= 15) return 80;
   if (totalColumns >= 10) return 95;
@@ -218,6 +243,13 @@ export function BigSchedule() {
   const [hasAutoFocused, setHasAutoFocused] = useState(false);
   const [actionMenu, setActionMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [actionMenuView, setActionMenuView] = useState<"main" | "status">("main");
+  const [scheduleContextState, setScheduleContextState] = useState<{
+    appointmentId: string;
+    isToday: boolean;
+    availableActions: InClinicScheduleAction[];
+    isLoading: boolean;
+    pendingAction: InClinicScheduleAction | null;
+  } | null>(null);
   const [sidebarSections, setSidebarSections] = useState({
     status: true,
     types: true,
@@ -645,18 +677,24 @@ export function BigSchedule() {
       patientId: actionAppointment.patient?.id ?? null,
     };
   }, [actionAppointment]);
-  const arrivedAndReadyStatus =
-    statusByName.get("ready") ??
-    statusByName.get("arrived") ??
-    statusByName.get("in progress") ??
-    null;
+
+  const scheduleContextActions = useMemo(() => {
+    if (!actionMenu || !scheduleContextState || scheduleContextState.appointmentId !== actionMenu.id) {
+      return [] as InClinicScheduleAction[];
+    }
+
+    const available = new Set(scheduleContextState.availableActions);
+    return IN_CLINIC_ACTION_ORDER.filter((action) => available.has(action));
+  }, [actionMenu, scheduleContextState]);
+
+  const isInClinicActionPending = Boolean(scheduleContextState?.pendingAction);
 
   const openActionMenu = useCallback((appointmentId: string, rect: DOMRect) => {
     const board = scheduleBoardRef.current;
     if (!board) return;
     const boardRect = board.getBoundingClientRect();
     const menuWidth = 240;
-    const menuHeight = 180;
+    const menuHeight = 360;
     const padding = 8;
     let x = rect.right - boardRect.left + 8;
     if (x + menuWidth > boardRect.width - padding) {
@@ -685,6 +723,60 @@ export function BigSchedule() {
     }
   }, [actionMenu]);
 
+  useEffect(() => {
+    if (!actionMenu) {
+      setScheduleContextState(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    const appointmentId = actionMenu.id;
+    setScheduleContextState({
+      appointmentId,
+      isToday: false,
+      availableActions: [],
+      isLoading: true,
+      pendingAction: null,
+    });
+
+    fetch(`/api/appointments/${appointmentId}/schedule-context`, { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error("Unable to load in-clinic actions.");
+        }
+
+        return response.json() as Promise<{
+          isToday?: boolean;
+          availableActions?: string[];
+        }>;
+      })
+      .then((payload) => {
+        setScheduleContextState((current) => {
+          if (!current || current.appointmentId !== appointmentId) return current;
+          const availableActions = (payload.availableActions ?? []).filter(isInClinicScheduleAction);
+          return {
+            appointmentId,
+            isToday: Boolean(payload.isToday),
+            availableActions,
+            isLoading: false,
+            pendingAction: null,
+          };
+        });
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        setScheduleContextState((current) => {
+          if (!current || current.appointmentId !== appointmentId) return current;
+          return {
+            ...current,
+            isLoading: false,
+          };
+        });
+      });
+
+    return () => controller.abort();
+  }, [actionMenu]);
+
   const openPatientFromAppointment = useCallback(
     (appointmentId: string) => {
       const appointment = appointmentMap.get(appointmentId);
@@ -709,6 +801,41 @@ export function BigSchedule() {
       router.push(`/patients/${patientId}?tab=${encodeURIComponent(tab)}`);
     },
     [appointmentMap, router, showError]
+  );
+
+  const runScheduleContextAction = useCallback(
+    async (appointmentId: string, action: InClinicScheduleAction) => {
+      setScheduleContextState((current) => {
+        if (!current || current.appointmentId !== appointmentId) return current;
+        return {
+          ...current,
+          pendingAction: action,
+        };
+      });
+
+      const response = await fetch(`/api/appointments/${appointmentId}/schedule-context`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({ error: "Unable to update in-clinic status." }));
+        showError(payload.error || "Unable to update in-clinic status.");
+        setScheduleContextState((current) => {
+          if (!current || current.appointmentId !== appointmentId) return current;
+          return {
+            ...current,
+            pendingAction: null,
+          };
+        });
+        return;
+      }
+
+      await loadAppointments();
+      setActionMenu(null);
+    },
+    [loadAppointments, showError]
   );
 
   const updateAppointmentStatus = useCallback(
@@ -1645,6 +1772,7 @@ export function BigSchedule() {
               ref={actionMenuRef}
               className="schedule-action-menu"
               role="menu"
+              data-testid="schedule-action-menu"
               style={{ top: actionMenu.y, left: actionMenu.x }}
             >
               <div className="schedule-action-menu-title">{actionMenuSummary.title}</div>
@@ -1652,26 +1780,31 @@ export function BigSchedule() {
               <div className="schedule-action-menu-divider" />
               {actionMenuView === "main" ? (
                 <>
-                  <button
-                    type="button"
-                    className="schedule-action-menu-item"
-                    role="menuitem"
-                    onClick={() => {
-                      if (!arrivedAndReadyStatus) {
-                        showError("No status named Ready or Arrived found.");
-                        setActionMenu(null);
-                        return;
-                      }
-                      void updateAppointmentStatus(
-                        actionMenu.id,
-                        arrivedAndReadyStatus.id,
-                        arrivedAndReadyStatus.name
-                      );
-                      setActionMenu(null);
-                    }}
-                  >
-                    Arrived and Ready
-                  </button>
+                  {scheduleContextState?.isLoading ? (
+                    <div className="schedule-action-menu-item text-[11px] text-ink-soft" data-testid="schedule-in-clinic-loading">
+                      Loading in-clinic actions…
+                    </div>
+                  ) : null}
+                  {!scheduleContextState?.isLoading && scheduleContextState?.isToday && scheduleContextActions.length ? (
+                    <>
+                      {scheduleContextActions.map((action) => (
+                        <button
+                          key={action}
+                          type="button"
+                          className="schedule-action-menu-item"
+                          role="menuitem"
+                          data-testid={`schedule-in-clinic-action-${toInClinicActionTestId(action)}`}
+                          disabled={isInClinicActionPending}
+                          onClick={() => {
+                            void runScheduleContextAction(actionMenu.id, action);
+                          }}
+                        >
+                          {action}
+                        </button>
+                      ))}
+                      <div className="schedule-action-menu-divider" />
+                    </>
+                  ) : null}
                   <button
                     type="button"
                     className="schedule-action-menu-item"
