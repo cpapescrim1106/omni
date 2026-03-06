@@ -1340,19 +1340,6 @@ export function BigSchedule() {
             </button>
             <button
               type="button"
-              onClick={() => {
-                const nextDate = dayjs(viewDate).add(6, "month");
-                setViewDate(nextDate.format(DATE_FORMAT));
-              }}
-              data-testid="schedule-six-months"
-              className="tab-pill bg-surface-2"
-              aria-label="Jump ahead 6 months"
-              title="Jump ahead 6 months"
-            >
-              +6mo
-            </button>
-            <button
-              type="button"
               onClick={() => setViewDate(dayjs().format(DATE_FORMAT))}
               data-testid="schedule-home"
               className="tab-pill bg-surface-2"
@@ -1381,6 +1368,19 @@ export function BigSchedule() {
               className="tab-pill bg-surface-2"
             >
               {">"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const nextDate = dayjs(viewDate).add(6, "month");
+                setViewDate(nextDate.format(DATE_FORMAT));
+              }}
+              data-testid="schedule-six-months"
+              className="tab-pill bg-surface-2"
+              aria-label="Jump ahead 6 months"
+              title="Jump ahead 6 months"
+            >
+              +6mo
             </button>
           </div>
           <div className="flex items-center gap-2">
@@ -1946,7 +1946,9 @@ export function BigSchedule() {
           {viewType === "day" && dayGrid ? (
             <div className="schedule-day-scroll" style={{ height: `${dayGridHeight}px`, flex: "0 0 auto" }}>
               <div className="schedule-day-grid" data-testid="schedule-day-grid" style={dayGridStyles}>
-                <div className="schedule-day-corner" />
+                <div className="schedule-day-corner">
+                  <div className="schedule-day-corner-label">{dayjs(viewDate).format("ddd, MMM D")}</div>
+                </div>
                 {visibleProviders.map((provider, index) => (
                   <div
                     key={`provider-${provider}`}
