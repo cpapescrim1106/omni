@@ -347,4 +347,51 @@ test.describe.serial("Appointment modal", () => {
     await expect(page.getByTestId("appointment-modal-error")).toBeVisible();
     await expect(page.getByTestId("appointment-modal")).toBeVisible();
   });
+
+  test("N/A block allows creating an appointment without selecting a patient", async ({ page, request }) => {
+    const dateValue = getFutureDate();
+    await page.goto(`/scheduling?date=${dateValue}`);
+    await page.getByTestId("new-appointment").click();
+
+    const meta = await getMeta(request);
+    const providerName = meta.providers[0];
+
+    const rangeStart = buildLocalDateTime(dateValue, DAY_START_HOUR, 0);
+    const rangeEnd = buildLocalDateTime(dateValue, DAY_STOP_HOUR, 0);
+    const listResponse = await request.get(
+      `/api/appointments?start=${rangeStart.toISOString()}&end=${rangeEnd.toISOString()}&provider=${encodeURIComponent(
+        providerName
+      )}`
+    );
+    expect(listResponse.ok()).toBeTruthy();
+    const listPayload = await listResponse.json();
+    const slot = findFreeSlot(listPayload.appointments || [], dateValue);
+    expect(slot.hasConflict).toBeFalsy();
+
+    await page.getByTestId("appointment-na-block").check();
+    await page.getByTestId("appointment-provider").selectOption({ label: providerName });
+    await page.getByTestId("appointment-type").selectOption(meta.types[0].id);
+    await page.getByTestId("appointment-status").selectOption(
+      meta.statuses.find((status) => status.name === "Scheduled")?.id ?? meta.statuses[0].id
+    );
+    await page.getByTestId("appointment-start-time").fill(slot.timeLabel);
+    await page.getByTestId("appointment-end-time").fill(toTimeLabel(slot.end));
+    await page.getByTestId("appointment-notes").fill(`${e2eTag} blocked slot`);
+
+    await page.getByTestId("appointment-submit").click();
+    await expect(page.getByTestId("appointment-modal")).toHaveCount(0);
+
+    const verifyResponse = await request.get(
+      `/api/appointments?start=${slot.start.toISOString()}&end=${slot.end.toISOString()}&provider=${encodeURIComponent(
+        providerName
+      )}`
+    );
+    expect(verifyResponse.ok()).toBeTruthy();
+    const verifyPayload = await verifyResponse.json();
+    const created = verifyPayload.appointments.find(
+      (appt: { notes?: string | null; patient?: { id: string } | null }) => appt.notes === `${e2eTag} blocked slot`
+    );
+    expect(created).toBeTruthy();
+    expect(created.patient ?? null).toBeNull();
+  });
 });

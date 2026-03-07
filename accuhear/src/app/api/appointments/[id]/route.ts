@@ -6,6 +6,7 @@ import {
   toInClinicTransitionAction,
   transitionAppointmentStatus,
 } from "@/lib/appointments/status-transition";
+import { normalizeProviderName } from "@/lib/provider-names";
 
 type AppointmentPatchBody = {
   providerName?: string;
@@ -47,8 +48,9 @@ export async function PATCH(
   const { id } = await params;
   const body = (await request.json()) as AppointmentPatchBody;
   const { providerName, startTime, endTime, patientId, typeId, statusId, notes, location } = body;
+  const normalizedProviderName = normalizeProviderName(providerName);
 
-  if (!providerName || !startTime || !endTime) {
+  if (!normalizedProviderName || !startTime || !endTime) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
@@ -61,7 +63,7 @@ export async function PATCH(
   const conflict = await prisma.appointment.findFirst({
     where: {
       id: { not: id },
-      providerName,
+      providerName: normalizedProviderName,
       startTime: { lt: end },
       endTime: { gt: start },
     },
@@ -122,7 +124,7 @@ export async function PATCH(
   const appointment = await prisma.appointment.update({
     where: { id },
     data: {
-      providerName,
+      providerName: normalizedProviderName,
       startTime: start,
       endTime: end,
       patientId: patientId === "" ? null : patientId ?? undefined,
@@ -141,4 +143,28 @@ export async function PATCH(
   emitEvent({ kind: "appointment", action: "updated", id: appointment.id });
 
   return NextResponse.json({ appointment });
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+
+  const current = await prisma.appointment.findUnique({
+    where: { id },
+    select: { id: true },
+  });
+
+  if (!current) {
+    return NextResponse.json({ error: "Appointment not found" }, { status: 404 });
+  }
+
+  await prisma.appointment.delete({
+    where: { id },
+  });
+
+  emitEvent({ kind: "appointment", action: "deleted", id });
+
+  return NextResponse.json({ ok: true });
 }

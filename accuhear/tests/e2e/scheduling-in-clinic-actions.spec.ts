@@ -209,4 +209,35 @@ test.describe.serial("Scheduling in-clinic context menu", () => {
     await expect(page.locator('[data-testid^="schedule-in-clinic-action-"]')).toHaveCount(0);
     await expect(page.getByRole("menuitem", { name: "Edit" })).toBeVisible();
   });
+
+  test("appointments can be permanently deleted from the action menu after confirmation", async ({ page }) => {
+    const tomorrow = dayjs().add(1, "day").format("YYYY-MM-DD");
+    const appointmentId = await createAppointmentOnDate({ date: tomorrow, suffix: "delete" });
+
+    await page.goto(`/scheduling?date=${tomorrow}`);
+    await page.getByTestId("schedule-day").click();
+    await expect(page.getByTestId("schedule-day-grid")).toBeVisible({ timeout: 15000 });
+    await openAppointmentMenu(page, appointmentId);
+
+    page.once("dialog", async (dialog) => {
+      expect(dialog.message()).toContain("permanently delete this appointment");
+      expect(dialog.message()).toContain("Archiving or cancelling is often a better option");
+      await dialog.accept();
+    });
+
+    const deleteResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes(`/api/appointments/${appointmentId}`) &&
+        response.request().method() === "DELETE" &&
+        response.status() === 200
+    );
+
+    await page.getByTestId("schedule-delete-appointment").click();
+    await expect(deleteResponse).resolves.toBeTruthy();
+
+    await expect(page.locator(`[data-appointment-id="${appointmentId}"]`)).toHaveCount(0);
+
+    const deleted = await prisma.appointment.findUnique({ where: { id: appointmentId } });
+    expect(deleted).toBeNull();
+  });
 });

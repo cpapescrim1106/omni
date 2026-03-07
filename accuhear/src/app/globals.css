@@ -762,6 +762,16 @@ a {
   margin-top: 16px;
 }
 
+.appointment-submit-button {
+  border: 0;
+  border-radius: 999px;
+  background: var(--brand-ink);
+  color: #fff;
+  padding: 8px 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .appointment-modal-error {
   margin-bottom: 12px;
   padding: 10px 12px;

@@ -499,7 +499,7 @@ test.describe.serial("Scheduling calendar", () => {
     await expect(page.getByText(created.providerName)).toBeVisible();
   });
 
-  test("double click creates appointment in day view", async ({ page, request }) => {
+  test("double click opens the appointment modal in day view instead of immediately creating", async ({ page, request }) => {
     await page.goto("/scheduling");
     await page.getByTestId("schedule-day").click();
     await expect(page.getByTestId("schedule-day-grid")).toBeVisible();
@@ -526,19 +526,13 @@ test.describe.serial("Scheduling calendar", () => {
       `.schedule-day-cell[data-provider="${provider}"][data-date="${date}"][data-time="${slot.timeLabel}"]`
     );
     await expect(targetCell.first()).toBeVisible();
-    const beforeCount = await page.getByTestId("schedule-event").count();
 
-    await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response.url().includes("/api/appointments") &&
-          response.request().method() === "POST" &&
-          response.ok()
-      ),
-      targetCell.first().dblclick(),
-    ]);
+    await targetCell.first().dblclick();
 
-    await expect(page.getByTestId("schedule-event")).toHaveCount(beforeCount + 1);
+    await expect(page.getByTestId("appointment-modal")).toBeVisible();
+    await expect(page.getByTestId("appointment-provider")).toHaveValue(provider);
+    await expect(page.getByTestId("appointment-date")).toHaveValue(date);
+    await expect(page.getByTestId("appointment-start-time")).toHaveValue(slot.timeLabel);
   });
 
   test("drag and drop moves appointment to a new time slot", async ({ page, request }) => {

@@ -11,6 +11,7 @@ import {
   formatTransitionHistoryStatus,
   type AppointmentTransitionHistoryItem,
 } from "@/lib/appointments/transition-history";
+import { normalizeProviderName } from "@/lib/provider-names";
 
 const DATE_FORMAT = "YYYY-MM-DD";
 
@@ -23,7 +24,6 @@ const WEEK_HEADER_HEIGHT = 32;
 const WEEK_PROVIDER_HEIGHT = 28;
 const TIME_COLUMN_WIDTH = 80;
 
-const fallbackProviders = ["Chris Pape", "C + C, SHD"];
 const providerShortNames: Record<string, string> = {
   "Chris Pape": "Chris",
   "Pape, Chris": "Chris",
@@ -109,6 +109,7 @@ type PatientSearchResult = {
 type AppointmentFormState = {
   patientId: string;
   patientName: string;
+  isNaBlock: boolean;
   date: string;
   startTime: string;
   endTime: string;
@@ -255,12 +256,13 @@ export function BigSchedule() {
   const [viewDate, setViewDate] = useState(dayjs().format(DATE_FORMAT));
   const [viewType, setViewType] = useState<ScheduleView>("week");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [selectedProviders, setSelectedProviders] = useState<string[]>(fallbackProviders);
+  const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [colorByType, setColorByType] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState<StatusFilter>("all");
   const [hasSynced, setHasSynced] = useState(false);
   const [hasExplicitDate, setHasExplicitDate] = useState(false);
+  const [hasExplicitProviders, setHasExplicitProviders] = useState(false);
   const [hasAutoFocused, setHasAutoFocused] = useState(false);
   const [actionMenu, setActionMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [actionMenuView, setActionMenuView] = useState<"main" | "status">("main");
@@ -328,8 +330,9 @@ export function BigSchedule() {
     if (hasSynced) return;
     const dateParam = normalizeDateParam(searchParams.get("date"));
     const statusParam = normalizeStatusParam(searchParams.get("status"));
-    const providerParams = searchParams.getAll("provider");
+    const providerParams = searchParams.getAll("provider").map(normalizeProviderName);
     setHasExplicitDate(Boolean(dateParam));
+    setHasExplicitProviders(providerParams.length > 0);
     if (dateParam) setViewDate(dateParam);
     setSelectedStatus(statusParam);
     if (providerParams.length) setSelectedProviders(providerParams);
@@ -344,8 +347,7 @@ export function BigSchedule() {
   }, []);
 
   const providers = useMemo(() => {
-    const list = meta?.providers?.length ? meta.providers : fallbackProviders;
-    return orderProviders(list);
+    return orderProviders(meta?.providers ?? []);
   }, [meta]);
 
   useEffect(() => {
@@ -366,11 +368,12 @@ export function BigSchedule() {
   useEffect(() => {
     if (!providers.length) return;
     setSelectedProviders((current) => {
+      if (!hasExplicitProviders) return providers;
       if (!current.length) return providers;
-      const filtered = current.filter((provider) => providers.includes(provider));
+      const filtered = current.map(normalizeProviderName).filter((provider) => providers.includes(provider));
       return filtered.length ? filtered : providers;
     });
-  }, [providers]);
+  }, [hasExplicitProviders, providers]);
 
   useEffect(() => {
     if (!meta?.types?.length) return;
@@ -516,6 +519,7 @@ export function BigSchedule() {
     return {
       patientId: "",
       patientName: "",
+      isNaBlock: false,
       date: baseDate,
       startTime: start,
       endTime: end,
@@ -594,6 +598,7 @@ export function BigSchedule() {
       setFormState({
         patientId: appointment.patient?.id ?? "",
         patientName,
+        isNaBlock: !appointment.patient?.id,
         date: start.format("YYYY-MM-DD"),
         startTime: start.format("HH:mm"),
         endTime: end.format("HH:mm"),
@@ -609,6 +614,29 @@ export function BigSchedule() {
       setActionMenu(null);
     },
     [appointments, defaultStatusId, defaultTypeId]
+  );
+
+  const openNewModalForSlot = useCallback(
+    (payload: { date: string; time: string; provider: string }) => {
+      const [hour, minute] = payload.time.split(":").map((value) => Number(value));
+      const start = dayjs(payload.date).hour(hour).minute(minute).second(0);
+      const end = start.add(SLOT_MINUTES, "minute");
+
+      setEditingId(null);
+      setFormState({
+        ...buildDefaultForm(),
+        date: payload.date,
+        startTime: start.format("HH:mm"),
+        endTime: end.format("HH:mm"),
+        providerName: payload.provider,
+      });
+      setPatientQuery("");
+      setPatientResults([]);
+      setModalError(null);
+      setIsModalOpen(true);
+      setActionMenu(null);
+    },
+    [buildDefaultForm]
   );
 
   const closeModal = useCallback(() => {
@@ -906,6 +934,30 @@ export function BigSchedule() {
     [appointmentMap, appointments, loadAppointments, showError]
   );
 
+  const deleteAppointment = useCallback(
+    async (appointmentId: string) => {
+      const confirmed = window.confirm(
+        "Are you sure you want to permanently delete this appointment and remove it from the database?\n\nArchiving or cancelling is often a better option."
+      );
+      if (!confirmed) return;
+
+      const response = await fetch(`/api/appointments/${appointmentId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({ error: "Unable to delete appointment." }));
+        showError(payload.error || "Unable to delete appointment.");
+        return;
+      }
+
+      setPinnedAppointmentId((current) => (current === appointmentId ? null : current));
+      setActionMenu(null);
+      await loadAppointments();
+    },
+    [loadAppointments, showError]
+  );
+
   const dayGrid = useMemo(() => {
     if (viewType !== "day") return null;
     if (!visibleProviders.length) return null;
@@ -1056,34 +1108,6 @@ export function BigSchedule() {
     await loadAppointments();
   }
 
-  async function createAppointment(providerName: string, startTime: dayjs.Dayjs, endTime: dayjs.Dayjs) {
-    if (!meta) return;
-    const statusId = meta.statuses.find((status) => status.name === "Scheduled")?.id || meta.statuses[0]?.id;
-    const typeId = meta.types[0]?.id;
-    if (!statusId || !typeId) return;
-
-    const response = await fetch("/api/appointments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        providerName,
-        location: "SHD",
-        typeId,
-        statusId,
-        startTime: formatLocalDateTime(startTime),
-        endTime: formatLocalDateTime(endTime),
-      }),
-    });
-
-    if (!response.ok) {
-      const payload = await response.json();
-      showError(payload.error || "Conflict detected");
-      return;
-    }
-
-    await loadAppointments();
-  }
-
   function handleDragStart(event: React.DragEvent<HTMLDivElement>, appointmentId: string) {
     if (isResizingRef.current) {
       event.preventDefault();
@@ -1137,10 +1161,7 @@ export function BigSchedule() {
   }
 
   async function handleCreate(payload: { date: string; time: string; provider: string }) {
-    const [hour, minute] = payload.time.split(":").map((value) => Number(value));
-    const base = dayjs(payload.date).hour(hour).minute(minute).second(0);
-    const end = base.add(SLOT_MINUTES, "minute");
-    await createAppointment(payload.provider, base, end);
+    openNewModalForSlot(payload);
   }
 
   async function hasConflict(
@@ -1176,7 +1197,6 @@ export function BigSchedule() {
     setToastMessage(null);
 
     const requiredMissing =
-      !formState.patientId ||
       !formState.date ||
       !formState.startTime ||
       !formState.endTime ||
@@ -1185,6 +1205,11 @@ export function BigSchedule() {
       !formState.statusId;
     if (requiredMissing) {
       setModalError("Please complete all required fields.");
+      return;
+    }
+
+    if (!formState.patientId && !formState.isNaBlock) {
+      setModalError("Select a patient or check N/A block.");
       return;
     }
 
@@ -1209,7 +1234,7 @@ export function BigSchedule() {
       typeId: formState.typeId,
       statusId: formState.statusId,
       notes: formState.notes,
-      patientId: formState.patientId,
+      patientId: formState.isNaBlock ? "" : formState.patientId,
       location: "SHD",
     };
 
@@ -1241,6 +1266,7 @@ export function BigSchedule() {
       current
         ? {
             ...current,
+            isNaBlock: false,
             patientId: "",
             patientName: "",
           }
@@ -1254,6 +1280,7 @@ export function BigSchedule() {
       current
         ? {
             ...current,
+            isNaBlock: false,
             patientId: patient.id,
             patientName: name,
           }
@@ -1310,8 +1337,6 @@ export function BigSchedule() {
   }
 
   const sidebarTypes = meta?.types ?? [];
-  const rangeStart = meta?.rangeStart ? dayjs(meta.rangeStart) : null;
-  const rangeEnd = meta?.rangeEnd ? dayjs(meta.rangeEnd) : null;
   const dayGridHeight = dayGrid ? DAY_HEADER_HEIGHT + dayGrid.slotCount * DAY_ROW_HEIGHT : 0;
   const weekGridHeight = weekGrid
     ? WEEK_HEADER_HEIGHT + WEEK_PROVIDER_HEIGHT + weekGrid.slots.slotCount * DAY_ROW_HEIGHT
@@ -1455,7 +1480,32 @@ export function BigSchedule() {
               <div className="appointment-field">
                 <div className="flex items-center justify-between gap-3">
                   <label className="appointment-label">Patient</label>
-                  <div className="flex items-center gap-2 text-xs text-ink-muted">
+                  <div className="flex items-center gap-3 text-xs text-ink-muted">
+                    <label className="flex items-center gap-2 whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        data-testid="appointment-na-block"
+                        checked={formState.isNaBlock}
+                        onChange={(event) => {
+                          const checked = event.target.checked;
+                          setFormState((current) =>
+                            current
+                              ? {
+                                  ...current,
+                                  isNaBlock: checked,
+                                  patientId: checked ? "" : current.patientId,
+                                  patientName: checked ? "" : current.patientName,
+                                }
+                              : current
+                          );
+                          if (checked) {
+                            setPatientQuery("");
+                            setPatientResults([]);
+                          }
+                        }}
+                      />
+                      N/A block
+                    </label>
                     <button
                       type="button"
                       onClick={() => setPatientStatusFilter("active")}
@@ -1475,13 +1525,17 @@ export function BigSchedule() {
                 <input
                   data-testid="appointment-patient-search"
                   value={patientQuery}
-                  required
+                  required={!formState.isNaBlock}
+                  disabled={formState.isNaBlock}
                   placeholder="Name, phone, DOB (MM/DD/YYYY), serial #"
                   onChange={(event) => handlePatientQueryChange(event.target.value)}
                   className="appointment-input"
                 />
-                {patientLoading ? <div className="appointment-hint">Searching…</div> : null}
-                {patientResults.length ? (
+                {formState.isNaBlock ? (
+                  <div className="appointment-hint">This slot will be saved without a patient attached.</div>
+                ) : null}
+                {patientLoading && !formState.isNaBlock ? <div className="appointment-hint">Searching…</div> : null}
+                {patientResults.length && !formState.isNaBlock ? (
                   <div className="appointment-patient-results">
                     {patientResults.map((patient) => (
                       <button
@@ -1640,7 +1694,7 @@ export function BigSchedule() {
               <button
                 type="button"
                 data-testid="appointment-submit"
-                className="rounded-full bg-brand-ink px-5 py-2 text-xs font-semibold text-white"
+                className="appointment-submit-button"
                 onClick={handleModalSubmit}
               >
                 {editingId ? "Save changes" : "Create appointment"}
@@ -1905,6 +1959,17 @@ export function BigSchedule() {
                     }}
                   >
                     Patient Details
+                  </button>
+                  <button
+                    type="button"
+                    className="schedule-action-menu-item"
+                    role="menuitem"
+                    data-testid="schedule-delete-appointment"
+                    onClick={() => {
+                      void deleteAppointment(actionMenu.id);
+                    }}
+                  >
+                    Delete appointment
                   </button>
                   <button
                     type="button"
