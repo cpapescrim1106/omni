@@ -133,7 +133,13 @@ export function PatientSearch() {
           <div className="section-title text-xs text-brand-ink">Patient Search</div>
           <div className="text-sm text-ink-muted">Find patients instantly without losing context.</div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            href={query.trim() ? `/patients/new?query=${encodeURIComponent(query.trim())}` : "/patients/new"}
+            className="rounded-full border border-transparent bg-brand-orange/10 px-4 py-2 text-xs font-semibold text-brand-ink"
+          >
+            New patient
+          </Link>
           {sampleStats.map((stat) => (
             <div key={stat.label} className="rounded-2xl bg-surface-1 px-4 py-2 text-xs">
               <div className="text-ink-soft">{stat.label}</div>
@@ -197,6 +203,14 @@ export function PatientSearch() {
         {results.length === 0 && query ? (
           <div className="rounded-2xl border border-dashed border-surface-3 bg-white/60 p-6 text-sm text-ink-muted">
             No matches yet. Try phone, DOB (MM/DD/YYYY), legacy ID, payer name, or serial number.
+            <div className="mt-3">
+              <Link
+                href={`/patients/new?query=${encodeURIComponent(query.trim())}`}
+                className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-ink"
+              >
+                Create a new patient instead
+              </Link>
+            </div>
           </div>
         ) : null}
 

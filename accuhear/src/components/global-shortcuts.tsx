@@ -21,6 +21,7 @@ export function GlobalShortcuts() {
 
   const shortcuts = [
     { keys: ["P", "P"], label: "Patient search" },
+    { keys: ["P", "N"], label: "New patient" },
     { keys: ["P", "S"], label: "Scheduling" },
     { keys: ["P", "M"], label: "Marketing" },
     { keys: ["P", "R"], label: "Recalls" },
@@ -81,6 +82,17 @@ export function GlobalShortcuts() {
           lastKeyRef.current = null;
           if (pathname !== "/scheduling") {
             router.push("/scheduling");
+          }
+          return;
+        }
+      }
+
+      if (key === "n") {
+        if (last?.key === "p" && withinSequence) {
+          event.preventDefault();
+          lastKeyRef.current = null;
+          if (pathname !== "/patients/new") {
+            router.push("/patients/new");
           }
           return;
         }

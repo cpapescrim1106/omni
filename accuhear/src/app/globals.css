@@ -139,6 +139,29 @@ a {
   color: var(--brand-ink);
 }
 
+.input {
+  width: 100%;
+  border: 1px solid rgba(38, 34, 96, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.88);
+  padding: 12px 14px;
+  font-size: 14px;
+  color: var(--ink-strong);
+  outline: none;
+  box-shadow: 0 6px 14px rgba(24, 20, 50, 0.05);
+}
+
+.input::placeholder {
+  color: var(--ink-soft);
+}
+
+.input:focus {
+  border-color: rgba(31, 149, 184, 0.45);
+  box-shadow:
+    0 0 0 3px rgba(31, 149, 184, 0.14),
+    0 6px 14px rgba(24, 20, 50, 0.05);
+}
+
 .patient-search-result[data-active="true"] {
   border-color: rgba(31, 149, 184, 0.6);
   background: #ffffff;
