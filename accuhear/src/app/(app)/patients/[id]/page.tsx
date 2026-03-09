@@ -92,42 +92,93 @@ export default async function PatientProfilePage({
       <section className="card p-4">
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
           <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-blue/15 text-base font-semibold text-brand-ink">
+            {/* Avatar: 36px circle, brand gradient, Space Grotesk bold */}
+            <div
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white"
+              style={{
+                background: "linear-gradient(135deg, var(--brand-blue), var(--brand-ink))",
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontWeight: 700,
+                fontSize: 14,
+              }}
+            >
               {patient.firstName.charAt(0)}
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <div className="truncate text-lg font-semibold text-ink-strong">
+                {/* Patient name: Space Grotesk 700 16px ink-strong */}
+                <div
+                  className="truncate"
+                  style={{
+                    fontFamily: "'Space Grotesk', sans-serif",
+                    fontWeight: 700,
+                    fontSize: 16,
+                    color: "var(--ink-strong)",
+                  }}
+                >
                   {patient.lastName}, {patient.firstName}
                 </div>
                 <PurchaseButton patientId={patient.id} />
               </div>
-              <div className="text-xs text-ink-muted">
+              {/* Info row: 12px ink-muted */}
+              <div style={{ fontSize: 12, color: "var(--ink-muted)" }}>
                 {patient.dateOfBirth
                   ? dayjs(patient.dateOfBirth).format("MM/DD/YYYY")
                   : "—"}{" "}
-                {age ? `· ${age}` : ""}
+                {age ? (
+                  <>
+                    <span style={{ color: "var(--ink-soft)", margin: "0 4px" }}>|</span>
+                    {age}
+                  </>
+                ) : ""}
               </div>
+              {/* Phone badges */}
               <div className="mt-2 flex flex-wrap gap-2">
                 {phoneButtons.slice(0, 2).map((phone) => (
                   <span
                     key={`${phone.label}-${phone.number}`}
-                    className="rounded-full bg-success px-2.5 py-1 text-[11px] font-semibold text-white"
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 600,
+                      padding: "2px 8px",
+                      borderRadius: 999,
+                      background: "rgba(30,155,108,0.1)",
+                      color: "var(--success)",
+                    }}
                   >
                     {phone.number}
                   </span>
                 ))}
               </div>
 
+              {/* Provider / location badges */}
               {patient.providerName || patient.location ? (
                 <div className="mt-2 flex flex-wrap gap-2">
                   {patient.providerName ? (
-                    <span className="rounded-full bg-brand-blue/10 px-2.5 py-1 text-[11px] font-semibold text-brand-ink">
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 600,
+                        padding: "2px 8px",
+                        borderRadius: 999,
+                        background: "rgba(31,149,184,0.1)",
+                        color: "var(--brand-blue)",
+                      }}
+                    >
                       {patient.providerName}
                     </span>
                   ) : null}
                   {patient.location ? (
-                    <span className="rounded-full bg-brand-blue/10 px-2.5 py-1 text-[11px] font-semibold text-brand-ink">
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 600,
+                        padding: "2px 8px",
+                        borderRadius: 999,
+                        background: "rgba(31,149,184,0.1)",
+                        color: "var(--brand-blue)",
+                      }}
+                    >
                       {patient.location}
                     </span>
                   ) : null}
@@ -136,37 +187,43 @@ export default async function PatientProfilePage({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 text-xs text-ink-muted">
-            <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/70 px-3 py-2">
-              <span>Balance</span>
-              <span className="rounded-full bg-success px-2.5 py-1 text-[11px] font-semibold text-white">$0.00</span>
-            </div>
-            <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/70 px-3 py-2">
-              <span>Reimb.</span>
-              <span className="rounded-full bg-success px-2.5 py-1 text-[11px] font-semibold text-white">$0.00</span>
-            </div>
-            <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/70 px-3 py-2">
-              <span>Punctuality</span>
-              <span className="rounded-full bg-success px-2.5 py-1 text-[11px] font-semibold text-white">1m early</span>
-            </div>
-            <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/70 px-3 py-2">
-              <span>No-shows</span>
-              <span className="rounded-full bg-success px-2.5 py-1 text-[11px] font-semibold text-white">0%</span>
-            </div>
+          {/* Stats row: compact horizontal flex, no per-stat card */}
+          <div className="flex items-center gap-0 self-center">
+            {[
+              { label: "Balance", value: "$0.00" },
+              { label: "Reimb.", value: "$0.00" },
+              { label: "Punctuality", value: "1m early" },
+              { label: "No-shows", value: "0%" },
+            ].map((stat, i) => (
+              <div key={stat.label} className="flex items-center">
+                {i > 0 && (
+                  <div
+                    className="mx-3 h-6 w-px"
+                    style={{ background: "var(--surface-3)" }}
+                  />
+                )}
+                <div className="flex items-baseline gap-1.5">
+                  <span style={{ fontSize: 11, color: "var(--ink-soft)" }}>{stat.label}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-strong)" }}>{stat.value}</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          {tabs.map((tab) => (
-            <Link
-              key={tab}
-              href={`/patients/${patient.id}?tab=${encodeURIComponent(tab)}`}
-              className="tab-pill !px-3 !py-1.5 text-[11px]"
-              data-active={activeTab === tab}
-            >
-              {tab}
-            </Link>
-          ))}
+        {/* Segmented tab control */}
+        <div className="seg-tabs mt-4">
+          <div className="seg-tabs-inner">
+            {tabs.map((tab) => (
+              <Link
+                key={tab}
+                href={`/patients/${patient.id}?tab=${encodeURIComponent(tab)}`}
+                className={`seg-tab${activeTab === tab ? " active" : ""}`}
+              >
+                {tab}
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -191,15 +248,25 @@ export default async function PatientProfilePage({
       ) : (
         <div className="grid gap-6">
           <section className="card p-4">
-            <div className="section-title text-xs text-brand-ink">Patient context</div>
-            <div className="mt-3 grid gap-2 text-sm text-ink-muted">
-              <div className="rounded-2xl bg-surface-1/70 px-4 py-3">{PLACEHOLDER_ADDRESS}</div>
-              <div className="rounded-2xl bg-brand-blue/10 px-4 py-3 text-brand-ink">
+            <div className="section-title">Patient context</div>
+            <div className="mt-3 grid gap-2 text-sm text-ink">
+              <div>{PLACEHOLDER_ADDRESS}</div>
+              <div>
                 Preferred Name: {patient.preferredName || "—"} · extended warranty exp 1/15/27
               </div>
               <div className="flex flex-wrap gap-2">
                 {(payerTags.length ? payerTags : ["Medicare"]).map((payer) => (
-                  <span key={payer} className="rounded-full bg-brand-blue/10 px-3 py-1 text-xs text-brand-ink">
+                  <span
+                    key={payer}
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 600,
+                      padding: "2px 8px",
+                      borderRadius: 999,
+                      background: "rgba(31,149,184,0.1)",
+                      color: "var(--brand-blue)",
+                    }}
+                  >
                     {payer}
                   </span>
                 ))}
@@ -209,67 +276,70 @@ export default async function PatientProfilePage({
 
           <section className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
           <div className="card p-6">
-            <div className="section-title text-xs text-brand-ink">Appointments</div>
-            <div className="mt-4 overflow-hidden rounded-2xl border border-surface-2 bg-white/80">
-              <div className="grid grid-cols-[1.5fr_1fr_1fr] gap-3 bg-surface-1/60 px-4 py-3 text-[11px] uppercase tracking-[0.2em] text-ink-soft">
-                <span>Appointment date</span>
-                <span>Appointment type</span>
-                <span>Provider</span>
+            <div className="section-title">Appointments</div>
+            {/* Appointments table */}
+            <div className="mt-4 overflow-hidden rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)]">
+              <div className="grid grid-cols-[1.5fr_1fr_1fr]">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft bg-[var(--surface-1)] px-3 py-[6px]">Appointment date</span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft bg-[var(--surface-1)] px-3 py-[6px]">Appointment type</span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft bg-[var(--surface-1)] px-3 py-[6px]">Provider</span>
               </div>
-              {APPOINTMENTS.map((appointment) => (
+              {APPOINTMENTS.map((appointment, i) => (
                 <div
                   key={appointment.date}
-                  className="grid grid-cols-[1.5fr_1fr_1fr] gap-3 border-t border-surface-2 px-4 py-3 text-sm"
+                  className={`grid grid-cols-[1.5fr_1fr_1fr] border-t border-[var(--surface-1)] hover:bg-[rgba(31,149,184,0.04)]${i % 2 === 1 ? " bg-[rgba(243,239,232,0.4)]" : ""}`}
                 >
-                  <span className="text-ink-muted">{appointment.date}</span>
-                  <span className="text-ink-strong">{appointment.type}</span>
-                  <span className="text-ink-muted">{appointment.provider}</span>
+                  <span className="text-[12px] px-3 py-[7px] text-ink-muted">{appointment.date}</span>
+                  <span className="text-[12px] px-3 py-[7px] text-ink-strong">{appointment.type}</span>
+                  <span className="text-[12px] px-3 py-[7px] text-ink-muted">{appointment.provider}</span>
                 </div>
               ))}
             </div>
 
-            <div className="mt-6 rounded-2xl border border-surface-2 bg-white/80">
-              <div className="px-4 py-3 text-xs font-semibold text-ink-muted">
+            {/* Last audiogram table */}
+            <div className="mt-6 overflow-hidden rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)]">
+              <div className="px-3 py-[6px] text-[10px] font-semibold text-ink-muted bg-[var(--surface-1)]">
                 Last audiogram 01/07/2026
               </div>
-              <div className="grid grid-cols-[120px_1fr_1fr_1fr] gap-3 bg-surface-1/60 px-4 py-3 text-[11px] uppercase tracking-[0.2em] text-ink-soft">
-                <span></span>
-                <span>Severity</span>
-                <span>Type</span>
-                <span>Shape</span>
+              <div className="grid grid-cols-[120px_1fr_1fr_1fr]">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft bg-[var(--surface-1)] px-3 py-[6px]"></span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft bg-[var(--surface-1)] px-3 py-[6px]">Severity</span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft bg-[var(--surface-1)] px-3 py-[6px]">Type</span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft bg-[var(--surface-1)] px-3 py-[6px]">Shape</span>
               </div>
-              {LAST_AUDIOGRAM.map((row) => (
+              {LAST_AUDIOGRAM.map((row, i) => (
                 <div
                   key={row.ear}
-                  className="grid grid-cols-[120px_1fr_1fr_1fr] gap-3 border-t border-surface-2 px-4 py-3 text-sm"
+                  className={`grid grid-cols-[120px_1fr_1fr_1fr] border-t border-[var(--surface-1)] hover:bg-[rgba(31,149,184,0.04)]${i % 2 === 1 ? " bg-[rgba(243,239,232,0.4)]" : ""}`}
                 >
-                  <span className="text-ink-muted">{row.ear}</span>
-                  <span className="text-ink-strong">{row.severity}</span>
-                  <span className="text-ink-muted">{row.type}</span>
-                  <span className="text-ink-muted">{row.shape}</span>
+                  <span className="text-[12px] px-3 py-[7px] text-ink-muted">{row.ear}</span>
+                  <span className="text-[12px] px-3 py-[7px] text-ink-strong">{row.severity}</span>
+                  <span className="text-[12px] px-3 py-[7px] text-ink-muted">{row.type}</span>
+                  <span className="text-[12px] px-3 py-[7px] text-ink-muted">{row.shape}</span>
                 </div>
               ))}
             </div>
           </div>
 
           <div className="card p-6">
-            <div className="section-title text-xs text-brand-ink">Current aids</div>
-            <div className="mt-4 overflow-hidden rounded-2xl border border-surface-2 bg-white/80">
-              <div className="grid grid-cols-[1.4fr_1fr_1fr_0.8fr] gap-3 bg-surface-1/60 px-4 py-3 text-[11px] uppercase tracking-[0.2em] text-ink-soft">
-                <span>Model</span>
-                <span>Battery/Notes</span>
-                <span>Purchase date</span>
-                <span>Status</span>
+            <div className="section-title">Current aids</div>
+            {/* Current aids table */}
+            <div className="mt-4 overflow-hidden rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)]">
+              <div className="grid grid-cols-[1.4fr_1fr_1fr_0.8fr]">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft bg-[var(--surface-1)] px-3 py-[6px]">Model</span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft bg-[var(--surface-1)] px-3 py-[6px]">Battery/Notes</span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft bg-[var(--surface-1)] px-3 py-[6px]">Purchase date</span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft bg-[var(--surface-1)] px-3 py-[6px]">Status</span>
               </div>
-              {aidRows.map((row) => (
+              {aidRows.map((row, i) => (
                 <div
                   key={row.model}
-                  className="grid grid-cols-[1.4fr_1fr_1fr_0.8fr] gap-3 border-t border-surface-2 px-4 py-3 text-sm"
+                  className={`grid grid-cols-[1.4fr_1fr_1fr_0.8fr] border-t border-[var(--surface-1)] hover:bg-[rgba(31,149,184,0.04)]${i % 2 === 1 ? " bg-[rgba(243,239,232,0.4)]" : ""}`}
                 >
-                  <span className="text-ink-strong">{row.model}</span>
-                  <span className="text-ink-muted">{row.notes}</span>
-                  <span className="text-ink-muted">{row.purchase}</span>
-                  <span className="text-ink-muted">{row.status}</span>
+                  <span className="text-[12px] px-3 py-[7px] text-ink-strong">{row.model}</span>
+                  <span className="text-[12px] px-3 py-[7px] text-ink-muted">{row.notes}</span>
+                  <span className="text-[12px] px-3 py-[7px] text-ink-muted">{row.purchase}</span>
+                  <span className="text-[12px] px-3 py-[7px] text-ink-muted">{row.status}</span>
                 </div>
               ))}
             </div>

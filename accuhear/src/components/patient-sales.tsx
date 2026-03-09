@@ -292,10 +292,10 @@ export function PatientSales({
   }, [loadSales, returnReason, selectedSale]);
 
   return (
-    <section className="card p-6">
+    <section className="card p-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <div className="section-title text-xs text-brand-ink">Sales history</div>
+          <div className="section-title">Sales history</div>
           <div className="text-sm text-ink-muted">Financial ledger only. Click an invoice to review payments, fulfillment, and agreements.</div>
         </div>
         <button type="button" className="tab-pill bg-brand-blue/10 text-xs text-brand-ink" onClick={() => setShowCreateSale(true)}>
@@ -307,24 +307,24 @@ export function PatientSales({
       {error ? <div className="mt-4 rounded-2xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</div> : null}
 
       {showCreateSale ? (
-        <div className="mt-6 rounded-3xl border border-brand-blue/15 bg-brand-blue/5 p-5" data-testid="direct-sale-panel">
+        <div className="mt-6 rounded-[18px] border border-[rgba(31,149,184,0.15)] bg-[rgba(31,149,184,0.04)] p-4" data-testid="direct-sale-panel">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <div className="text-sm font-semibold text-ink-strong">Direct sale</div>
+              <div className="section-title">Direct sale</div>
               <div className="text-xs text-ink-muted">Use this for consumables, batteries, domes, filters, and service charges.</div>
             </div>
-            <button type="button" className="text-xs text-ink-muted" onClick={() => setShowCreateSale(false)}>
+            <button type="button" className="text-ink-muted rounded-full px-3 py-[6px] text-[11px] font-semibold hover:bg-[var(--surface-2)]" onClick={() => setShowCreateSale(false)}>
               Close
             </button>
           </div>
 
           <div className="mt-4 space-y-3">
             {draftItems.map((item, index) => (
-              <div key={`sale-item-${index}`} className="grid gap-3 rounded-2xl border border-surface-2 bg-white p-4 lg:grid-cols-[1.5fr_0.75fr_auto]">
-                <label className="text-xs text-ink-muted">
+              <div key={`sale-item-${index}`} className="grid gap-3 rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] p-4 lg:grid-cols-[1.5fr_0.75fr_auto]">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
                   Item
                   <select
-                    className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]"
                     value={item.catalogItemId}
                     onChange={(event) =>
                       setDraftItems((current) =>
@@ -342,12 +342,12 @@ export function PatientSales({
                     ))}
                   </select>
                 </label>
-                <label className="text-xs text-ink-muted">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
                   Qty
                   <input
                     type="number"
                     min={1}
-                    className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]"
                     value={item.quantity}
                     onChange={(event) =>
                       setDraftItems((current) =>
@@ -362,7 +362,7 @@ export function PatientSales({
                 </label>
                 <button
                   type="button"
-                  className="self-end rounded-xl border border-surface-3 px-3 py-2 text-xs text-ink-muted"
+                  className="self-end text-ink-muted rounded-full px-3 py-[6px] text-[11px] font-semibold hover:bg-[var(--surface-2)]"
                   disabled={draftItems.length === 1}
                   onClick={() => setDraftItems((current) => current.filter((_, entryIndex) => entryIndex !== index))}
                 >
@@ -373,25 +373,25 @@ export function PatientSales({
           </div>
 
           <div className="mt-4 grid gap-3 lg:grid-cols-2">
-            <label className="text-xs text-ink-muted">
+            <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
               Provider
-              <input className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm" value={draftProvider} onChange={(event) => setDraftProvider(event.target.value)} />
+              <input className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]" value={draftProvider} onChange={(event) => setDraftProvider(event.target.value)} />
             </label>
-            <label className="text-xs text-ink-muted">
+            <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
               Location
-              <input className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm" value={draftLocation} onChange={(event) => setDraftLocation(event.target.value)} />
+              <input className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]" value={draftLocation} onChange={(event) => setDraftLocation(event.target.value)} />
             </label>
-            <label className="text-xs text-ink-muted lg:col-span-2">
+            <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft lg:col-span-2">
               Notes
-              <input className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm" value={draftNotes} onChange={(event) => setDraftNotes(event.target.value)} />
+              <input className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]" value={draftNotes} onChange={(event) => setDraftNotes(event.target.value)} />
             </label>
-            <label className="text-xs text-ink-muted">
+            <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
               Initial payment
-              <input className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm" value={draftPaymentAmount} onChange={(event) => setDraftPaymentAmount(event.target.value)} placeholder="Optional" />
+              <input className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]" value={draftPaymentAmount} onChange={(event) => setDraftPaymentAmount(event.target.value)} placeholder="Optional" />
             </label>
-            <label className="text-xs text-ink-muted">
+            <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
               Payment method
-              <input className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm" value={draftPaymentMethod} onChange={(event) => setDraftPaymentMethod(event.target.value)} />
+              <input className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]" value={draftPaymentMethod} onChange={(event) => setDraftPaymentMethod(event.target.value)} />
             </label>
           </div>
 
@@ -404,7 +404,7 @@ export function PatientSales({
             >
               Add line
             </button>
-            <button type="button" className="tab-pill bg-brand-blue/10 text-xs text-brand-ink" disabled={busy || !draftItems.length} onClick={() => void createDirectSale()}>
+            <button type="button" className="bg-[var(--brand-blue)] text-white rounded-full px-4 py-[6px] text-[11px] font-semibold hover:bg-[#1a829f]" disabled={busy || !draftItems.length} onClick={() => void createDirectSale()}>
               {busy ? "Creating..." : "Create invoice"}
             </button>
           </div>
@@ -412,7 +412,7 @@ export function PatientSales({
       ) : null}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-        <div className="overflow-hidden rounded-3xl border border-surface-2 bg-white/80">
+        <div className="overflow-hidden rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)]">
           {loading ? (
             <div className="px-4 py-6 text-sm text-ink-muted">Loading sales...</div>
           ) : rows.length === 0 ? (
@@ -420,8 +420,8 @@ export function PatientSales({
               No sales recorded for this patient.
             </div>
           ) : (
-            <div className="divide-y divide-surface-2">
-              <div className="grid grid-cols-[110px_100px_1.3fr_0.75fr_0.75fr_0.75fr_0.85fr] gap-3 bg-surface-1/60 px-4 py-3 text-[11px] uppercase tracking-[0.2em] text-ink-soft">
+            <div>
+              <div className="grid grid-cols-[110px_100px_1.3fr_0.75fr_0.75fr_0.75fr_0.85fr] bg-[var(--surface-1)] px-3 py-[6px] text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft">
                 <span>Date</span>
                 <span>Txn ID</span>
                 <span>Items</span>
@@ -434,7 +434,7 @@ export function PatientSales({
                 <button
                   key={row.id}
                   type="button"
-                  className="grid w-full grid-cols-[110px_100px_1.3fr_0.75fr_0.75fr_0.75fr_0.85fr] gap-3 px-4 py-3 text-left text-sm hover:bg-surface-1/40"
+                  className="grid w-full grid-cols-[110px_100px_1.3fr_0.75fr_0.75fr_0.75fr_0.85fr] px-3 py-[7px] border-t border-[var(--surface-1)] text-left text-[12px] hover:bg-[rgba(31,149,184,0.04)] [&:nth-child(even)]:bg-[rgba(243,239,232,0.4)]"
                   data-testid="sales-row"
                   onClick={() => setSelectedSaleId(row.id)}
                 >
@@ -451,19 +451,19 @@ export function PatientSales({
           )}
         </div>
 
-        <div className="rounded-3xl border border-surface-2 bg-white/80 p-5" data-testid="sales-detail">
+        <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] p-4" data-testid="sales-detail">
           {!selectedSale ? (
             <div className="text-sm text-ink-muted">Select an invoice to view transaction details.</div>
           ) : (
             <div className="space-y-4">
               <div>
-                <div className="text-sm font-semibold text-ink-strong">Transaction details</div>
+                <div className="section-title">Transaction details</div>
                 <div className="text-xs text-ink-muted">
                   {selectedSale.txnId} · {selectedSale.invoiceStatus} · {selectedSale.fulfillmentStatus.replaceAll("_", " ")}
                 </div>
               </div>
 
-              <div className="grid gap-3 rounded-2xl bg-surface-1/60 p-4 text-sm text-ink-muted">
+              <div className="grid gap-3 rounded-[18px] bg-surface-1/60 p-4 text-sm text-ink-muted">
                 <div className="flex items-center justify-between">
                   <span>Total</span>
                   <span className="font-semibold text-ink-strong">{formatCurrency(selectedSale.total)}</span>
@@ -485,10 +485,10 @@ export function PatientSales({
               </div>
 
               <div>
-                <div className="text-xs font-semibold text-ink-muted">Line items</div>
+                <div className="section-title">Line items</div>
                 <div className="mt-2 space-y-2">
                   {selectedSale.lineItems.map((item) => (
-                    <div key={item.id} className="rounded-2xl border border-surface-2 px-4 py-3 text-sm">
+                    <div key={item.id} className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] px-4 py-3 text-sm">
                       <div className="font-semibold text-ink-strong">{item.item}</div>
                       <div className="text-xs text-ink-muted">
                         Qty {item.quantity ?? 1} · {formatCurrency(item.revenue)} {item.serialNumber ? `· Serial ${item.serialNumber}` : ""}
@@ -499,13 +499,13 @@ export function PatientSales({
               </div>
 
               <div>
-                <div className="text-xs font-semibold text-ink-muted">Payments</div>
+                <div className="section-title">Payments</div>
                 <div className="mt-2 space-y-2">
                   {selectedSale.payments.length === 0 ? (
-                    <div className="rounded-2xl bg-surface-1/60 px-4 py-3 text-sm text-ink-muted">No payments recorded.</div>
+                    <div className="rounded-[18px] bg-surface-1/60 px-4 py-3 text-sm text-ink-muted">No payments recorded.</div>
                   ) : (
                     selectedSale.payments.map((payment) => (
-                      <div key={payment.id} className="rounded-2xl border border-surface-2 px-4 py-3 text-sm">
+                      <div key={payment.id} className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] px-4 py-3 text-sm">
                         <div className="font-semibold text-ink-strong">{formatCurrency(payment.amount)}</div>
                         <div className="text-xs text-ink-muted">
                           {payment.kind} · {payment.method || "Unspecified"} · {formatDate(payment.date)}
@@ -517,30 +517,30 @@ export function PatientSales({
               </div>
 
               {showPaymentForm ? (
-                <div className="rounded-2xl border border-success/20 bg-success/5 p-4">
-                  <div className="text-sm font-semibold text-ink-strong">Record payment</div>
+                <div className="rounded-[18px] border border-[rgba(31,149,184,0.15)] bg-[rgba(31,149,184,0.04)] p-4">
+                  <div className="section-title">Record payment</div>
                   <div className="mt-3 grid gap-3">
-                    <label className="text-xs text-ink-muted">
+                    <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
                       Amount
-                      <input className="mt-1 w-full rounded-xl border border-surface-3 px-3 py-2 text-sm" value={paymentAmount} onChange={(event) => setPaymentAmount(event.target.value)} />
+                      <input className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]" value={paymentAmount} onChange={(event) => setPaymentAmount(event.target.value)} />
                     </label>
-                    <label className="text-xs text-ink-muted">
+                    <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
                       Method
-                      <input className="mt-1 w-full rounded-xl border border-surface-3 px-3 py-2 text-sm" value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)} />
+                      <input className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]" value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)} />
                     </label>
-                    <label className="text-xs text-ink-muted">
+                    <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
                       Kind
-                      <select className="mt-1 w-full rounded-xl border border-surface-3 px-3 py-2 text-sm" value={paymentKind} onChange={(event) => setPaymentKind(event.target.value)}>
+                      <select className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]" value={paymentKind} onChange={(event) => setPaymentKind(event.target.value)}>
                         <option value="payment">Payment</option>
                         <option value="deposit">Deposit</option>
                       </select>
                     </label>
                   </div>
                   <div className="mt-4 flex gap-2">
-                    <button type="button" className="tab-pill bg-surface-2 text-xs" onClick={() => setShowPaymentForm(false)}>
+                    <button type="button" className="text-ink-muted rounded-full px-3 py-[6px] text-[11px] font-semibold hover:bg-[var(--surface-2)]" onClick={() => setShowPaymentForm(false)}>
                       Cancel
                     </button>
-                    <button type="button" className="tab-pill bg-success/10 text-xs text-success" disabled={busy} onClick={() => void recordPayment()}>
+                    <button type="button" className="bg-[var(--brand-blue)] text-white rounded-full px-4 py-[6px] text-[11px] font-semibold hover:bg-[#1a829f]" disabled={busy} onClick={() => void recordPayment()}>
                       {busy ? "Saving..." : "Save payment"}
                     </button>
                   </div>
@@ -548,14 +548,14 @@ export function PatientSales({
               ) : null}
 
               {showReturnForm ? (
-                <div className="rounded-2xl border border-danger/20 bg-danger/5 p-4">
-                  <div className="text-sm font-semibold text-ink-strong">Return item(s)</div>
-                  <label className="mt-3 block text-xs text-ink-muted">
+                <div className="rounded-[18px] border border-danger/20 bg-danger/5 p-4">
+                  <div className="section-title">Return item(s)</div>
+                  <label className="mt-3 block text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
                     Reason
-                    <input className="mt-1 w-full rounded-xl border border-surface-3 px-3 py-2 text-sm" value={returnReason} onChange={(event) => setReturnReason(event.target.value)} />
+                    <input className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]" value={returnReason} onChange={(event) => setReturnReason(event.target.value)} />
                   </label>
                   <div className="mt-4 flex gap-2">
-                    <button type="button" className="tab-pill bg-surface-2 text-xs" onClick={() => setShowReturnForm(false)}>
+                    <button type="button" className="text-ink-muted rounded-full px-3 py-[6px] text-[11px] font-semibold hover:bg-[var(--surface-2)]" onClick={() => setShowReturnForm(false)}>
                       Cancel
                     </button>
                     <button type="button" className="tab-pill bg-danger/10 text-xs text-danger" disabled={busy} onClick={() => void returnSale()}>
@@ -578,7 +578,7 @@ export function PatientSales({
               </div>
 
               {selectedSale.documents.length ? (
-                <div className="rounded-2xl bg-surface-1/60 p-4">
+                <div className="rounded-[18px] bg-surface-1/60 p-4">
                   <div className="text-xs font-semibold text-ink-muted">Invoice documents</div>
                   <div className="mt-2 space-y-2 text-sm text-ink-muted">
                     {selectedSale.documents.map((document) => (

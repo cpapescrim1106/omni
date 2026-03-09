@@ -46,40 +46,40 @@ export function PatientDetails({ patient }: PatientDetailsProps) {
   }, [patient.dateOfBirth]);
 
   return (
-    <section className="card p-6">
+    <section className="card p-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <div className="section-title text-xs text-brand-ink">Details</div>
+          <div className="section-title">Details</div>
           <div className="text-sm text-ink-muted">Contact information and patient preferences.</div>
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <button
-          type="button"
-          className="tab-pill"
-          data-active={activeTab === "contact"}
-          onClick={() => setActiveTab("contact")}
-        >
-          Contact details
-        </button>
-        <button
-          type="button"
-          className="tab-pill"
-          data-active={activeTab === "alternate"}
-          onClick={() => setActiveTab("alternate")}
-        >
-          Alternate contact
-        </button>
+      <div className="mt-4 flex">
+        <div className="seg-tabs-inner">
+          <button
+            type="button"
+            className={`seg-tab${activeTab === "contact" ? " active" : ""}`}
+            onClick={() => setActiveTab("contact")}
+          >
+            Contact details
+          </button>
+          <button
+            type="button"
+            className={`seg-tab${activeTab === "alternate" ? " active" : ""}`}
+            onClick={() => setActiveTab("alternate")}
+          >
+            Alternate contact
+          </button>
+        </div>
       </div>
 
       {activeTab === "alternate" ? (
-        <div className="mt-6 rounded-2xl border border-surface-2 bg-white/80 p-6 text-sm text-ink-muted">
+        <div className="mt-6 rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] p-4 text-sm text-ink-muted">
           Alternate contact details will appear here once available.
         </div>
       ) : (
         <div className="mt-6 grid gap-6">
-          <div className="rounded-2xl border border-surface-2 bg-white/80 p-6">
+          <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] p-4">
             <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Patient ID" value={patient.id} />
@@ -106,7 +106,7 @@ export function PatientDetails({ patient }: PatientDetailsProps) {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-surface-2 bg-white/80 p-6">
+          <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] p-4">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <Field label="Apt/Unit" value={PLACEHOLDER_ADDRESS.aptUnit || "—"} />
               <Field label="Street #" value={PLACEHOLDER_ADDRESS.streetNumber} />
@@ -132,7 +132,7 @@ export function PatientDetails({ patient }: PatientDetailsProps) {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-surface-2 bg-white/80 p-6">
+          <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] p-4">
             <div className="grid gap-3">
               {PLACEHOLDER_PHONES.map((phone) => (
                 <div key={phone.type} className="grid gap-3 sm:grid-cols-[140px_1fr_120px]">
@@ -154,7 +154,7 @@ export function PatientDetails({ patient }: PatientDetailsProps) {
               </div>
               <div className="flex items-center gap-2">
                 <span>Preferred language:</span>
-                <select className="rounded-xl border border-surface-3 bg-white px-3 py-1 text-xs">
+                <select className="rounded-[8px] border border-[var(--surface-3)] bg-white px-3 py-1 text-[12px]">
                   <option>English</option>
                   <option>Spanish</option>
                 </select>
@@ -169,9 +169,13 @@ export function PatientDetails({ patient }: PatientDetailsProps) {
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-white/80 p-3 shadow-[0_6px_14px_rgba(24,20,50,0.08)]">
-      <div className="text-[11px] uppercase tracking-[0.2em] text-ink-soft">{label}</div>
-      <div className="mt-2 text-sm font-semibold text-ink-strong">{value}</div>
+    <div className="flex flex-col gap-[2px]">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft" style={{fontFamily:"var(--font-display)"}}>
+        {label}
+      </div>
+      <div className="border-b border-transparent py-1 text-[13px] text-ink hover:border-[var(--surface-3)] cursor-text">
+        {value}
+      </div>
     </div>
   );
 }

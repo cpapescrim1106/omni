@@ -100,26 +100,27 @@ export function PatientAudiology({ patientId }: { patientId: string }) {
   );
 
   return (
-    <section className="card p-6" data-testid="audiology-panel">
+    <section className="card p-4" data-testid="audiology-panel">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <div className="section-title text-xs text-brand-ink">Audiology</div>
+          <div className="section-title">Audiology</div>
           <div className="text-sm text-ink-muted">Review audiograms and diagnostic data.</div>
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        {TABS.map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            className="tab-pill"
-            data-active={activeTab === tab}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab}
-          </button>
-        ))}
+      <div className="mt-4">
+        <div className="seg-tabs-inner">
+          {TABS.map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              className={`seg-tab${activeTab === tab ? " active" : ""}`}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
       </div>
 
       {loading ? (
@@ -132,7 +133,7 @@ export function PatientAudiology({ patientId }: { patientId: string }) {
         </div>
       ) : (
         <div className="mt-6 grid gap-6 lg:grid-cols-[0.9fr_1.6fr]">
-          <div className="rounded-2xl border border-surface-2 bg-white/80 p-4">
+          <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] overflow-hidden p-4">
             <div className="text-xs font-semibold text-ink-muted">Audiological history</div>
             <div className="mt-3 grid gap-2">
               {audiograms.length === 0 ? (
@@ -141,7 +142,7 @@ export function PatientAudiology({ patientId }: { patientId: string }) {
                 audiograms.map((audiogram) => (
                   <div
                     key={audiogram.id}
-                    className="rounded-xl border border-surface-2 bg-white px-3 py-2 text-xs"
+                    className="rounded-[8px] border border-[var(--surface-3)] bg-white px-3 py-2 text-xs"
                   >
                     {dayjs(audiogram.createdAt).format("MM/DD/YYYY")} - {EAR_LABEL[audiogram.ear]} ear
                   </div>
@@ -155,7 +156,7 @@ export function PatientAudiology({ patientId }: { patientId: string }) {
           </div>
 
           <div className="grid gap-4">
-            <div className="rounded-2xl border border-surface-2 bg-white/80 p-4">
+            <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] overflow-hidden p-4">
               <div className="grid gap-3 sm:grid-cols-2 text-xs text-ink-muted">
                 <div>
                   <div className="font-semibold text-ink-strong">Provider</div>
@@ -184,8 +185,8 @@ export function PatientAudiology({ patientId }: { patientId: string }) {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-surface-2 bg-white/80 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-ink-muted">
+            <div className="rounded-[12px] bg-[var(--surface-1)] p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-ink-muted" style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "12px", fontWeight: 600 }}>
                 <span>Frequency (Hz) vs dB HL</span>
                 <div className="flex items-center gap-3">
                   <span className="flex items-center gap-2">
@@ -198,7 +199,7 @@ export function PatientAudiology({ patientId }: { patientId: string }) {
                   </span>
                 </div>
               </div>
-              <div className="mt-4 overflow-hidden rounded-2xl border border-surface-2 bg-white">
+              <div className="mt-4 rounded-[8px] border border-[var(--surface-3)] bg-white" style={{ overflow: "hidden" }}>
                 <svg
                   viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
                   className="h-64 w-full"
@@ -240,7 +241,7 @@ export function PatientAudiology({ patientId }: { patientId: string }) {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-surface-2 bg-white/80 p-4">
+            <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] overflow-hidden p-4">
               <div className="text-xs font-semibold text-ink-muted">Diagnostic codes</div>
               <div className="mt-2 rounded-xl border border-dashed border-surface-3 bg-white/70 px-3 py-4 text-xs text-ink-muted">
                 Diagnostic codes will appear here.

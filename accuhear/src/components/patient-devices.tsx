@@ -432,10 +432,10 @@ export function PatientDevices({
   }, [loadWorkspace, returnReason]);
 
   return (
-    <section className="card p-6" data-testid="devices-panel">
+    <section className="card p-4" data-testid="devices-panel">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <div className="section-title text-xs text-brand-ink">Hearing aids</div>
+          <div className="section-title">Hearing aids</div>
           <div className="text-sm text-ink-muted">Tracked orders, serial capture, warranty control, and delivery.</div>
         </div>
         <div className="flex gap-2">
@@ -448,31 +448,32 @@ export function PatientDevices({
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        {TABS.map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            className="tab-pill"
-            data-active={activeTab === tab}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab}
-          </button>
-        ))}
+      <div className="mt-4">
+        <div className="seg-tabs-inner">
+          {TABS.map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              className={`seg-tab${activeTab === tab ? " active" : ""}`}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
       </div>
 
       {message ? <div className="mt-4 rounded-2xl bg-success/10 px-4 py-3 text-sm text-success">{message}</div> : null}
       {error ? <div className="mt-4 rounded-2xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</div> : null}
 
       {creating ? (
-        <div className="mt-6 rounded-3xl border border-brand-blue/15 bg-brand-blue/5 p-5" data-testid="order-create-panel">
+        <div className="mt-6 rounded-[18px] border border-[rgba(31,149,184,0.15)] bg-[rgba(31,149,184,0.04)] p-4" data-testid="order-create-panel">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <div className="text-sm font-semibold text-ink-strong">Create tracked order</div>
+              <div className="section-title">Create tracked order</div>
               <div className="text-xs text-ink-muted">Invoice is created immediately. Manufacturer docs stay skippable.</div>
             </div>
-            <button type="button" className="text-xs text-ink-muted" onClick={() => setCreating(false)}>
+            <button type="button" className="text-ink-muted rounded-full px-3 py-[6px] text-[11px] font-semibold hover:bg-[var(--surface-2)]" onClick={() => setCreating(false)}>
               Close
             </button>
           </div>
@@ -484,11 +485,11 @@ export function PatientDevices({
               </div>
             ) : null}
             {draftItems.map((item, index) => (
-              <div key={`draft-${index}`} className="grid gap-3 rounded-2xl border border-surface-2 bg-white/80 p-4 lg:grid-cols-[1.5fr_0.8fr_0.6fr_auto]">
-                <label className="text-xs text-ink-muted">
+              <div key={`draft-${index}`} className="grid gap-3 rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] p-4 lg:grid-cols-[1.5fr_0.8fr_0.6fr_auto]">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
                   Item
                   <select
-                    className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]"
                     value={item.catalogItemId}
                     onChange={(event) =>
                       setDraftItems((current) =>
@@ -509,10 +510,10 @@ export function PatientDevices({
                     ))}
                   </select>
                 </label>
-                <label className="text-xs text-ink-muted">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
                   Side
                   <select
-                    className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]"
                     value={item.side}
                     onChange={(event) =>
                       setDraftItems((current) =>
@@ -527,12 +528,12 @@ export function PatientDevices({
                     <option>Other</option>
                   </select>
                 </label>
-                <label className="text-xs text-ink-muted">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
                   Qty
                   <input
                     type="number"
                     min={1}
-                    className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]"
                     value={item.quantity}
                     onChange={(event) =>
                       setDraftItems((current) =>
@@ -547,7 +548,7 @@ export function PatientDevices({
                 </label>
                 <button
                   type="button"
-                  className="self-end rounded-xl border border-surface-3 px-3 py-2 text-xs text-ink-muted"
+                  className="self-end text-ink-muted rounded-full px-3 py-[6px] text-[11px] font-semibold hover:bg-[var(--surface-2)]"
                   onClick={() => setDraftItems((current) => current.filter((_, entryIndex) => entryIndex !== index))}
                   disabled={draftItems.length === 1}
                 >
@@ -558,50 +559,50 @@ export function PatientDevices({
           </div>
 
           <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_1fr_2fr]">
-            <label className="text-xs text-ink-muted">
+            <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
               Initial deposit
-              <input className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm" value={draftDeposit} onChange={(event) => setDraftDeposit(event.target.value)} placeholder="Optional" />
+              <input className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]" value={draftDeposit} onChange={(event) => setDraftDeposit(event.target.value)} placeholder="Optional" />
             </label>
-            <label className="text-xs text-ink-muted">
+            <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
               Deposit method
-              <input className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm" value={draftDepositMethod} onChange={(event) => setDraftDepositMethod(event.target.value)} />
+              <input className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]" value={draftDepositMethod} onChange={(event) => setDraftDepositMethod(event.target.value)} />
             </label>
-            <label className="text-xs text-ink-muted">
+            <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
               Notes
-              <input className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm" value={draftNotes} onChange={(event) => setDraftNotes(event.target.value)} />
+              <input className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]" value={draftNotes} onChange={(event) => setDraftNotes(event.target.value)} />
             </label>
           </div>
 
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="tab-pill bg-surface-2 text-xs"
-                  onClick={addDraftItem}
-                  disabled={!trackedCatalog.length}
-                >
-                  Add line
-                </button>
-                <button
-                  type="button"
-                  className="tab-pill bg-brand-blue/10 text-xs text-brand-ink"
-                  disabled={
-                    submitting ||
-                    draftItems.length === 0 ||
-                    draftItems.some((item) => !item.catalogItemId) ||
-                    !trackedCatalog.length
-                  }
-                  onClick={() => void createOrder()}
-                >
-                  {submitting ? "Creating..." : "Create order + invoice"}
-                </button>
-              </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="tab-pill bg-surface-2 text-xs"
+              onClick={addDraftItem}
+              disabled={!trackedCatalog.length}
+            >
+              Add line
+            </button>
+            <button
+              type="button"
+              className="bg-[var(--brand-blue)] text-white rounded-full px-4 py-[6px] text-[11px] font-semibold hover:bg-[#1a829f]"
+              disabled={
+                submitting ||
+                draftItems.length === 0 ||
+                draftItems.some((item) => !item.catalogItemId) ||
+                !trackedCatalog.length
+              }
+              onClick={() => void createOrder()}
+            >
+              {submitting ? "Creating..." : "Create order + invoice"}
+            </button>
+          </div>
         </div>
       ) : null}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
         <div className="space-y-6">
-          <div className="overflow-hidden rounded-3xl border border-surface-2 bg-white/80">
-            <div className="grid grid-cols-[1.45fr_0.75fr_0.95fr_1fr_0.9fr_0.8fr] gap-3 bg-surface-1/60 px-4 py-3 text-[11px] uppercase tracking-[0.2em] text-ink-soft">
+          <div className="overflow-hidden rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)]">
+            <div className="grid grid-cols-[1.45fr_0.75fr_0.95fr_1fr_0.9fr_0.8fr] bg-[var(--surface-1)] px-3 py-[6px] text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft">
               <span>Model</span>
               <span>Serial</span>
               <span>Purchase</span>
@@ -619,7 +620,7 @@ export function PatientDevices({
               displayedDevices.map((device) => (
                 <div
                   key={device.id}
-                  className="grid grid-cols-[1.45fr_0.75fr_0.95fr_1fr_0.9fr_0.8fr] gap-3 border-t border-surface-2 px-4 py-4 text-sm"
+                  className="grid grid-cols-[1.45fr_0.75fr_0.95fr_1fr_0.9fr_0.8fr] px-3 py-[7px] border-t border-[var(--surface-1)] text-[12px] hover:bg-[rgba(31,149,184,0.04)] [&:nth-child(even)]:bg-[rgba(243,239,232,0.4)]"
                   data-testid="device-row"
                 >
                   <div className="font-semibold text-ink-strong">
@@ -627,7 +628,7 @@ export function PatientDevices({
                   </div>
                   <div className="text-ink-muted">{device.serial}</div>
                   <div className="text-ink-muted">{formatDate(device.purchaseDate || device.createdAt)}</div>
-                  <div className="text-xs text-ink-muted">
+                  <div className="text-ink-muted">
                     {formatDate(device.warrantyEnd)}
                     <div className="mt-1">L&D {formatDate(device.lossDamageWarrantyEnd)}</div>
                   </div>
@@ -638,20 +639,20 @@ export function PatientDevices({
             )}
           </div>
 
-          <div className="rounded-3xl border border-surface-2 bg-white/80 p-5">
+          <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] p-4">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <div className="text-sm font-semibold text-ink-strong">Outstanding orders</div>
-                <div className="text-xs text-ink-muted">This mirrors Blueprint’s flow, but keeps the actions in one card.</div>
+                <div className="section-title">Outstanding orders</div>
+                <div className="text-xs text-ink-muted">This mirrors Blueprint's flow, but keeps the actions in one card.</div>
               </div>
-              <span className="rounded-full bg-brand-blue/10 px-3 py-1 text-xs text-brand-ink">
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[rgba(31,149,184,0.1)] text-brand-ink">
                 {outstandingOrders.length} open
               </span>
             </div>
 
             <div className="mt-4 space-y-3">
               {outstandingOrders.length === 0 ? (
-                <div className="rounded-2xl bg-surface-1/60 px-4 py-4 text-sm text-ink-muted">
+                <div className="rounded-[18px] bg-surface-1/60 px-4 py-4 text-sm text-ink-muted">
                   No outstanding tracked orders.
                 </div>
               ) : (
@@ -659,7 +660,7 @@ export function PatientDevices({
                   <button
                     key={order.id}
                     type="button"
-                    className="w-full rounded-2xl border border-surface-2 bg-white px-4 py-4 text-left shadow-sm"
+                    className="w-full rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] px-4 py-4 text-left shadow-sm"
                     data-active={selectedOrder?.id === order.id}
                     onClick={() => setSelectedOrderId(order.id)}
                   >
@@ -684,10 +685,10 @@ export function PatientDevices({
           </div>
         </div>
 
-        <div className="rounded-3xl border border-surface-2 bg-white/80 p-5">
+        <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] p-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="text-sm font-semibold text-ink-strong">Order detail</div>
+              <div className="section-title">Order detail</div>
               <div className="text-xs text-ink-muted">Select an order to receive, deliver, document, or return.</div>
             </div>
             {selectedOrder?.invoice ? (
@@ -698,12 +699,12 @@ export function PatientDevices({
           </div>
 
           {!selectedOrder ? (
-            <div className="mt-4 rounded-2xl bg-surface-1/60 px-4 py-4 text-sm text-ink-muted">
+            <div className="mt-4 rounded-[18px] bg-surface-1/60 px-4 py-4 text-sm text-ink-muted">
               No order selected.
             </div>
           ) : (
             <div className="mt-4 space-y-4" data-testid="order-detail">
-              <div className="grid gap-3 rounded-2xl bg-surface-1/60 p-4 text-sm text-ink-muted">
+              <div className="grid gap-3 rounded-[18px] bg-surface-1/60 p-4 text-sm text-ink-muted">
                 <div className="flex items-center justify-between">
                   <span>Status</span>
                   <span className="font-semibold text-ink-strong">{selectedOrder.status.replaceAll("_", " ")}</span>
@@ -728,7 +729,7 @@ export function PatientDevices({
 
               <div className="space-y-3">
                 {selectedOrder.lineItems.map((item) => (
-                  <div key={item.id} className="rounded-2xl border border-surface-2 px-4 py-4">
+                  <div key={item.id} className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] px-4 py-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="font-semibold text-ink-strong">{item.itemName}</div>
@@ -736,7 +737,7 @@ export function PatientDevices({
                           {item.side ?? "Other"} · Qty {item.quantity} · {formatCurrency(item.unitPrice)}
                         </div>
                       </div>
-                      <span className="rounded-full bg-surface-1 px-3 py-1 text-[11px] text-ink-muted">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[rgba(243,239,232,0.8)] text-ink-muted">
                         {item.status}
                       </span>
                     </div>
@@ -748,43 +749,43 @@ export function PatientDevices({
               </div>
 
               {receiveOrderId === selectedOrder.id ? (
-                <div className="rounded-2xl border border-brand-blue/15 bg-brand-blue/5 p-4">
-                  <div className="text-sm font-semibold text-ink-strong">Receive order</div>
+                <div className="rounded-[18px] border border-[rgba(31,149,184,0.15)] bg-[rgba(31,149,184,0.04)] p-4">
+                  <div className="section-title">Receive order</div>
                   <div className="mt-3 space-y-3">
                     {selectedOrder.lineItems
                       .filter((item) => item.status === "ordered" || item.status === "received")
                       .map((item) => (
-                        <div key={`receive-${item.id}`} className="grid gap-3 rounded-2xl bg-white p-4 lg:grid-cols-2">
+                        <div key={`receive-${item.id}`} className="grid gap-3 rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] p-4 lg:grid-cols-2">
                           <div className="text-xs text-ink-muted">
                             <div className="font-semibold text-ink-strong">{item.itemName}</div>
                             <div>{item.side ?? "Other"}</div>
                           </div>
                           <div className="grid gap-3 md:grid-cols-2">
-                            <label className="text-xs text-ink-muted">
+                            <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
                               Serial
-                              <input className="mt-1 w-full rounded-xl border border-surface-3 px-3 py-2 text-sm" value={receiveForm[item.id]?.serial ?? ""} onChange={(event) => setReceiveForm((current) => ({ ...current, [item.id]: { ...current[item.id], serial: event.target.value } }))} />
+                              <input className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]" value={receiveForm[item.id]?.serial ?? ""} onChange={(event) => setReceiveForm((current) => ({ ...current, [item.id]: { ...current[item.id], serial: event.target.value } }))} />
                             </label>
-                            <label className="text-xs text-ink-muted">
+                            <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
                               Manufacturer warranty
-                              <input type="date" className="mt-1 w-full rounded-xl border border-surface-3 px-3 py-2 text-sm" value={receiveForm[item.id]?.manufacturerWarrantyEnd ?? ""} onChange={(event) => setReceiveForm((current) => ({ ...current, [item.id]: { ...current[item.id], manufacturerWarrantyEnd: event.target.value } }))} />
+                              <input type="date" className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]" value={receiveForm[item.id]?.manufacturerWarrantyEnd ?? ""} onChange={(event) => setReceiveForm((current) => ({ ...current, [item.id]: { ...current[item.id], manufacturerWarrantyEnd: event.target.value } }))} />
                             </label>
-                            <label className="text-xs text-ink-muted">
+                            <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
                               L&D warranty
-                              <input type="date" className="mt-1 w-full rounded-xl border border-surface-3 px-3 py-2 text-sm" value={receiveForm[item.id]?.lossDamageWarrantyEnd ?? ""} onChange={(event) => setReceiveForm((current) => ({ ...current, [item.id]: { ...current[item.id], lossDamageWarrantyEnd: event.target.value } }))} />
+                              <input type="date" className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]" value={receiveForm[item.id]?.lossDamageWarrantyEnd ?? ""} onChange={(event) => setReceiveForm((current) => ({ ...current, [item.id]: { ...current[item.id], lossDamageWarrantyEnd: event.target.value } }))} />
                             </label>
-                            <label className="text-xs text-ink-muted">
+                            <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
                               Notes
-                              <input className="mt-1 w-full rounded-xl border border-surface-3 px-3 py-2 text-sm" value={receiveForm[item.id]?.notes ?? ""} onChange={(event) => setReceiveForm((current) => ({ ...current, [item.id]: { ...current[item.id], notes: event.target.value } }))} />
+                              <input className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]" value={receiveForm[item.id]?.notes ?? ""} onChange={(event) => setReceiveForm((current) => ({ ...current, [item.id]: { ...current[item.id], notes: event.target.value } }))} />
                             </label>
                           </div>
                         </div>
                       ))}
                   </div>
                   <div className="mt-4 flex gap-2">
-                    <button type="button" className="tab-pill bg-surface-2 text-xs" onClick={() => setReceiveOrderId(null)}>
+                    <button type="button" className="text-ink-muted rounded-full px-3 py-[6px] text-[11px] font-semibold hover:bg-[var(--surface-2)]" onClick={() => setReceiveOrderId(null)}>
                       Cancel
                     </button>
-                    <button type="button" className="tab-pill bg-brand-blue/10 text-xs text-brand-ink" disabled={submitting} onClick={() => void submitReceive()}>
+                    <button type="button" className="bg-[var(--brand-blue)] text-white rounded-full px-4 py-[6px] text-[11px] font-semibold hover:bg-[#1a829f]" disabled={submitting} onClick={() => void submitReceive()}>
                       {submitting ? "Saving..." : "Save received items"}
                     </button>
                   </div>
@@ -792,14 +793,14 @@ export function PatientDevices({
               ) : null}
 
               {deliverOrderId === selectedOrder.id ? (
-                <div className="rounded-2xl border border-success/20 bg-success/5 p-4">
-                  <div className="text-sm font-semibold text-ink-strong">Deliver order</div>
-                  <label className="mt-3 block text-xs text-ink-muted">
+                <div className="rounded-[18px] border border-success/20 bg-success/5 p-4">
+                  <div className="section-title">Deliver order</div>
+                  <label className="mt-3 block text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
                     Fitting date
-                    <input type="date" className="mt-1 w-full rounded-xl border border-surface-3 px-3 py-2 text-sm" value={deliverFittingDate} onChange={(event) => setDeliverFittingDate(event.target.value)} />
+                    <input type="date" className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]" value={deliverFittingDate} onChange={(event) => setDeliverFittingDate(event.target.value)} />
                   </label>
                   <div className="mt-4 flex gap-2">
-                    <button type="button" className="tab-pill bg-surface-2 text-xs" onClick={() => setDeliverOrderId(null)}>
+                    <button type="button" className="text-ink-muted rounded-full px-3 py-[6px] text-[11px] font-semibold hover:bg-[var(--surface-2)]" onClick={() => setDeliverOrderId(null)}>
                       Cancel
                     </button>
                     <button type="button" className="tab-pill bg-success/10 text-xs text-success" disabled={submitting} onClick={() => void submitDeliver(selectedOrder.id)}>
@@ -810,14 +811,14 @@ export function PatientDevices({
               ) : null}
 
               {returnOrderId === selectedOrder.id ? (
-                <div className="rounded-2xl border border-danger/20 bg-danger/5 p-4">
-                  <div className="text-sm font-semibold text-ink-strong">Return to manufacturer</div>
-                  <label className="mt-3 block text-xs text-ink-muted">
+                <div className="rounded-[18px] border border-danger/20 bg-danger/5 p-4">
+                  <div className="section-title">Return to manufacturer</div>
+                  <label className="mt-3 block text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
                     Reason
-                    <input className="mt-1 w-full rounded-xl border border-surface-3 px-3 py-2 text-sm" value={returnReason} onChange={(event) => setReturnReason(event.target.value)} />
+                    <input className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]" value={returnReason} onChange={(event) => setReturnReason(event.target.value)} />
                   </label>
                   <div className="mt-4 flex gap-2">
-                    <button type="button" className="tab-pill bg-surface-2 text-xs" onClick={() => setReturnOrderId(null)}>
+                    <button type="button" className="text-ink-muted rounded-full px-3 py-[6px] text-[11px] font-semibold hover:bg-[var(--surface-2)]" onClick={() => setReturnOrderId(null)}>
                       Cancel
                     </button>
                     <button type="button" className="tab-pill bg-danger/10 text-xs text-danger" disabled={submitting} onClick={() => void submitReturn(selectedOrder.id)}>
@@ -851,7 +852,7 @@ export function PatientDevices({
               </div>
 
               {selectedOrder.documents.length ? (
-                <div className="rounded-2xl bg-surface-1/60 p-4">
+                <div className="rounded-[18px] bg-surface-1/60 p-4">
                   <div className="text-xs font-semibold text-ink-muted">Order documents</div>
                   <div className="mt-2 space-y-2 text-sm text-ink-muted">
                     {selectedOrder.documents.map((document) => (

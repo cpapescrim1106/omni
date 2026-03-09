@@ -217,10 +217,10 @@ export function PatientDocuments({ patientId }: { patientId: string }) {
   );
 
   return (
-    <section className="card p-6">
+    <section className="card p-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <div className="section-title text-xs text-brand-ink">Documents</div>
+          <div className="section-title">Documents</div>
           <div className="text-sm text-ink-muted">Store and manage patient documents.</div>
         </div>
       </div>
@@ -239,14 +239,14 @@ export function PatientDocuments({ patientId }: { patientId: string }) {
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[220px_1.4fr_1fr]">
-        <div className="rounded-2xl border border-surface-2 bg-white/80 p-4">
+        <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] overflow-hidden p-4">
           <div className="text-xs font-semibold text-ink-muted">Categories</div>
           <div className="mt-3 grid gap-2">
             {categorySidebar.map((category) => (
               <button
                 key={category.label}
                 type="button"
-                className="flex items-center justify-between rounded-xl bg-white px-3 py-2 text-xs text-ink-muted shadow-sm"
+                className="flex items-center justify-between rounded-xl bg-white px-3 py-2 text-xs text-ink-muted"
                 onClick={() => setCategoryFilter(category.label)}
               >
                 <span>{category.label}</span>
@@ -258,7 +258,7 @@ export function PatientDocuments({ patientId }: { patientId: string }) {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-surface-2 bg-white/80">
+        <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] overflow-hidden">
           {loadError ? (
             <div className="px-4 py-6 text-sm text-danger">{loadError}</div>
           ) : loading ? (
@@ -269,7 +269,7 @@ export function PatientDocuments({ patientId }: { patientId: string }) {
             </div>
           ) : (
             <div className="divide-y divide-surface-2">
-              <div className="grid grid-cols-[120px_1.2fr_1fr_0.6fr_0.8fr] gap-3 bg-surface-1/60 px-4 py-3 text-[11px] uppercase tracking-[0.2em] text-ink-soft">
+              <div className="grid grid-cols-[120px_1.2fr_1fr_0.6fr_0.8fr] gap-3 bg-[var(--surface-1)] px-3 py-[6px] text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft">
                 <span>Date added</span>
                 <span>Title</span>
                 <span>Category</span>
@@ -280,7 +280,7 @@ export function PatientDocuments({ patientId }: { patientId: string }) {
                 <button
                   key={doc.id}
                   type="button"
-                  className="grid w-full grid-cols-[120px_1.2fr_1fr_0.6fr_0.8fr] gap-3 px-4 py-3 text-left text-sm hover:bg-white"
+                  className="grid w-full grid-cols-[120px_1.2fr_1fr_0.6fr_0.8fr] gap-3 px-3 py-[7px] text-left text-[12px] border-t border-[var(--surface-1)] hover:bg-[rgba(31,149,184,0.04)] [&:nth-child(even)]:bg-[rgba(243,239,232,0.4)]"
                   onClick={() => setSelectedId(doc.id)}
                   data-testid="documents-row"
                   data-category={doc.category}
@@ -296,7 +296,7 @@ export function PatientDocuments({ patientId }: { patientId: string }) {
           )}
         </div>
 
-        <div className="rounded-2xl border border-surface-2 bg-white/80 p-4" data-testid="documents-preview">
+        <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] overflow-hidden p-4" data-testid="documents-preview">
           {selectedDocument ? (
             <div>
               <div className="text-sm font-semibold text-ink-strong">Preview</div>
@@ -304,7 +304,7 @@ export function PatientDocuments({ patientId }: { patientId: string }) {
               <div className="mt-1 text-xs text-ink-muted">
                 {selectedDocument.category} · {dayjs(selectedDocument.uploadedAt).format("MMM D, YYYY")}
               </div>
-              <div className="mt-4 overflow-hidden rounded-2xl border border-surface-2 bg-white">
+              <div className="mt-4 rounded-[8px] border border-[var(--surface-3)] bg-white overflow-hidden">
                 {selectedDocument.storageProvider === "local" ? (
                   <div className="grid gap-2 p-3">
                     {selectedDocument.contentType?.startsWith("image/") ? (

@@ -203,16 +203,16 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
   );
 
   return (
-    <section className="card flex min-h-0 flex-col p-6" style={{ height: "75vh" }}>
+    <section className="card flex min-h-0 flex-col p-4" style={{ height: "75vh" }}>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <div className="section-title text-xs text-brand-ink">Messaging</div>
+          <div className="section-title">Messaging</div>
           <div className="text-sm text-ink-muted">Patient conversations across channels.</div>
         </div>
       </div>
 
       <div className="mt-6 grid min-h-0 flex-1 gap-6 lg:grid-cols-[220px_1.6fr_0.9fr]">
-        <div className="rounded-2xl border border-surface-2 bg-white/80 p-4">
+        <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] overflow-hidden p-4">
           <div className="text-xs font-semibold text-ink-muted">Quick find</div>
           <div className="mt-2 flex items-center gap-2">
             <input
@@ -227,14 +227,14 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
           </select>
           <div className="mt-4 grid gap-2">
             {FOLDERS.map((folder) => (
-              <div key={folder.label} className="rounded-xl bg-white px-3 py-2 text-xs text-ink-muted shadow-sm">
+              <div key={folder.label} className="rounded-xl bg-white px-3 py-2 text-xs text-ink-muted">
                 {folder.label}
               </div>
             ))}
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-surface-2 bg-white/80">
+        <div className="flex min-h-0 flex-col overflow-hidden rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)]">
           {loadError ? (
             <div className="px-4 py-4 text-sm text-danger">{loadError}</div>
           ) : totalMessages === 0 ? (
@@ -275,18 +275,18 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
                           >
                             <div className="max-w-[80%]">
                               <div
-                                className={`rounded-2xl px-4 py-3 text-sm shadow-sm ${
+                                className={`rounded-[12px] px-3 py-2 text-[12px] ${
                                   isFailed
                                     ? "border border-danger/30 bg-danger/10 text-danger"
                                     : isOutbound
-                                      ? "bg-brand-blue/10 text-ink-strong"
-                                      : "bg-white text-ink-strong"
+                                      ? "bg-[var(--brand-blue)] text-white"
+                                      : "bg-[var(--surface-2)] text-[var(--ink)]"
                                 }`}
                               >
                                 {message.body}
                               </div>
                               <div
-                                className={`mt-2 flex flex-wrap items-center gap-2 text-xs text-ink-muted ${
+                                className={`mt-2 flex flex-wrap items-center gap-2 text-[10px] text-[var(--ink-soft)] ${
                                   isOutbound ? "justify-end" : "justify-start"
                                 }`}
                               >
@@ -330,14 +330,14 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
           )}
         </div>
 
-        <div className="rounded-2xl border border-surface-2 bg-white/80 p-4">
+        <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] overflow-hidden p-4">
           <div className="text-xs font-semibold text-ink-muted">Text snippets</div>
           <div className="mt-3 grid gap-2">
             {SNIPPETS.map((snippet) => (
               <button
                 key={snippet}
                 type="button"
-                className="rounded-xl bg-white px-3 py-2 text-left text-xs text-ink-muted shadow-sm transition hover:bg-surface-1"
+                className="rounded-xl bg-white px-3 py-2 text-left text-xs text-ink-muted transition hover:bg-surface-1"
                 onClick={() => {
                   setMessageBody((current) => (current.trim().length ? `${current.trimEnd()} ${snippet}` : snippet));
                 }}
