@@ -9,10 +9,13 @@ import {
 } from "@prisma/client";
 import { createPatientDocumentRecord } from "@/lib/documents/records";
 import { prisma } from "@/lib/db";
+import { inferCatalogStructureFromName } from "@/lib/catalog-item-name";
 
 const STARTER_CATALOG: Array<{
   name: string;
   manufacturer?: string;
+  family?: string;
+  technologyLevel?: number;
   category: CatalogItemCategory;
   cptHcpcsCode?: string;
   technology?: string;
@@ -41,8 +44,9 @@ const STARTER_CATALOG: Array<{
   {
     name: "Intent 2 miniRITE R",
     manufacturer: "Oticon",
+    family: "Intent",
+    technologyLevel: 2,
     category: "hearing_aid",
-    technology: "Intent 2",
     style: "miniRITE R",
     hasSide: true,
     requiresSerial: true,
@@ -232,6 +236,8 @@ export function formatCatalogItem(item: {
   id: string;
   name: string;
   manufacturer: string | null;
+  family: string | null;
+  technologyLevel: number | null;
   category: CatalogItemCategory;
   active: boolean;
   cptHcpcsCode: string | null;
@@ -263,6 +269,8 @@ export function formatCatalogItem(item: {
     id: item.id,
     name: item.name,
     manufacturer: item.manufacturer,
+    family: item.family,
+    technologyLevel: item.technologyLevel,
     category: item.category,
     active: item.active,
     cptHcpcsCode: item.cptHcpcsCode,
@@ -456,13 +464,25 @@ export async function ensureStarterCatalog(prismaClient: typeof prisma = prisma)
     if (existing) {
       await prismaClient.catalogItem.update({
         where: { id: existing.id },
-        data: entry,
+        data: {
+          ...entry,
+          family: entry.family ?? inferCatalogStructureFromName(entry.name).family,
+          technologyLevel:
+            entry.technologyLevel ?? inferCatalogStructureFromName(entry.name).technologyLevel,
+        },
       });
       continue;
     }
 
     try {
-      await prismaClient.catalogItem.create({ data: entry });
+      await prismaClient.catalogItem.create({
+        data: {
+          ...entry,
+          family: entry.family ?? inferCatalogStructureFromName(entry.name).family,
+          technologyLevel:
+            entry.technologyLevel ?? inferCatalogStructureFromName(entry.name).technologyLevel,
+        },
+      });
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&

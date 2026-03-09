@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { ensureStarterCatalog, formatCatalogItem, formatCatalogManufacturer } from "@/lib/commerce";
+import { inferCatalogStructureFromName } from "@/lib/catalog-item-name";
 import { inferManufacturerFromModel } from "@/lib/manufacturer-inference";
 
 function normalizeManufacturer(value: string | null) {
@@ -104,6 +105,7 @@ export async function POST() {
         data: {
           name: item.name,
           manufacturer: item.manufacturer,
+          ...inferCatalogStructureFromName(item.name),
           category: "hearing_aid",
           active: true,
           hasSide: true,

@@ -7,6 +7,7 @@ import {
   formatCatalogManufacturer,
   TRACKED_ITEM_CATEGORIES,
 } from "@/lib/commerce";
+import { buildCatalogItemName } from "@/lib/catalog-item-name";
 
 function parseCategories(searchParams: URLSearchParams) {
   const categoryParams = searchParams.getAll("category");
@@ -68,6 +69,8 @@ export async function POST(request: NextRequest) {
   const {
     name,
     manufacturer,
+    family,
+    technologyLevel,
     category,
     cptHcpcsCode,
     technology,
@@ -96,8 +99,11 @@ export async function POST(request: NextRequest) {
     purchaseCost,
   } = body ?? {};
 
-  if (typeof name !== "string" || !name.trim()) {
-    return NextResponse.json({ error: "Catalog name is required" }, { status: 400 });
+  if (
+    (typeof name !== "string" || !name.trim()) &&
+    (typeof family !== "string" || !family.trim())
+  ) {
+    return NextResponse.json({ error: "Catalog name or family is required" }, { status: 400 });
   }
 
   if (
@@ -117,8 +123,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Battery cell quantity must be a whole number" }, { status: 400 });
   }
 
+  const parsedTechnologyLevel = numberOrNull(technologyLevel);
+  if (parsedTechnologyLevel !== null && (!Number.isInteger(parsedTechnologyLevel) || parsedTechnologyLevel <= 0)) {
+    return NextResponse.json({ error: "Technology level must be a whole number" }, { status: 400 });
+  }
+
   const normalizedManufacturer =
     typeof manufacturer === "string" && manufacturer.trim() ? manufacturer.trim() : null;
+  const normalizedFamily = typeof family === "string" && family.trim() ? family.trim() : null;
+  const normalizedStyle = typeof style === "string" ? style.trim() || null : null;
+  const normalizedName = buildCatalogItemName({
+    family: normalizedFamily,
+    technologyLevel: parsedTechnologyLevel,
+    style: normalizedStyle,
+    fallbackName: typeof name === "string" ? name : null,
+  });
+
+  if (!normalizedName) {
+    return NextResponse.json({ error: "Catalog name is required" }, { status: 400 });
+  }
 
   if (normalizedManufacturer) {
     await prisma.catalogManufacturer.upsert({
@@ -131,12 +154,14 @@ export async function POST(request: NextRequest) {
   try {
     const createdItem = await prisma.catalogItem.create({
       data: {
-        name: name.trim(),
+        name: normalizedName,
         manufacturer: normalizedManufacturer,
+        family: normalizedFamily,
+        technologyLevel: parsedTechnologyLevel,
         category: category as CatalogItemCategory,
         cptHcpcsCode: typeof cptHcpcsCode === "string" ? cptHcpcsCode.trim() || null : null,
         technology: typeof technology === "string" ? technology.trim() || null : null,
-        style: typeof style === "string" ? style.trim() || null : null,
+        style: normalizedStyle,
         hasSide: boolValue(hasSide, false),
         trackInventory: boolValue(trackInventory, false),
         accessoryCategory: typeof accessoryCategory === "string" ? accessoryCategory.trim() || null : null,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { CatalogItemCategory } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { formatCatalogItem } from "@/lib/commerce";
+import { buildCatalogItemName } from "@/lib/catalog-item-name";
 
 type RouteProps = {
   params: Promise<{ id: string }>;
@@ -10,6 +11,8 @@ type RouteProps = {
 type CatalogItemInput = {
   name?: unknown;
   manufacturer?: unknown;
+  family?: unknown;
+  technologyLevel?: unknown;
   category?: unknown;
   cptHcpcsCode?: unknown;
   technology?: unknown;
@@ -67,6 +70,14 @@ export async function PATCH(request: NextRequest, { params }: RouteProps) {
 
   if (typeof body.manufacturer === "string") {
     payload.manufacturer = body.manufacturer.trim() || null;
+  }
+  if (typeof body.family === "string") payload.family = body.family.trim() || null;
+  if (body.technologyLevel !== undefined) {
+    const parsed = numberOrNull(body.technologyLevel);
+    if (parsed !== null && (!Number.isInteger(parsed) || parsed <= 0)) {
+      return NextResponse.json({ error: "Technology level must be a whole number" }, { status: 400 });
+    }
+    payload.technologyLevel = parsed;
   }
 
   if (typeof body.category === "string") {
@@ -143,6 +154,24 @@ export async function PATCH(request: NextRequest, { params }: RouteProps) {
   }
 
   try {
+    const currentItem = await prisma.catalogItem.findUnique({ where: { id } });
+    if (!currentItem) return NextResponse.json({ error: "Item not found" }, { status: 404 });
+
+    const resolvedName = buildCatalogItemName({
+      family:
+        payload.family !== undefined ? (payload.family as string | null) : currentItem.family,
+      technologyLevel:
+        payload.technologyLevel !== undefined
+          ? (payload.technologyLevel as number | null)
+          : currentItem.technologyLevel,
+      style: payload.style !== undefined ? (payload.style as string | null) : currentItem.style,
+      fallbackName:
+        typeof payload.name === "string" && payload.name
+          ? (payload.name as string)
+          : currentItem.name,
+    });
+    if (resolvedName) payload.name = resolvedName;
+
     if (typeof payload.manufacturer === "string" && payload.manufacturer) {
       await prisma.catalogManufacturer.upsert({
         where: { name: payload.manufacturer },
@@ -157,9 +186,6 @@ export async function PATCH(request: NextRequest, { params }: RouteProps) {
     });
     return NextResponse.json({ item: formatCatalogItem(updatedItem) });
   } catch (error) {
-    if (error instanceof Error && error.message.includes("No record found")) {
-      return NextResponse.json({ error: "Item not found" }, { status: 404 });
-    }
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unable to update catalog item" },
       { status: 400 }

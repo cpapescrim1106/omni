@@ -409,6 +409,8 @@ model CatalogItem {
   id                               String              @id @default(cuid())
   name                             String
   manufacturer                     String?
+  family                           String?
+  technologyLevel                  Int?
   category                         CatalogItemCategory
   active                           Boolean             @default(true)
   cptHcpcsCode                     String?
