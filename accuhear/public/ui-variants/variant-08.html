@@ -1,0 +1,1321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omni — Operations Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --brand-ink: #262260;
+    --brand-blue: #1f95b8;
+    --brand-orange: #dd6f26;
+    --surface-0: #f8f5f0;
+    --surface-1: #f3efe8;
+    --surface-2: #ece6dd;
+    --surface-3: #e6dfd4;
+    --surface-4: #dfd6c8;
+    --ink-strong: #1b1a27;
+    --ink: #2f2c3f;
+    --ink-muted: #6c687d;
+    --ink-soft: #9a95ad;
+    --success: #1e9b6c;
+    --warning: #c87a2f;
+    --danger: #c94646;
+    --white: #ffffff;
+    --radius-card: 18px;
+    --radius-pill: 999px;
+    --col-waiting-bg: #f6f3ed;
+    --col-inprogress-bg: #eef6f8;
+    --col-pending-bg: #fdf5ee;
+    --col-completed-bg: #f1f0ec;
+  }
+
+  html, body {
+    height: 100%;
+    font-family: 'Open Sans', sans-serif;
+    background: var(--surface-0);
+    color: var(--ink);
+    font-size: 13px;
+    line-height: 1.45;
+    overflow: hidden;
+  }
+
+  /* ---------- LAYOUT SHELL ---------- */
+  .shell {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* ---------- LEFT NAV ---------- */
+  .nav-rail {
+    width: 56px;
+    min-width: 56px;
+    background: var(--brand-ink);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 0 14px;
+    gap: 2px;
+    z-index: 20;
+  }
+  .nav-logo {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: var(--brand-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--white);
+  }
+  .nav-item {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255,255,255,.5);
+    cursor: pointer;
+    transition: all .15s;
+    position: relative;
+  }
+  .nav-item:hover { background: rgba(255,255,255,.08); color: rgba(255,255,255,.8); }
+  .nav-item.active { background: rgba(31,149,184,.25); color: var(--white); }
+  .nav-item svg { width: 20px; height: 20px; }
+  .nav-item .badge {
+    position: absolute;
+    top: 5px; right: 5px;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--brand-orange);
+  }
+  .nav-spacer { flex: 1; }
+
+  /* ---------- MAIN PANEL ---------- */
+  .main-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    position: relative;
+  }
+
+  /* ---------- TOP BAR ---------- */
+  .top-bar {
+    height: 44px;
+    min-height: 44px;
+    background: var(--white);
+    border-bottom: 1px solid var(--surface-3);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 16px;
+    z-index: 10;
+  }
+  .top-left { display: flex; align-items: center; gap: 12px; }
+  .top-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--ink-strong);
+    white-space: nowrap;
+  }
+  .date-nav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface-1);
+    border-radius: var(--radius-pill);
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .date-nav button {
+    background: none;
+    border: none;
+    color: var(--ink-muted);
+    cursor: pointer;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    border-radius: 4px;
+  }
+  .date-nav button:hover { color: var(--ink-strong); background: var(--surface-2); }
+  .date-nav svg { width: 14px; height: 14px; }
+
+  .top-center { display: flex; align-items: center; margin: 0 auto; }
+  .view-toggle {
+    display: flex;
+    background: var(--surface-1);
+    border-radius: var(--radius-pill);
+    padding: 2px;
+  }
+  .view-toggle button {
+    border: none;
+    background: none;
+    padding: 4px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    border-radius: var(--radius-pill);
+    color: var(--ink-muted);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .view-toggle button.active { background: var(--white); color: var(--ink-strong); box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  .view-toggle button:hover:not(.active) { color: var(--ink); }
+
+  .top-right { display: flex; align-items: center; gap: 8px; }
+  .filter-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--surface-1);
+    border: 1px solid var(--surface-3);
+    border-radius: var(--radius-pill);
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ink-muted);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .filter-pill:hover { border-color: var(--brand-blue); color: var(--ink); }
+  .filter-pill svg { width: 12px; height: 12px; }
+  .search-box {
+    width: 160px;
+    height: 28px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--surface-3);
+    background: var(--surface-0);
+    padding: 0 10px 0 28px;
+    font-size: 12px;
+    font-family: inherit;
+    color: var(--ink);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%239a95ad' viewBox='0 0 24 24'%3E%3Cpath d='M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: 8px center;
+  }
+  .search-box::placeholder { color: var(--ink-soft); }
+  .avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--brand-ink);
+    color: var(--white);
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ---------- STATS BAR ---------- */
+  .stats-bar {
+    height: 28px;
+    min-height: 28px;
+    background: var(--surface-1);
+    border-bottom: 1px solid var(--surface-2);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    font-size: 11.5px;
+    color: var(--ink-muted);
+    gap: 0;
+  }
+  .stat-item { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+  .stat-item strong { font-weight: 700; color: var(--ink); }
+  .stat-sep { margin: 0 10px; color: var(--surface-4); }
+
+  /* ---------- BOARD ---------- */
+  .board-area {
+    flex: 1;
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 16px 16px 8px;
+    gap: 14px;
+  }
+
+  .column {
+    min-width: 310px;
+    width: 310px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    border-radius: var(--radius-card);
+    overflow: hidden;
+  }
+  .column-header {
+    padding: 10px 14px 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: inherit;
+  }
+  .column-name {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--ink-strong);
+  }
+  .column-count {
+    font-size: 11px;
+    font-weight: 700;
+    background: rgba(0,0,0,.07);
+    color: var(--ink-muted);
+    padding: 1px 7px;
+    border-radius: var(--radius-pill);
+  }
+  .column-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 4px;
+  }
+  .column-actions button {
+    background: none;
+    border: none;
+    color: var(--ink-soft);
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 4px;
+    display: flex;
+  }
+  .column-actions button:hover { color: var(--ink-muted); background: rgba(0,0,0,.05); }
+  .column-actions svg { width: 14px; height: 14px; }
+
+  .column-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 10px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .column-body::-webkit-scrollbar { width: 4px; }
+  .column-body::-webkit-scrollbar-thumb { background: var(--surface-4); border-radius: 4px; }
+
+  /* Column tints */
+  .col-waiting { background: var(--col-waiting-bg); }
+  .col-inprogress { background: var(--col-inprogress-bg); }
+  .col-pending { background: var(--col-pending-bg); }
+  .col-completed { background: var(--col-completed-bg); }
+
+  /* ---------- CARDS ---------- */
+  .card {
+    background: var(--white);
+    border-radius: 14px;
+    padding: 10px 12px;
+    border-left: 4px solid transparent;
+    cursor: pointer;
+    transition: box-shadow .15s, transform .1s;
+    position: relative;
+  }
+  .card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,.1);
+    transform: translateY(-1px);
+  }
+  .card.selected {
+    box-shadow: 0 0 0 2px var(--brand-blue);
+  }
+  .card .hover-actions {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    display: none;
+    gap: 2px;
+  }
+  .card:hover .hover-actions { display: flex; }
+  .hover-actions button {
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    border: none;
+    background: var(--surface-1);
+    color: var(--ink-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .hover-actions button:hover { background: var(--brand-blue); color: var(--white); }
+  .hover-actions svg { width: 12px; height: 12px; }
+
+  /* Urgency borders */
+  .card.urgency-green { border-left-color: var(--success); }
+  .card.urgency-amber { border-left-color: var(--warning); }
+  .card.urgency-red { border-left-color: var(--danger); }
+
+  .card-top {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+  .patient-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink-strong);
+    line-height: 1.25;
+  }
+  .insurance-check {
+    width: 14px; height: 14px;
+    color: var(--success);
+    flex-shrink: 0;
+  }
+  .card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    font-size: 12px;
+    color: var(--ink-muted);
+    margin-bottom: 4px;
+  }
+  .card-meta span { display: flex; align-items: center; gap: 3px; }
+  .card-meta svg { width: 12px; height: 12px; flex-shrink: 0; }
+  .card-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 2px;
+  }
+  .badge-sm {
+    display: inline-flex;
+    align-items: center;
+    font-size: 10.5px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: var(--radius-pill);
+    white-space: nowrap;
+  }
+  .badge-type { background: #e8e5f4; color: #4a4378; }
+  .badge-device { background: #e2f2f6; color: #1a7d98; }
+  .badge-action { background: #fde8d8; color: #a15a1e; }
+  .badge-success-light { background: #ddf3ea; color: #16794f; }
+
+  /* Wait timer */
+  .wait-timer {
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .wait-timer.green { color: var(--success); }
+  .wait-timer.amber { color: var(--warning); }
+  .wait-timer.red { color: var(--danger); }
+
+  /* Progress indicator */
+  .progress-bar {
+    height: 3px;
+    background: var(--surface-2);
+    border-radius: 3px;
+    margin-top: 6px;
+    overflow: hidden;
+  }
+  .progress-bar .fill {
+    height: 100%;
+    border-radius: 3px;
+    background: var(--brand-blue);
+    transition: width .3s;
+  }
+
+  /* Action buttons on pending cards */
+  .card-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .card-action-btn {
+    font-size: 11px;
+    font-weight: 600;
+    font-family: inherit;
+    border: 1px solid var(--surface-3);
+    background: var(--white);
+    color: var(--ink);
+    border-radius: var(--radius-pill);
+    padding: 3px 10px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .card-action-btn:hover { border-color: var(--brand-blue); color: var(--brand-blue); }
+  .card-action-btn.primary {
+    background: var(--brand-blue);
+    color: var(--white);
+    border-color: var(--brand-blue);
+  }
+  .card-action-btn.primary:hover { background: #1a829f; }
+
+  /* Completed cards — muted */
+  .col-completed .card {
+    opacity: .72;
+    border-left-color: var(--surface-3);
+  }
+  .col-completed .card:hover { opacity: 1; }
+
+  /* ---------- DRAWER ---------- */
+  .drawer-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.18);
+    z-index: 30;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s;
+  }
+  .drawer-overlay.open { opacity: 1; pointer-events: auto; }
+
+  .drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 390px;
+    height: 100vh;
+    background: var(--white);
+    z-index: 31;
+    transform: translateX(100%);
+    transition: transform .25s ease;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -4px 0 24px rgba(0,0,0,.12);
+  }
+  .drawer.open { transform: translateX(0); }
+
+  .drawer-header {
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--surface-2);
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .drawer-header-info { flex: 1; }
+  .drawer-patient-name {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--ink-strong);
+    margin-bottom: 2px;
+  }
+  .drawer-patient-meta {
+    font-size: 12px;
+    color: var(--ink-muted);
+    display: flex;
+    gap: 10px;
+  }
+  .drawer-close {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: none;
+    background: var(--surface-1);
+    color: var(--ink-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .drawer-close:hover { background: var(--surface-2); color: var(--ink-strong); }
+  .drawer-close svg { width: 16px; height: 16px; }
+
+  .drawer-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+  }
+  .drawer-section {
+    margin-bottom: 18px;
+  }
+  .drawer-section-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    margin-bottom: 8px;
+  }
+  .drawer-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 16px;
+  }
+  .drawer-detail label {
+    font-size: 11px;
+    color: var(--ink-soft);
+    display: block;
+  }
+  .drawer-detail span {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink);
+  }
+  .drawer-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+  .drawer-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    padding: 7px 14px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--surface-3);
+    background: var(--white);
+    color: var(--ink);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .drawer-action-btn:hover { border-color: var(--brand-blue); color: var(--brand-blue); }
+  .drawer-action-btn svg { width: 14px; height: 14px; }
+
+  .visit-history-item {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--surface-1);
+  }
+  .visit-history-item:last-child { border-bottom: none; }
+  .visit-history-item .date { font-size: 11px; color: var(--ink-soft); }
+  .visit-history-item .desc { font-size: 12.5px; color: var(--ink); font-weight: 500; }
+  .visit-history-item .provider { font-size: 11px; color: var(--ink-muted); }
+
+  /* ---------- BOTTOM BAR ---------- */
+  .bottom-bar {
+    height: 22px;
+    min-height: 22px;
+    background: var(--surface-1);
+    border-top: 1px solid var(--surface-2);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    font-size: 10.5px;
+    color: var(--ink-soft);
+    gap: 16px;
+  }
+  .bottom-bar span:first-child { font-weight: 600; color: var(--ink-muted); }
+
+  /* Scrollbar for board area */
+  .board-area::-webkit-scrollbar { height: 6px; }
+  .board-area::-webkit-scrollbar-thumb { background: var(--surface-4); border-radius: 4px; }
+
+  /* Status dot */
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+  .status-dot.green { background: var(--success); }
+  .status-dot.amber { background: var(--warning); }
+  .status-dot.red { background: var(--danger); }
+  .status-dot.blue { background: var(--brand-blue); }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- LEFT NAV RAIL -->
+  <nav class="nav-rail">
+    <div class="nav-logo">O</div>
+    <div class="nav-item" title="Patients">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    </div>
+    <div class="nav-item" title="Scheduling">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    </div>
+    <div class="nav-item active" title="Operations Board">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+    </div>
+    <div class="nav-item" title="Orders">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+    </div>
+    <div class="nav-item" title="Marketing">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    </div>
+    <div class="nav-item" title="Recalls">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+    </div>
+    <div class="nav-item" title="Messages">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      <span class="badge"></span>
+    </div>
+    <div class="nav-item" title="Journal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+    </div>
+    <div class="nav-item" title="Sales">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+    </div>
+    <div class="nav-item" title="Documents">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    </div>
+    <div class="nav-spacer"></div>
+    <div class="nav-item" title="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    </div>
+  </nav>
+
+  <!-- MAIN PANEL -->
+  <div class="main-panel">
+
+    <!-- TOP BAR -->
+    <div class="top-bar">
+      <div class="top-left">
+        <span class="top-title">Operations Board</span>
+        <div class="date-nav">
+          <button aria-label="Previous day"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+          <span>Today: Mon, Mar 9, 2026</span>
+          <button aria-label="Next day"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+        </div>
+      </div>
+      <div class="top-center">
+        <div class="view-toggle">
+          <button class="active">Board</button>
+          <button>Timeline</button>
+          <button>List</button>
+        </div>
+      </div>
+      <div class="top-right">
+        <div class="filter-pill">All Providers <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+        <div class="filter-pill">All Rooms <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+        <div class="filter-pill">Status: Active <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+        <input class="search-box" type="text" placeholder="Search patients...">
+        <div class="avatar">CL</div>
+      </div>
+    </div>
+
+    <!-- STATS BAR -->
+    <div class="stats-bar">
+      <span class="stat-item"><strong>24</strong>&nbsp;Appointments</span>
+      <span class="stat-sep">|</span>
+      <span class="stat-item"><strong>18</strong>&nbsp;Seen</span>
+      <span class="stat-sep">|</span>
+      <span class="stat-item"><strong>3</strong>&nbsp;Waiting <span style="color:var(--ink-soft)">(avg 4m)</span></span>
+      <span class="stat-sep">|</span>
+      <span class="stat-item"><strong>2</strong>&nbsp;No-Shows</span>
+      <span class="stat-sep">|</span>
+      <span class="stat-item">Revenue:&nbsp;<strong>$12,450</strong></span>
+    </div>
+
+    <!-- BOARD -->
+    <div class="board-area">
+
+      <!-- COLUMN: WAITING -->
+      <div class="column col-waiting">
+        <div class="column-header">
+          <span class="column-name">Waiting</span>
+          <span class="column-count">4</span>
+          <div class="column-actions">
+            <button title="Sort"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg></button>
+            <button title="Filter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></button>
+          </div>
+        </div>
+        <div class="column-body">
+
+          <div class="card urgency-red" onclick="openDrawer(this)" data-patient="Margaret Thompson" data-dob="Apr 12, 1948" data-phone="(555) 234-8901" data-insurance="Medicare Part B" data-device="Oticon Real 1 (BTE)" data-provider="Dr. Sarah Chen" data-visit="Hearing Aid Adjustment" data-time="9:00 AM" data-room="Room 2">
+            <div class="hover-actions">
+              <button title="Add note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+              <button title="Create order"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg></button>
+            </div>
+            <div class="card-top">
+              <span class="patient-name">Margaret Thompson</span>
+              <svg class="insurance-check" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+            </div>
+            <div class="card-meta">
+              <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>9:00 AM</span>
+              <span>Dr. Chen</span>
+              <span class="wait-timer red">18m wait</span>
+            </div>
+            <div class="card-badges">
+              <span class="badge-sm badge-type">HA Adjustment</span>
+              <span class="badge-sm badge-device">Oticon Real 1</span>
+            </div>
+          </div>
+
+          <div class="card urgency-amber" onclick="openDrawer(this)" data-patient="Robert Nakamura" data-dob="Jan 3, 1955" data-phone="(555) 876-4321" data-insurance="Blue Cross PPO" data-device="None" data-provider="Dr. James Okafor" data-visit="Comprehensive Audiogram" data-time="9:15 AM" data-room="Room 4">
+            <div class="hover-actions">
+              <button title="Add note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+              <button title="Create order"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg></button>
+            </div>
+            <div class="card-top">
+              <span class="patient-name">Robert Nakamura</span>
+              <svg class="insurance-check" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+            </div>
+            <div class="card-meta">
+              <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>9:15 AM</span>
+              <span>Dr. Okafor</span>
+              <span class="wait-timer amber">7m wait</span>
+            </div>
+            <div class="card-badges">
+              <span class="badge-sm badge-type">Audiogram</span>
+            </div>
+          </div>
+
+          <div class="card urgency-green" onclick="openDrawer(this)" data-patient="Dorothy Williams" data-dob="Sep 20, 1941" data-phone="(555) 412-7654" data-insurance="Aetna HMO" data-device="Phonak Lumity L90 (RIC)" data-provider="Dr. Sarah Chen" data-visit="Follow-up" data-time="9:30 AM" data-room="Room 1">
+            <div class="hover-actions">
+              <button title="Add note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+              <button title="Create order"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg></button>
+            </div>
+            <div class="card-top">
+              <span class="patient-name">Dorothy Williams</span>
+              <svg class="insurance-check" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+            </div>
+            <div class="card-meta">
+              <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>9:30 AM</span>
+              <span>Dr. Chen</span>
+              <span class="wait-timer green">2m wait</span>
+            </div>
+            <div class="card-badges">
+              <span class="badge-sm badge-type">Follow-up</span>
+              <span class="badge-sm badge-device">Phonak Lumity L90</span>
+            </div>
+          </div>
+
+          <div class="card urgency-green" onclick="openDrawer(this)" data-patient="Harold Jensen" data-dob="Mar 15, 1960" data-phone="(555) 309-5543" data-insurance="UnitedHealth" data-device="None" data-provider="Dr. James Okafor" data-visit="New Patient Eval" data-time="9:45 AM" data-room="Room 3">
+            <div class="hover-actions">
+              <button title="Add note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+              <button title="Create order"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg></button>
+            </div>
+            <div class="card-top">
+              <span class="patient-name">Harold Jensen</span>
+            </div>
+            <div class="card-meta">
+              <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>9:45 AM</span>
+              <span>Dr. Okafor</span>
+              <span class="wait-timer green">1m wait</span>
+            </div>
+            <div class="card-badges">
+              <span class="badge-sm badge-type">New Patient</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- COLUMN: IN PROGRESS -->
+      <div class="column col-inprogress">
+        <div class="column-header">
+          <span class="column-name">In Progress</span>
+          <span class="column-count">5</span>
+          <div class="column-actions">
+            <button title="Sort"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg></button>
+            <button title="Filter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></button>
+          </div>
+        </div>
+        <div class="column-body">
+
+          <div class="card urgency-green" onclick="openDrawer(this)" data-patient="Patricia Morales" data-dob="Aug 5, 1952" data-phone="(555) 671-2290" data-insurance="Medicare Part B" data-device="Starkey Genesis AI 24 (RIC)" data-provider="Dr. Sarah Chen" data-visit="Hearing Aid Fitting" data-time="8:30 AM" data-room="Room 1">
+            <div class="hover-actions">
+              <button title="Add note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+              <button title="Create order"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg></button>
+            </div>
+            <div class="card-top">
+              <span class="patient-name">Patricia Morales</span>
+              <svg class="insurance-check" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+            </div>
+            <div class="card-meta">
+              <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Started 8:35 AM</span>
+              <span>Room 1</span>
+              <span>Dr. Chen</span>
+            </div>
+            <div class="card-badges">
+              <span class="badge-sm badge-type">HA Fitting</span>
+              <span class="badge-sm badge-device">Starkey Genesis AI 24</span>
+            </div>
+            <div class="card-badges" style="margin-top:4px">
+              <span class="badge-sm badge-success-light"><span class="status-dot blue" style="margin-right:3px"></span>Fitting adjustment</span>
+            </div>
+            <div class="progress-bar"><div class="fill" style="width:70%"></div></div>
+          </div>
+
+          <div class="card urgency-green" onclick="openDrawer(this)" data-patient="James Whitfield" data-dob="Nov 18, 1964" data-phone="(555) 903-4410" data-insurance="Cigna PPO" data-device="None" data-provider="Dr. James Okafor" data-visit="Comprehensive Audiogram" data-time="8:45 AM" data-room="Room 4">
+            <div class="hover-actions">
+              <button title="Add note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+              <button title="Create order"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg></button>
+            </div>
+            <div class="card-top">
+              <span class="patient-name">James Whitfield</span>
+              <svg class="insurance-check" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+            </div>
+            <div class="card-meta">
+              <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Started 8:50 AM</span>
+              <span>Room 4</span>
+              <span>Dr. Okafor</span>
+            </div>
+            <div class="card-badges">
+              <span class="badge-sm badge-type">Audiogram</span>
+            </div>
+            <div class="card-badges" style="margin-top:4px">
+              <span class="badge-sm badge-success-light"><span class="status-dot blue" style="margin-right:3px"></span>Audiogram in progress</span>
+            </div>
+            <div class="progress-bar"><div class="fill" style="width:45%"></div></div>
+          </div>
+
+          <div class="card urgency-green" onclick="openDrawer(this)" data-patient="Linda Johansson" data-dob="Feb 22, 1958" data-phone="(555) 188-7720" data-insurance="Humana Gold" data-device="ReSound Nexia 9 (RIC)" data-provider="Dr. Sarah Chen" data-visit="Hearing Aid Check" data-time="9:00 AM" data-room="Room 2">
+            <div class="hover-actions">
+              <button title="Add note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+              <button title="Create order"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg></button>
+            </div>
+            <div class="card-top">
+              <span class="patient-name">Linda Johansson</span>
+              <svg class="insurance-check" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+            </div>
+            <div class="card-meta">
+              <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Started 9:10 AM</span>
+              <span>Room 2</span>
+              <span>Dr. Chen</span>
+            </div>
+            <div class="card-badges">
+              <span class="badge-sm badge-type">HA Check</span>
+              <span class="badge-sm badge-device">ReSound Nexia 9</span>
+            </div>
+            <div class="card-badges" style="margin-top:4px">
+              <span class="badge-sm badge-success-light"><span class="status-dot blue" style="margin-right:3px"></span>Consultation</span>
+            </div>
+            <div class="progress-bar"><div class="fill" style="width:30%"></div></div>
+          </div>
+
+          <div class="card urgency-green" onclick="openDrawer(this)" data-patient="Frank DeLuca" data-dob="May 30, 1970" data-phone="(555) 442-1163" data-insurance="Blue Cross PPO" data-device="None" data-provider="Dr. James Okafor" data-visit="Tinnitus Evaluation" data-time="9:15 AM" data-room="Room 3">
+            <div class="hover-actions">
+              <button title="Add note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+              <button title="Create order"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg></button>
+            </div>
+            <div class="card-top">
+              <span class="patient-name">Frank DeLuca</span>
+              <svg class="insurance-check" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+            </div>
+            <div class="card-meta">
+              <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Started 9:20 AM</span>
+              <span>Room 3</span>
+              <span>Dr. Okafor</span>
+            </div>
+            <div class="card-badges">
+              <span class="badge-sm badge-type">Tinnitus Eval</span>
+            </div>
+            <div class="card-badges" style="margin-top:4px">
+              <span class="badge-sm badge-success-light"><span class="status-dot blue" style="margin-right:3px"></span>Audiogram in progress</span>
+            </div>
+            <div class="progress-bar"><div class="fill" style="width:55%"></div></div>
+          </div>
+
+          <div class="card urgency-green" onclick="openDrawer(this)" data-patient="Susan Park" data-dob="Dec 8, 1966" data-phone="(555) 720-3341" data-insurance="Aetna HMO" data-device="Widex SmartRIC (RIC)" data-provider="Dr. Sarah Chen" data-visit="Real Ear Measurement" data-time="9:30 AM" data-room="Room 5">
+            <div class="hover-actions">
+              <button title="Add note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+              <button title="Create order"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg></button>
+            </div>
+            <div class="card-top">
+              <span class="patient-name">Susan Park</span>
+              <svg class="insurance-check" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+            </div>
+            <div class="card-meta">
+              <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Started 9:35 AM</span>
+              <span>Room 5</span>
+              <span>Dr. Chen</span>
+            </div>
+            <div class="card-badges">
+              <span class="badge-sm badge-type">REM</span>
+              <span class="badge-sm badge-device">Widex SmartRIC</span>
+            </div>
+            <div class="card-badges" style="margin-top:4px">
+              <span class="badge-sm badge-success-light"><span class="status-dot blue" style="margin-right:3px"></span>Fitting adjustment</span>
+            </div>
+            <div class="progress-bar"><div class="fill" style="width:20%"></div></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- COLUMN: PENDING ACTION -->
+      <div class="column col-pending">
+        <div class="column-header">
+          <span class="column-name">Pending Action</span>
+          <span class="column-count">4</span>
+          <div class="column-actions">
+            <button title="Sort"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg></button>
+            <button title="Filter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></button>
+          </div>
+        </div>
+        <div class="column-body">
+
+          <div class="card urgency-amber" onclick="openDrawer(this)" data-patient="George Alvarez" data-dob="Jul 19, 1950" data-phone="(555) 334-9981" data-insurance="Medicare Part B" data-device="Phonak Audeo L90 (RIC)" data-provider="Dr. Sarah Chen" data-visit="HA Fitting" data-time="8:00 AM" data-room="Room 1">
+            <div class="hover-actions">
+              <button title="Add note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            </div>
+            <div class="card-top">
+              <span class="patient-name">George Alvarez</span>
+              <svg class="insurance-check" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+            </div>
+            <div class="card-meta">
+              <span>Dr. Chen</span>
+              <span class="wait-timer amber">Pending 22m</span>
+            </div>
+            <div class="card-badges">
+              <span class="badge-sm badge-action">Needs Sign-Off</span>
+              <span class="badge-sm badge-device">Phonak Audeo L90</span>
+            </div>
+            <div class="card-actions">
+              <button class="card-action-btn primary">Sign Off</button>
+              <button class="card-action-btn">Create Order</button>
+            </div>
+          </div>
+
+          <div class="card urgency-amber" onclick="openDrawer(this)" data-patient="Betty Carmichael" data-dob="Oct 2, 1943" data-phone="(555) 887-2213" data-insurance="Humana Gold" data-device="Oticon Intent 1 (RIC)" data-provider="Dr. James Okafor" data-visit="Audiogram + Consult" data-time="8:15 AM" data-room="Room 3">
+            <div class="hover-actions">
+              <button title="Add note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            </div>
+            <div class="card-top">
+              <span class="patient-name">Betty Carmichael</span>
+              <svg class="insurance-check" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+            </div>
+            <div class="card-meta">
+              <span>Dr. Okafor</span>
+              <span class="wait-timer amber">Pending 18m</span>
+            </div>
+            <div class="card-badges">
+              <span class="badge-sm badge-action">Order Needed</span>
+              <span class="badge-sm badge-device">Oticon Intent 1</span>
+            </div>
+            <div class="card-actions">
+              <button class="card-action-btn primary">Create Order</button>
+              <button class="card-action-btn">Schedule F/U</button>
+            </div>
+          </div>
+
+          <div class="card urgency-red" onclick="openDrawer(this)" data-patient="Arthur Pham" data-dob="Jun 14, 1957" data-phone="(555) 503-8847" data-insurance="Blue Cross PPO" data-device="None" data-provider="Dr. Sarah Chen" data-visit="New Patient Eval" data-time="8:30 AM" data-room="Room 2">
+            <div class="hover-actions">
+              <button title="Add note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            </div>
+            <div class="card-top">
+              <span class="patient-name">Arthur Pham</span>
+              <svg class="insurance-check" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+            </div>
+            <div class="card-meta">
+              <span>Dr. Chen</span>
+              <span class="wait-timer red">Pending 35m</span>
+            </div>
+            <div class="card-badges">
+              <span class="badge-sm badge-action">Schedule Follow-up</span>
+            </div>
+            <div class="card-actions">
+              <button class="card-action-btn primary">Schedule F/U</button>
+              <button class="card-action-btn">Sign Off</button>
+            </div>
+          </div>
+
+          <div class="card urgency-green" onclick="openDrawer(this)" data-patient="Carol Fitzgerald" data-dob="Apr 28, 1961" data-phone="(555) 229-6770" data-insurance="Aetna HMO" data-device="Signia AX 7 (BTE)" data-provider="Dr. James Okafor" data-visit="HA Repair" data-time="8:45 AM" data-room="Room 4">
+            <div class="hover-actions">
+              <button title="Add note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            </div>
+            <div class="card-top">
+              <span class="patient-name">Carol Fitzgerald</span>
+              <svg class="insurance-check" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+            </div>
+            <div class="card-meta">
+              <span>Dr. Okafor</span>
+              <span class="wait-timer green">Pending 5m</span>
+            </div>
+            <div class="card-badges">
+              <span class="badge-sm badge-action">Needs Sign-Off</span>
+              <span class="badge-sm badge-device">Signia AX 7</span>
+            </div>
+            <div class="card-actions">
+              <button class="card-action-btn primary">Sign Off</button>
+              <button class="card-action-btn">Create Order</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- COLUMN: COMPLETED -->
+      <div class="column col-completed">
+        <div class="column-header">
+          <span class="column-name">Completed</span>
+          <span class="column-count">5</span>
+          <div class="column-actions">
+            <button title="Sort"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg></button>
+            <button title="Filter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></button>
+          </div>
+        </div>
+        <div class="column-body">
+
+          <div class="card" onclick="openDrawer(this)" data-patient="William Reeves" data-dob="Mar 1, 1946" data-phone="(555) 100-4432" data-insurance="Medicare Part B" data-device="Phonak Audeo L70 (RIC)" data-provider="Dr. Sarah Chen" data-visit="Follow-up" data-time="7:30 AM" data-room="Room 1">
+            <div class="card-top">
+              <span class="patient-name">William Reeves</span>
+            </div>
+            <div class="card-meta">
+              <span>Dr. Chen</span>
+              <span>Completed 8:12 AM</span>
+              <span class="badge-sm badge-type" style="margin-left:auto">Follow-up</span>
+            </div>
+          </div>
+
+          <div class="card" onclick="openDrawer(this)" data-patient="Nancy Goldberg" data-dob="Dec 15, 1953" data-phone="(555) 778-3301" data-insurance="UnitedHealth" data-device="None" data-provider="Dr. James Okafor" data-visit="Audiogram" data-time="7:30 AM" data-room="Room 4">
+            <div class="card-top">
+              <span class="patient-name">Nancy Goldberg</span>
+            </div>
+            <div class="card-meta">
+              <span>Dr. Okafor</span>
+              <span>Completed 8:20 AM</span>
+              <span class="badge-sm badge-type" style="margin-left:auto">Audiogram</span>
+            </div>
+          </div>
+
+          <div class="card" onclick="openDrawer(this)" data-patient="Richard Tanaka" data-dob="Sep 7, 1949" data-phone="(555) 662-8890" data-insurance="Cigna PPO" data-device="Oticon Real 1 (BTE)" data-provider="Dr. Sarah Chen" data-visit="HA Adjustment" data-time="8:00 AM" data-room="Room 2">
+            <div class="card-top">
+              <span class="patient-name">Richard Tanaka</span>
+            </div>
+            <div class="card-meta">
+              <span>Dr. Chen</span>
+              <span>Completed 8:45 AM</span>
+              <span class="badge-sm badge-type" style="margin-left:auto">HA Adjustment</span>
+            </div>
+          </div>
+
+          <div class="card" onclick="openDrawer(this)" data-patient="Eleanor Vasquez" data-dob="Feb 11, 1959" data-phone="(555) 441-2267" data-insurance="Humana Gold" data-device="ReSound Nexia 7 (RIC)" data-provider="Dr. James Okafor" data-visit="Real Ear Measurement" data-time="8:00 AM" data-room="Room 3">
+            <div class="card-top">
+              <span class="patient-name">Eleanor Vasquez</span>
+            </div>
+            <div class="card-meta">
+              <span>Dr. Okafor</span>
+              <span>Completed 8:50 AM</span>
+              <span class="badge-sm badge-type" style="margin-left:auto">REM</span>
+            </div>
+          </div>
+
+          <div class="card" onclick="openDrawer(this)" data-patient="Thomas Brennan" data-dob="Aug 25, 1944" data-phone="(555) 556-1198" data-insurance="Medicare Part B" data-device="Starkey Evolv AI 2400 (ITE)" data-provider="Dr. Sarah Chen" data-visit="Cerumen Removal" data-time="8:30 AM" data-room="Room 1">
+            <div class="card-top">
+              <span class="patient-name">Thomas Brennan</span>
+            </div>
+            <div class="card-meta">
+              <span>Dr. Chen</span>
+              <span>Completed 8:55 AM</span>
+              <span class="badge-sm badge-type" style="margin-left:auto">Cerumen</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- BOTTOM BAR -->
+    <div class="bottom-bar">
+      <span>AccuHear Audiology — Main Office</span>
+      <span>Logged in: Chris Lawson</span>
+      <span>Last refresh: 9:42 AM</span>
+    </div>
+
+  </div>
+</div>
+
+<!-- DRAWER OVERLAY -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+
+<!-- DRAWER -->
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <div class="drawer-header-info">
+      <div class="drawer-patient-name" id="drawerName">Patricia Morales</div>
+      <div class="drawer-patient-meta">
+        <span id="drawerDob">DOB: Aug 5, 1952</span>
+        <span id="drawerPhone">(555) 671-2290</span>
+      </div>
+    </div>
+    <button class="drawer-close" onclick="closeDrawer()" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="drawer-body">
+
+    <div class="drawer-section">
+      <div class="drawer-section-title">Today's Appointment</div>
+      <div class="drawer-detail-grid">
+        <div class="drawer-detail"><label>Visit Type</label><span id="drawerVisit">Hearing Aid Fitting</span></div>
+        <div class="drawer-detail"><label>Time</label><span id="drawerTime">8:30 AM</span></div>
+        <div class="drawer-detail"><label>Provider</label><span id="drawerProvider">Dr. Sarah Chen</span></div>
+        <div class="drawer-detail"><label>Room</label><span id="drawerRoom">Room 1</span></div>
+      </div>
+    </div>
+
+    <div class="drawer-section">
+      <div class="drawer-section-title">Insurance &amp; Device</div>
+      <div class="drawer-detail-grid">
+        <div class="drawer-detail"><label>Insurance</label><span id="drawerInsurance">Medicare Part B</span></div>
+        <div class="drawer-detail"><label>Hearing Aid</label><span id="drawerDevice">Starkey Genesis AI 24 (RIC)</span></div>
+      </div>
+    </div>
+
+    <div class="drawer-actions">
+      <button class="drawer-action-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Add Note
+      </button>
+      <button class="drawer-action-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+        Create Order
+      </button>
+      <button class="drawer-action-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Schedule Follow-up
+      </button>
+      <button class="drawer-action-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Print Summary
+      </button>
+    </div>
+
+    <div class="drawer-section">
+      <div class="drawer-section-title">Recent Visit History</div>
+      <div class="visit-history-item">
+        <div class="date">Feb 24, 2026</div>
+        <div class="desc">Hearing Aid Fitting — Initial</div>
+        <div class="provider">Dr. Sarah Chen — AccuHear Main Office</div>
+      </div>
+      <div class="visit-history-item">
+        <div class="date">Feb 10, 2026</div>
+        <div class="desc">Comprehensive Audiogram</div>
+        <div class="provider">Dr. James Okafor — AccuHear Main Office</div>
+      </div>
+      <div class="visit-history-item">
+        <div class="date">Jan 15, 2026</div>
+        <div class="desc">New Patient Evaluation</div>
+        <div class="provider">Dr. Sarah Chen — AccuHear Main Office</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // Drawer open/close
+  let selectedCard = null;
+
+  function openDrawer(cardEl) {
+    // Deselect previous
+    if (selectedCard) selectedCard.classList.remove('selected');
+    selectedCard = cardEl;
+    cardEl.classList.add('selected');
+
+    // Populate drawer from data attributes
+    const d = cardEl.dataset;
+    document.getElementById('drawerName').textContent = d.patient || '';
+    document.getElementById('drawerDob').textContent = 'DOB: ' + (d.dob || '—');
+    document.getElementById('drawerPhone').textContent = d.phone || '';
+    document.getElementById('drawerVisit').textContent = d.visit || '—';
+    document.getElementById('drawerTime').textContent = d.time || '—';
+    document.getElementById('drawerProvider').textContent = d.provider || '—';
+    document.getElementById('drawerRoom').textContent = d.room || '—';
+    document.getElementById('drawerInsurance').textContent = d.insurance || '—';
+    document.getElementById('drawerDevice').textContent = d.device || 'None';
+
+    document.getElementById('drawerOverlay').classList.add('open');
+    document.getElementById('drawer').classList.add('open');
+  }
+
+  function closeDrawer() {
+    document.getElementById('drawerOverlay').classList.remove('open');
+    document.getElementById('drawer').classList.remove('open');
+    if (selectedCard) {
+      selectedCard.classList.remove('selected');
+      selectedCard = null;
+    }
+  }
+
+  // Escape key closes drawer
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeDrawer();
+  });
+
+  // Prevent card action buttons from triggering card click
+  document.querySelectorAll('.card-action-btn, .hover-actions button').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+    });
+  });
+</script>
+
+<!-- Variant Selector -->
+<div id="variant-selector" style="position:fixed;bottom:16px;right:16px;z-index:99999;font-family:'Space Grotesk',system-ui,sans-serif;">
+  <button id="vs-toggle" style="width:40px;height:40px;border-radius:12px;border:1px solid rgba(38,34,96,0.12);background:rgba(255,255,255,0.95);backdrop-filter:blur(8px);box-shadow:0 2px 12px rgba(0,0,0,0.1);cursor:pointer;font-size:14px;font-weight:600;color:#262260;display:flex;align-items:center;justify-content:center;transition:all 0.2s;" title="Switch variant">⟐</button>
+  <div id="vs-panel" style="display:none;position:absolute;bottom:48px;right:0;background:rgba(255,255,255,0.97);backdrop-filter:blur(12px);border:1px solid rgba(38,34,96,0.1);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.12);padding:8px;min-width:220px;">
+    <div style="padding:4px 10px 8px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:#9a95ad;">Variant Selector</div>
+    <div id="vs-links"></div>
+    <div style="border-top:1px solid rgba(38,34,96,0.06);margin-top:4px;padding-top:4px;">
+      <a href="README.html" style="display:block;padding:6px 10px;font-size:12px;color:#6c687d;text-decoration:none;border-radius:8px;transition:background 0.15s;" onmouseover="this.style.background='rgba(31,149,184,0.06)'" onmouseout="this.style.background='transparent'">📋 Comparison Notes</a>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var currentVariant = 8;
+  var variants = [
+    {n:1, label:'Dense Clinical Shell'},
+    {n:2, label:'Compact Warm Workspace'},
+    {n:3, label:'Tabbed Record Panels'},
+    {n:4, label:'Split-View Dashboard'},
+    {n:5, label:'Dark Dense Console'},
+    {n:6, label:'Command-Bar Workspace'},
+    {n:7, label:'Split-Pane Console'},
+    {n:8, label:'Clinical Ops Board'},
+    {n:9, label:'Data-Grid Workspace'},
+    {n:10,label:'Ultra-Dense Expert'}
+  ];
+  var linksEl = document.getElementById('vs-links');
+  variants.forEach(function(v){
+    var isCurrent = v.n === currentVariant;
+    var a = document.createElement('a');
+    a.href = 'variant-' + String(v.n).padStart(2,'0') + '.html';
+    a.style.cssText = 'display:flex;align-items:center;gap:8px;padding:5px 10px;font-size:12px;text-decoration:none;border-radius:8px;transition:background 0.15s;color:' + (isCurrent ? '#1f95b8' : '#2f2c3f') + ';font-weight:' + (isCurrent ? '600' : '400') + ';background:' + (isCurrent ? 'rgba(31,149,184,0.08)' : 'transparent');
+    a.innerHTML = '<span style="width:22px;height:22px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;background:' + (isCurrent ? 'rgba(31,149,184,0.15)' : 'rgba(38,34,96,0.06)') + ';color:' + (isCurrent ? '#1f95b8' : '#6c687d') + '">' + String(v.n).padStart(2,'0') + '</span>' + v.label;
+    if(!isCurrent){
+      a.onmouseover = function(){ this.style.background='rgba(31,149,184,0.06)'; };
+      a.onmouseout = function(){ this.style.background='transparent'; };
+    }
+    linksEl.appendChild(a);
+  });
+  var toggle = document.getElementById('vs-toggle');
+  var panel = document.getElementById('vs-panel');
+  toggle.textContent = String(currentVariant).padStart(2,'0');
+  toggle.addEventListener('click', function(){
+    var open = panel.style.display !== 'none';
+    panel.style.display = open ? 'none' : 'block';
+    toggle.style.background = open ? 'rgba(255,255,255,0.95)' : 'rgba(31,149,184,0.1)';
+    toggle.style.borderColor = open ? 'rgba(38,34,96,0.12)' : 'rgba(31,149,184,0.3)';
+    toggle.style.color = open ? '#262260' : '#1f95b8';
+  });
+  document.addEventListener('click', function(e){
+    if(!document.getElementById('variant-selector').contains(e.target)){
+      panel.style.display = 'none';
+      toggle.style.background = 'rgba(255,255,255,0.95)';
+      toggle.style.borderColor = 'rgba(38,34,96,0.12)';
+      toggle.style.color = '#262260';
+    }
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape'){ panel.style.display = 'none'; }
+    if((e.key === '.' || e.key === '>') && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA'){
+      var next = currentVariant < 10 ? currentVariant + 1 : 1;
+      window.location.href = 'variant-' + String(next).padStart(2,'0') + '.html';
+    }
+    if((e.key === ',' || e.key === '<') && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA'){
+      var prev = currentVariant > 1 ? currentVariant - 1 : 10;
+      window.location.href = 'variant-' + String(prev).padStart(2,'0') + '.html';
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

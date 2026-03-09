@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omni — Dense Split-Pane Operator Console (Variant 07)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --brand-ink: #262260;
+    --brand-blue: #1f95b8;
+    --brand-orange: #dd6f26;
+    --surface-0: #f8f5f0;
+    --surface-1: #f3efe8;
+    --surface-2: #ece6dd;
+    --surface-3: #e6dfd4;
+    --surface-4: #dfd6c8;
+    --ink-strong: #1b1a27;
+    --ink: #2f2c3f;
+    --ink-muted: #6c687d;
+    --ink-soft: #9a95ad;
+    --success: #1e9b6c;
+    --warning: #c87a2f;
+    --danger: #c94646;
+    --pane-border: rgba(38, 34, 96, 0.08);
+    --row-hover: rgba(31, 149, 184, 0.06);
+    --font-body: 'Open Sans', sans-serif;
+    --font-display: 'Space Grotesk', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    font-family: var(--font-body);
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--surface-0);
+    overflow: hidden;
+  }
+
+  /* ── Shell layout ─────────────────────────────── */
+  .shell {
+    display: grid;
+    grid-template-columns: 52px 1fr;
+    grid-template-rows: 36px 1fr 22px;
+    grid-template-areas:
+      "rail topbar"
+      "rail main"
+      "rail status";
+    height: 100vh;
+  }
+
+  /* ── Nav Rail ─────────────────────────────────── */
+  .nav-rail {
+    grid-area: rail;
+    background: var(--brand-ink);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 0 10px;
+    gap: 2px;
+    z-index: 10;
+  }
+  .nav-rail .logo {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: var(--brand-blue);
+    display: grid; place-items: center;
+    margin-bottom: 10px;
+    font-family: var(--font-display);
+    font-weight: 700; font-size: 15px; color: #fff;
+  }
+  .nav-rail button {
+    width: 42px; height: 42px;
+    border: none; background: transparent;
+    border-radius: 10px;
+    display: grid; place-items: center;
+    color: rgba(255,255,255,0.5);
+    cursor: pointer;
+    position: relative;
+    transition: background .15s, color .15s;
+  }
+  .nav-rail button:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.8); }
+  .nav-rail button.active {
+    color: #fff;
+    background: rgba(255,255,255,0.1);
+  }
+  .nav-rail button.active::before {
+    content: '';
+    position: absolute; left: -5px; top: 50%; transform: translateY(-50%);
+    width: 3px; height: 22px; border-radius: 0 3px 3px 0;
+    background: var(--brand-blue);
+  }
+  .nav-rail svg { width: 20px; height: 20px; }
+  .nav-rail .spacer { flex: 1; }
+  .nav-rail .nav-label {
+    font-size: 9px; color: rgba(255,255,255,0.35);
+    text-transform: uppercase; letter-spacing: .5px;
+    writing-mode: vertical-rl; text-orientation: mixed;
+    margin-top: 6px;
+  }
+  .nav-rail .location-indicator {
+    width: 36px; padding: 5px 0;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.07);
+    text-align: center;
+    font-size: 9px; color: rgba(255,255,255,0.55);
+    line-height: 1.2;
+  }
+  .nav-rail .location-indicator span { display: block; font-weight: 600; color: rgba(255,255,255,0.85); font-size: 10px; }
+
+  /* ── Top Bar ──────────────────────────────────── */
+  .topbar {
+    grid-area: topbar;
+    background: #fff;
+    border-bottom: 1px solid var(--pane-border);
+    display: flex; align-items: center;
+    padding: 0 14px;
+    gap: 10px;
+    font-size: 12px;
+  }
+  .breadcrumb { color: var(--ink-muted); display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .breadcrumb a { color: var(--ink-muted); text-decoration: none; }
+  .breadcrumb a:hover { color: var(--brand-blue); }
+  .breadcrumb .sep { font-size: 10px; color: var(--ink-soft); }
+  .breadcrumb .current { color: var(--ink); font-weight: 600; }
+  .topbar .search-wrap {
+    margin-left: auto;
+    position: relative; width: 300px;
+  }
+  .topbar .search-wrap input {
+    width: 100%; height: 26px;
+    border: 1px solid var(--surface-3);
+    border-radius: 999px;
+    padding: 0 10px 0 30px;
+    font-size: 12px; font-family: var(--font-body);
+    background: var(--surface-0);
+    color: var(--ink);
+    outline: none;
+    transition: border-color .15s;
+  }
+  .topbar .search-wrap input:focus { border-color: var(--brand-blue); }
+  .topbar .search-wrap .search-icon {
+    position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+    color: var(--ink-soft); width: 14px; height: 14px;
+  }
+  .topbar .quick-actions { display: flex; align-items: center; gap: 6px; margin-left: 10px; }
+  .btn-new {
+    height: 26px; padding: 0 12px;
+    border: none; border-radius: 999px;
+    background: var(--brand-blue);
+    color: #fff; font-size: 11px; font-weight: 600;
+    font-family: var(--font-body);
+    cursor: pointer; display: flex; align-items: center; gap: 4px;
+    transition: opacity .15s;
+  }
+  .btn-new:hover { opacity: .85; }
+  .icon-btn {
+    width: 28px; height: 28px; border: none; background: transparent;
+    border-radius: 8px; display: grid; place-items: center;
+    color: var(--ink-muted); cursor: pointer;
+    transition: background .15s;
+  }
+  .icon-btn:hover { background: var(--surface-1); }
+  .icon-btn svg { width: 16px; height: 16px; }
+  .avatar-sm {
+    width: 26px; height: 26px; border-radius: 999px;
+    background: var(--brand-ink);
+    color: #fff; font-size: 10px; font-weight: 700;
+    display: grid; place-items: center;
+    font-family: var(--font-display);
+  }
+
+  /* ── Tri-pane ─────────────────────────────────── */
+  .tri-pane {
+    grid-area: main;
+    display: grid;
+    grid-template-columns: 280px 1fr 300px;
+    min-height: 0;
+  }
+
+  /* ── Pane 1: List ─────────────────────────────── */
+  .pane-list {
+    background: var(--surface-0);
+    border-right: 1px solid var(--pane-border);
+    display: flex; flex-direction: column;
+    min-height: 0;
+  }
+  .list-header {
+    padding: 10px 12px 8px;
+    border-bottom: 1px solid var(--pane-border);
+  }
+  .list-header h3 {
+    font-family: var(--font-display);
+    font-size: 14px; font-weight: 600;
+    color: var(--ink-strong);
+    margin-bottom: 8px;
+  }
+  .list-search {
+    width: 100%; height: 28px;
+    border: 1px solid var(--surface-3);
+    border-radius: 999px;
+    padding: 0 10px;
+    font-size: 12px; font-family: var(--font-body);
+    background: #fff;
+    color: var(--ink);
+    outline: none;
+    margin-bottom: 8px;
+  }
+  .list-search:focus { border-color: var(--brand-blue); }
+  .list-filters {
+    display: flex; gap: 6px;
+  }
+  .list-filters select {
+    height: 24px; padding: 0 6px;
+    border: 1px solid var(--surface-3);
+    border-radius: 6px;
+    font-size: 11px; font-family: var(--font-body);
+    background: #fff; color: var(--ink-muted);
+    cursor: pointer; outline: none; flex: 1;
+  }
+  .patient-list {
+    flex: 1; overflow-y: auto;
+    padding: 4px 0;
+  }
+  .patient-list::-webkit-scrollbar { width: 4px; }
+  .patient-list::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 4px; }
+  .patient-card {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: background .1s;
+    min-height: 52px;
+  }
+  .patient-card:hover { background: rgba(31,149,184,0.05); }
+  .patient-card.selected {
+    background: rgba(31,149,184,0.08);
+    border-left-color: var(--brand-blue);
+  }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .status-dot.active { background: var(--success); }
+  .status-dot.follow-up { background: var(--warning); }
+  .status-dot.urgent { background: var(--danger); }
+  .patient-card .info { flex: 1; min-width: 0; }
+  .patient-card .name {
+    font-size: 12.5px; font-weight: 600; color: var(--ink-strong);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .patient-card .meta {
+    font-size: 11px; color: var(--ink-muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .patient-card .visit-date {
+    font-size: 10px; color: var(--ink-soft);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* ── Pane 2: Detail ───────────────────────────── */
+  .pane-detail {
+    background: #fff;
+    border-right: 1px solid var(--pane-border);
+    display: flex; flex-direction: column;
+    min-height: 0;
+  }
+  .detail-header {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--pane-border);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .detail-header .avatar {
+    width: 38px; height: 38px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--brand-ink), var(--brand-blue));
+    color: #fff; font-family: var(--font-display);
+    font-weight: 700; font-size: 15px;
+    display: grid; place-items: center;
+    flex-shrink: 0;
+  }
+  .detail-header .header-info { flex: 1; min-width: 0; }
+  .detail-header .patient-name {
+    font-family: var(--font-display);
+    font-size: 16px; font-weight: 600;
+    color: var(--ink-strong);
+  }
+  .detail-header .badges { display: flex; gap: 5px; margin-top: 2px; }
+  .badge {
+    display: inline-flex; align-items: center;
+    height: 18px; padding: 0 8px;
+    border-radius: 999px;
+    font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .3px;
+  }
+  .badge-active { background: rgba(30,155,108,0.1); color: var(--success); }
+  .badge-insured { background: rgba(31,149,184,0.1); color: var(--brand-blue); }
+  .badge-vip { background: rgba(221,111,38,0.1); color: var(--brand-orange); }
+  .header-actions { display: flex; gap: 5px; flex-shrink: 0; }
+  .btn-sm {
+    height: 26px; padding: 0 10px;
+    border: 1px solid var(--surface-3);
+    border-radius: 999px;
+    background: #fff; color: var(--ink);
+    font-size: 11px; font-weight: 500;
+    font-family: var(--font-body);
+    cursor: pointer; display: flex; align-items: center; gap: 4px;
+    transition: border-color .15s, background .15s;
+  }
+  .btn-sm:hover { border-color: var(--brand-blue); background: rgba(31,149,184,0.04); }
+  .btn-sm svg { width: 13px; height: 13px; }
+
+  /* Utility toolbar */
+  .toolbar-stack {
+    border-bottom: 1px solid var(--pane-border);
+  }
+  .toolbar-row {
+    display: flex; align-items: center;
+    padding: 0 16px;
+    height: 30px;
+    gap: 6px;
+  }
+  .toolbar-row:first-child {
+    border-bottom: 1px solid var(--pane-border);
+  }
+  .tab-seg {
+    display: flex; gap: 0;
+    background: var(--surface-1);
+    border-radius: 8px;
+    padding: 2px;
+  }
+  .tab-seg button {
+    height: 24px; padding: 0 12px;
+    border: none; border-radius: 6px;
+    background: transparent;
+    font-size: 11px; font-weight: 500;
+    font-family: var(--font-body);
+    color: var(--ink-muted);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .tab-seg button.active {
+    background: #fff;
+    color: var(--ink-strong);
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .tab-seg button:hover:not(.active) { color: var(--ink); }
+  .toolbar-sep { width: 1px; height: 16px; background: var(--surface-3); }
+  .btn-toolbar {
+    height: 24px; padding: 0 10px;
+    border: 1px solid var(--surface-3);
+    border-radius: 6px;
+    background: #fff; color: var(--ink-muted);
+    font-size: 11px; font-family: var(--font-body);
+    cursor: pointer; display: flex; align-items: center; gap: 4px;
+    transition: border-color .15s;
+  }
+  .btn-toolbar:hover { border-color: var(--brand-blue); color: var(--ink); }
+  .btn-toolbar.primary {
+    background: var(--brand-blue); color: #fff; border-color: var(--brand-blue);
+  }
+  .btn-toolbar.primary:hover { opacity: .85; }
+  .btn-toolbar svg { width: 12px; height: 12px; }
+
+  /* Detail content */
+  .detail-content {
+    flex: 1; overflow-y: auto;
+    padding: 14px 16px;
+  }
+  .detail-content::-webkit-scrollbar { width: 4px; }
+  .detail-content::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 4px; }
+
+  /* Overview grid */
+  .overview-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .info-card {
+    background: var(--surface-0);
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+  .info-card .label {
+    font-size: 10px; text-transform: uppercase;
+    letter-spacing: .5px; color: var(--ink-soft);
+    margin-bottom: 4px; font-weight: 600;
+  }
+  .info-card .value {
+    font-size: 13px; color: var(--ink-strong); font-weight: 500;
+  }
+  .info-card .value.small { font-size: 12px; }
+
+  /* Data table */
+  .data-table-wrap { margin-top: 4px; }
+  .data-table-wrap h4 {
+    font-family: var(--font-display);
+    font-size: 13px; font-weight: 600; color: var(--ink-strong);
+    margin-bottom: 8px;
+  }
+  table.dense {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  table.dense th {
+    text-align: left;
+    font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .4px;
+    color: var(--ink-soft);
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--surface-2);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  table.dense th .sort-arrow { font-size: 8px; margin-left: 3px; color: var(--ink-soft); }
+  table.dense th:hover { color: var(--ink-muted); }
+  table.dense td {
+    padding: 7px 8px;
+    border-bottom: 1px solid var(--surface-1);
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  table.dense tr:hover td { background: var(--row-hover); }
+  .pill {
+    display: inline-flex; align-items: center;
+    height: 18px; padding: 0 8px;
+    border-radius: 999px;
+    font-size: 10px; font-weight: 600;
+  }
+  .pill-completed { background: rgba(30,155,108,0.1); color: var(--success); }
+  .pill-pending { background: rgba(200,122,47,0.1); color: var(--warning); }
+  .pill-processing { background: rgba(31,149,184,0.1); color: var(--brand-blue); }
+  .pill-cancelled { background: rgba(201,70,70,0.1); color: var(--danger); }
+  .amount { font-variant-numeric: tabular-nums; }
+
+  /* ── Pane 3: Inspector ────────────────────────── */
+  .pane-inspector {
+    background: var(--surface-1);
+    display: flex; flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .pane-inspector::-webkit-scrollbar { width: 4px; }
+  .pane-inspector::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 4px; }
+  .inspector-section {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--pane-border);
+  }
+  .inspector-section h4 {
+    font-family: var(--font-display);
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .5px;
+    color: var(--ink-muted);
+    margin-bottom: 8px;
+  }
+  .appt-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 0;
+  }
+  .appt-time {
+    font-size: 11px; font-weight: 600;
+    color: var(--brand-blue);
+    width: 58px; flex-shrink: 0;
+  }
+  .appt-time.soon { color: var(--warning); }
+  .appt-time.past { color: var(--ink-soft); }
+  .appt-desc {
+    font-size: 11px; color: var(--ink);
+    flex: 1; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .appt-date { font-size: 10px; color: var(--ink-soft); flex-shrink: 0; }
+
+  .timeline-item {
+    display: flex; gap: 8px;
+    padding: 4px 0;
+    font-size: 11px;
+  }
+  .timeline-date { color: var(--ink-soft); width: 54px; flex-shrink: 0; font-size: 10px; }
+  .timeline-action { color: var(--ink); flex: 1; }
+
+  .quick-notes {
+    width: 100%; min-height: 64px;
+    border: 1px solid var(--surface-3);
+    border-radius: 8px;
+    padding: 8px;
+    font-size: 12px; font-family: var(--font-body);
+    color: var(--ink);
+    background: #fff;
+    resize: vertical;
+    outline: none;
+  }
+  .quick-notes:focus { border-color: var(--brand-blue); }
+
+  .family-member {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 0;
+  }
+  .family-avatar {
+    width: 24px; height: 24px; border-radius: 999px;
+    background: var(--surface-3);
+    font-size: 9px; font-weight: 700; color: var(--ink-muted);
+    display: grid; place-items: center;
+    font-family: var(--font-display);
+  }
+  .family-info .fam-name { font-size: 11px; font-weight: 600; color: var(--ink); }
+  .family-info .fam-rel { font-size: 10px; color: var(--ink-soft); }
+
+  .insurance-card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 10px;
+  }
+  .insurance-card .ins-row {
+    display: flex; justify-content: space-between;
+    font-size: 11px;
+    padding: 2px 0;
+  }
+  .insurance-card .ins-label { color: var(--ink-muted); }
+  .insurance-card .ins-value { color: var(--ink-strong); font-weight: 600; }
+
+  /* ── Status Strip ─────────────────────────────── */
+  .status-strip {
+    grid-area: status;
+    background: var(--brand-ink);
+    display: flex; align-items: center;
+    padding: 0 14px 0 66px;
+    gap: 18px;
+    font-size: 10px;
+    color: rgba(255,255,255,0.5);
+  }
+  .status-strip .status-item { display: flex; align-items: center; gap: 5px; }
+  .status-strip .dot-online { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+  .status-strip .spacer { flex: 1; }
+
+  /* ── Tab content toggling ─────────────────────── */
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ═══ Nav Rail ═══ -->
+  <nav class="nav-rail">
+    <div class="logo">O</div>
+
+    <button class="active" title="Patients">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    </button>
+    <button title="Scheduling">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    </button>
+    <button title="Orders">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+    </button>
+    <button title="Marketing">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    </button>
+    <button title="Recalls">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+    </button>
+    <button title="Messages">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    </button>
+    <button title="Journal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    </button>
+    <button title="Sales">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    </button>
+    <button title="Documents">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    </button>
+
+    <div class="spacer"></div>
+
+    <button title="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+
+    <div class="location-indicator">
+      <span>HQ</span>
+      Main
+    </div>
+  </nav>
+
+  <!-- ═══ Top Bar ═══ -->
+  <header class="topbar">
+    <div class="breadcrumb">
+      <a href="#">Patients</a>
+      <span class="sep">/</span>
+      <span class="current" id="breadcrumb-patient">Margaret Chen</span>
+    </div>
+    <div class="search-wrap">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" placeholder="Search patients, orders, appointments...">
+    </div>
+    <div class="quick-actions">
+      <button class="btn-new">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New
+      </button>
+      <button class="icon-btn" title="Notifications">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </button>
+      <div class="avatar-sm">DW</div>
+    </div>
+  </header>
+
+  <!-- ═══ Tri-pane Main ═══ -->
+  <main class="tri-pane">
+
+    <!-- ── Pane 1: Patient List ── -->
+    <aside class="pane-list">
+      <div class="list-header">
+        <h3>Patients</h3>
+        <input class="list-search" type="text" placeholder="Filter patients...">
+        <div class="list-filters">
+          <select>
+            <option>All Status</option>
+            <option>Active</option>
+            <option>Follow-up</option>
+            <option>Urgent</option>
+          </select>
+          <select>
+            <option>All Providers</option>
+            <option>Dr. Walsh</option>
+            <option>Dr. Reyes</option>
+            <option>Dr. Kim</option>
+          </select>
+          <select>
+            <option>Any Date</option>
+            <option>This Week</option>
+            <option>This Month</option>
+            <option>Last 90 Days</option>
+          </select>
+        </div>
+      </div>
+      <div class="patient-list" id="patientList">
+        <!-- Patients injected by JS -->
+      </div>
+    </aside>
+
+    <!-- ── Pane 2: Detail ── -->
+    <section class="pane-detail">
+      <div class="detail-header">
+        <div class="avatar" id="detailAvatar">MC</div>
+        <div class="header-info">
+          <div class="patient-name" id="detailName">Margaret Chen</div>
+          <div class="badges" id="detailBadges">
+            <span class="badge badge-active">Active</span>
+            <span class="badge badge-insured">Insured</span>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="btn-sm">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Edit
+          </button>
+          <button class="btn-sm">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Schedule
+          </button>
+          <button class="btn-sm">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+            Order
+          </button>
+          <button class="btn-sm">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></svg>
+            Note
+          </button>
+        </div>
+      </div>
+
+      <!-- Utility toolbar -->
+      <div class="toolbar-stack">
+        <div class="toolbar-row">
+          <div class="tab-seg" id="tabNav">
+            <button class="active" data-tab="overview">Overview</button>
+            <button data-tab="audiogram">Audiogram</button>
+            <button data-tab="orders">Orders</button>
+            <button data-tab="notes">Notes</button>
+            <button data-tab="documents">Documents</button>
+          </div>
+        </div>
+        <div class="toolbar-row" id="contextActions">
+          <button class="btn-toolbar primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            New Order
+          </button>
+          <button class="btn-toolbar">Filter by Status</button>
+          <button class="btn-toolbar">Export</button>
+          <div style="flex:1"></div>
+          <span style="font-size:11px;color:var(--ink-soft)">Showing 6 orders</span>
+        </div>
+      </div>
+
+      <!-- Detail content -->
+      <div class="detail-content">
+
+        <!-- Overview Tab -->
+        <div class="tab-content active" id="tab-overview">
+          <div class="overview-grid">
+            <div class="info-card">
+              <div class="label">Date of Birth</div>
+              <div class="value" id="infoAge">Nov 14, 1958 (67)</div>
+            </div>
+            <div class="info-card">
+              <div class="label">Phone</div>
+              <div class="value" id="infoPhone">(512) 555-0147</div>
+            </div>
+            <div class="info-card">
+              <div class="label">Email</div>
+              <div class="value small" id="infoEmail">m.chen@email.com</div>
+            </div>
+            <div class="info-card">
+              <div class="label">Primary Provider</div>
+              <div class="value" id="infoProvider">Dr. David Walsh</div>
+            </div>
+            <div class="info-card">
+              <div class="label">Last Visit</div>
+              <div class="value" id="infoLastVisit">Feb 28, 2026</div>
+            </div>
+            <div class="info-card">
+              <div class="label">Next Appointment</div>
+              <div class="value" id="infoNextAppt">Mar 15, 2026</div>
+            </div>
+            <div class="info-card">
+              <div class="label">Hearing Loss</div>
+              <div class="value" id="infoHearingLoss">Moderate bilateral SNHL</div>
+            </div>
+            <div class="info-card">
+              <div class="label">Current Devices</div>
+              <div class="value small" id="infoDevices">Phonak Lumity L90-R (pair)</div>
+            </div>
+            <div class="info-card">
+              <div class="label">Balance Due</div>
+              <div class="value" id="infoBalance">$245.00</div>
+            </div>
+          </div>
+          <div class="data-table-wrap">
+            <h4>Recent Orders</h4>
+            <table class="dense" id="orderTable">
+              <thead>
+                <tr>
+                  <th>Date <span class="sort-arrow">&#9660;</span></th>
+                  <th>Item</th>
+                  <th>Provider</th>
+                  <th>Status</th>
+                  <th style="text-align:right">Amount</th>
+                </tr>
+              </thead>
+              <tbody id="orderBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Audiogram Tab -->
+        <div class="tab-content" id="tab-audiogram">
+          <div style="display:flex;align-items:center;justify-content:center;height:300px;color:var(--ink-soft);font-size:13px;">
+            <div style="text-align:center;">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--surface-3);margin-bottom:8px;"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+              <div>Audiogram data would render here</div>
+              <div style="font-size:11px;margin-top:4px;">Last tested: Feb 28, 2026</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Orders Tab -->
+        <div class="tab-content" id="tab-orders">
+          <table class="dense">
+            <thead>
+              <tr>
+                <th>Date <span class="sort-arrow">&#9660;</span></th>
+                <th>Item</th>
+                <th>Provider</th>
+                <th>Status</th>
+                <th style="text-align:right">Amount</th>
+              </tr>
+            </thead>
+            <tbody id="ordersFullBody"></tbody>
+          </table>
+        </div>
+
+        <!-- Notes Tab -->
+        <div class="tab-content" id="tab-notes">
+          <div style="font-size:12px;color:var(--ink);">
+            <div style="padding:10px 0;border-bottom:1px solid var(--surface-1);">
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                <strong>Follow-up: Hearing aid adjustment</strong>
+                <span style="color:var(--ink-soft);font-size:11px;">Feb 28, 2026 - Dr. Walsh</span>
+              </div>
+              <p style="color:var(--ink-muted);line-height:1.5;">Patient reports improved speech clarity in quiet environments. Still experiencing difficulty in noisy restaurants. Adjusted noise reduction settings from moderate to strong. Will reassess in 2 weeks.</p>
+            </div>
+            <div style="padding:10px 0;border-bottom:1px solid var(--surface-1);">
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                <strong>Initial fitting - Phonak Lumity L90-R</strong>
+                <span style="color:var(--ink-soft);font-size:11px;">Jan 20, 2026 - Dr. Walsh</span>
+              </div>
+              <p style="color:var(--ink-muted);line-height:1.5;">Bilateral fitting completed. REM verified within 5dB of NAL-NL2 targets. Patient oriented to device controls, maintenance, and Bluetooth connectivity. Scheduled 2-week follow-up.</p>
+            </div>
+            <div style="padding:10px 0;">
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                <strong>Comprehensive audiological evaluation</strong>
+                <span style="color:var(--ink-soft);font-size:11px;">Jan 6, 2026 - Dr. Walsh</span>
+              </div>
+              <p style="color:var(--ink-muted);line-height:1.5;">Pure tone audiometry reveals moderate bilateral sensorineural hearing loss. SRT consistent with PTA. WRS: R 84%, L 80%. Tympanometry normal bilaterally. Recommended amplification.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Documents Tab -->
+        <div class="tab-content" id="tab-documents">
+          <table class="dense">
+            <thead>
+              <tr>
+                <th>Document</th>
+                <th>Type</th>
+                <th>Date</th>
+                <th>Added By</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Insurance_Auth_2026.pdf</td><td>Authorization</td><td>Jan 03, 2026</td><td>Staff</td></tr>
+              <tr><td>Audiogram_Jan2026.pdf</td><td>Test Results</td><td>Jan 06, 2026</td><td>Dr. Walsh</td></tr>
+              <tr><td>Signed_Treatment_Plan.pdf</td><td>Consent</td><td>Jan 06, 2026</td><td>Patient</td></tr>
+              <tr><td>Invoice_HA_Fitting.pdf</td><td>Invoice</td><td>Jan 20, 2026</td><td>System</td></tr>
+              <tr><td>REM_Report_Feb2026.pdf</td><td>Test Results</td><td>Feb 28, 2026</td><td>Dr. Walsh</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── Pane 3: Inspector ── -->
+    <aside class="pane-inspector" id="inspectorPane">
+      <div class="inspector-section">
+        <h4>Upcoming Appointments</h4>
+        <div id="inspectorAppts">
+          <div class="appt-item">
+            <span class="appt-time soon">Mar 15</span>
+            <span class="appt-desc">2-Week HA Follow-up</span>
+            <span class="appt-date">10:00 AM</span>
+          </div>
+          <div class="appt-item">
+            <span class="appt-time">Apr 10</span>
+            <span class="appt-desc">Quarterly Check-in</span>
+            <span class="appt-date">2:30 PM</span>
+          </div>
+          <div class="appt-item">
+            <span class="appt-time">Jul 06</span>
+            <span class="appt-desc">6-Month Audiogram</span>
+            <span class="appt-date">9:00 AM</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="inspector-section">
+        <h4>Recent Activity</h4>
+        <div id="inspectorTimeline">
+          <div class="timeline-item"><span class="timeline-date">Mar 01</span><span class="timeline-action">Statement mailed</span></div>
+          <div class="timeline-item"><span class="timeline-date">Feb 28</span><span class="timeline-action">Office visit - adjustment</span></div>
+          <div class="timeline-item"><span class="timeline-date">Feb 15</span><span class="timeline-action">Phone call - scheduling</span></div>
+          <div class="timeline-item"><span class="timeline-date">Jan 20</span><span class="timeline-action">HA fitting completed</span></div>
+          <div class="timeline-item"><span class="timeline-date">Jan 06</span><span class="timeline-action">Audiological evaluation</span></div>
+          <div class="timeline-item"><span class="timeline-date">Jan 03</span><span class="timeline-action">Insurance auth received</span></div>
+        </div>
+      </div>
+
+      <div class="inspector-section">
+        <h4>Quick Notes</h4>
+        <textarea class="quick-notes" placeholder="Add a quick note...">Prefers morning appointments. Daughter usually drives her.</textarea>
+      </div>
+
+      <div class="inspector-section">
+        <h4>Family Members</h4>
+        <div id="inspectorFamily">
+          <div class="family-member">
+            <div class="family-avatar">RC</div>
+            <div class="family-info">
+              <div class="fam-name">Robert Chen</div>
+              <div class="fam-rel">Spouse - Active patient</div>
+            </div>
+          </div>
+          <div class="family-member">
+            <div class="family-avatar">LC</div>
+            <div class="family-info">
+              <div class="fam-name">Linda Chen-Park</div>
+              <div class="fam-rel">Daughter - Emergency contact</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="inspector-section">
+        <h4>Insurance</h4>
+        <div class="insurance-card" id="inspectorInsurance">
+          <div class="ins-row"><span class="ins-label">Carrier</span><span class="ins-value">BlueCross BlueShield</span></div>
+          <div class="ins-row"><span class="ins-label">Plan</span><span class="ins-value">PPO Gold</span></div>
+          <div class="ins-row"><span class="ins-label">Member ID</span><span class="ins-value">BCB-449817263</span></div>
+          <div class="ins-row"><span class="ins-label">HA Benefit</span><span class="ins-value" style="color:var(--success);">$2,500 / 3yr</span></div>
+          <div class="ins-row"><span class="ins-label">Benefit Used</span><span class="ins-value">$2,150.00</span></div>
+          <div class="ins-row"><span class="ins-label">Remaining</span><span class="ins-value" style="color:var(--warning);">$350.00</span></div>
+        </div>
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- ═══ Status Strip ═══ -->
+  <footer class="status-strip">
+    <div class="status-item">
+      <span class="dot-online"></span>
+      Dr. David Walsh
+    </div>
+    <div class="status-item">Main Office - Austin, TX</div>
+    <div class="spacer"></div>
+    <div class="status-item">14 patients loaded</div>
+    <div class="status-item">Last refresh: just now</div>
+  </footer>
+
+</div>
+
+<script>
+// ── Patient Data ──────────────────────────────────
+const patients = [
+  { id:1, first:'Margaret', last:'Chen', initials:'MC', age:67, dob:'Nov 14, 1958', phone:'(512) 555-0147', email:'m.chen@email.com', provider:'Dr. David Walsh', lastVisit:'Feb 28, 2026', nextAppt:'Mar 15, 2026', status:'active', hearing:'Moderate bilateral SNHL', devices:'Phonak Lumity L90-R (pair)', balance:'$245.00', badges:['active','insured'] },
+  { id:2, first:'Robert', last:'Chen', initials:'RC', age:71, dob:'Jun 03, 1954', phone:'(512) 555-0148', email:'r.chen@email.com', provider:'Dr. David Walsh', lastVisit:'Feb 10, 2026', nextAppt:'Mar 22, 2026', status:'active', hearing:'Severe bilateral SNHL', devices:'Oticon Real 1 (pair)', balance:'$0.00', badges:['active','insured','vip'] },
+  { id:3, first:'Sandra', last:'Mitchell', initials:'SM', age:54, dob:'Aug 22, 1971', phone:'(512) 555-0291', email:'s.mitchell@email.com', provider:'Dr. Elena Reyes', lastVisit:'Jan 15, 2026', nextAppt:'Apr 02, 2026', status:'follow-up', hearing:'Mild-moderate high-freq SNHL', devices:'ReSound Nexia 9 (pair)', balance:'$1,120.00', badges:['active'] },
+  { id:4, first:'William', last:'Torres', initials:'WT', age:79, dob:'Mar 30, 1946', phone:'(512) 555-0377', email:'w.torres@email.com', provider:'Dr. David Walsh', lastVisit:'Dec 08, 2025', nextAppt:'—', status:'urgent', hearing:'Profound bilateral SNHL', devices:'Cochlear N8 (bilateral)', balance:'$3,400.00', badges:['active','insured'] },
+  { id:5, first:'Diana', last:'Kowalski', initials:'DK', age:63, dob:'Feb 11, 1963', phone:'(512) 555-0412', email:'d.kowalski@email.com', provider:'Dr. Soo-Jin Kim', lastVisit:'Feb 20, 2026', nextAppt:'Mar 18, 2026', status:'active', hearing:'Mild bilateral SNHL', devices:'Signia IX 7 (pair)', balance:'$0.00', badges:['active','insured'] },
+  { id:6, first:'James', last:'Patterson', initials:'JP', age:58, dob:'Nov 05, 1967', phone:'(512) 555-0533', email:'j.patt@email.com', provider:'Dr. Elena Reyes', lastVisit:'Mar 01, 2026', nextAppt:'Mar 29, 2026', status:'active', hearing:'Moderate right SNHL', devices:'Starkey Genesis AI 24 (R)', balance:'$560.00', badges:['active'] },
+  { id:7, first:'Helen', last:'Nakamura', initials:'HN', age:72, dob:'Sep 18, 1953', phone:'(512) 555-0618', email:'h.nakamura@email.com', provider:'Dr. David Walsh', lastVisit:'Feb 05, 2026', nextAppt:'—', status:'follow-up', hearing:'Moderate-severe bilateral SNHL', devices:'Phonak Naida P90 (pair)', balance:'$180.00', badges:['active','insured'] },
+  { id:8, first:'Marcus', last:'Johnson', initials:'MJ', age:45, dob:'Jan 29, 1981', phone:'(512) 555-0729', email:'m.johnson@email.com', provider:'Dr. Soo-Jin Kim', lastVisit:'Jan 28, 2026', nextAppt:'Apr 15, 2026', status:'active', hearing:'Noise-induced bilateral SNHL', devices:'Widex SmartRIC (pair)', balance:'$0.00', badges:['active','insured','vip'] },
+  { id:9, first:'Patricia', last:'O\'Brien', initials:'PO', age:68, dob:'Apr 07, 1957', phone:'(512) 555-0844', email:'p.obrien@email.com', provider:'Dr. Elena Reyes', lastVisit:'Feb 18, 2026', nextAppt:'Mar 20, 2026', status:'active', hearing:'Moderate bilateral SNHL', devices:'ReSound Nexia 7 (pair)', balance:'$320.00', badges:['active'] },
+  { id:10, first:'George', last:'Alvarez', initials:'GA', age:82, dob:'Dec 25, 1943', phone:'(512) 555-0956', email:'g.alvarez@email.com', provider:'Dr. David Walsh', lastVisit:'Nov 20, 2025', nextAppt:'—', status:'urgent', hearing:'Severe-profound bilateral SNHL', devices:'None - pending eval', balance:'$0.00', badges:['active'] },
+  { id:11, first:'Emily', last:'Sorensen', initials:'ES', age:39, dob:'Jul 14, 1986', phone:'(512) 555-1067', email:'e.sorensen@email.com', provider:'Dr. Soo-Jin Kim', lastVisit:'Mar 03, 2026', nextAppt:'Mar 31, 2026', status:'active', hearing:'Mild high-frequency SNHL', devices:'Phonak Lumity L70-R (pair)', balance:'$0.00', badges:['active','insured'] },
+  { id:12, first:'Frank', last:'Dubois', initials:'FD', age:76, dob:'Oct 01, 1949', phone:'(512) 555-1173', email:'f.dubois@email.com', provider:'Dr. David Walsh', lastVisit:'Feb 25, 2026', nextAppt:'Mar 25, 2026', status:'follow-up', hearing:'Moderate bilateral mixed HL', devices:'Oticon Real 2 (pair)', balance:'$75.00', badges:['active','insured'] },
+  { id:13, first:'Rosa', last:'Gutierrez', initials:'RG', age:61, dob:'May 19, 1964', phone:'(512) 555-1288', email:'r.gutierrez@email.com', provider:'Dr. Elena Reyes', lastVisit:'Mar 05, 2026', nextAppt:'Apr 05, 2026', status:'active', hearing:'Mild-moderate bilateral SNHL', devices:'Signia IX 5 (pair)', balance:'$890.00', badges:['active'] },
+  { id:14, first:'Thomas', last:'Blackwell', initials:'TB', age:55, dob:'Aug 30, 1970', phone:'(512) 555-1399', email:'t.blackwell@email.com', provider:'Dr. Soo-Jin Kim', lastVisit:'Jan 10, 2026', nextAppt:'—', status:'follow-up', hearing:'Asymmetric SNHL (R>L)', devices:'Widex Moment Sheer (R)', balance:'$0.00', badges:['active','insured'] },
+];
+
+const ordersData = {
+  1: [
+    { date:'Feb 28, 2026', item:'HA Adjustment Visit', provider:'Dr. Walsh', status:'completed', amount:'$75.00' },
+    { date:'Jan 20, 2026', item:'Phonak Lumity L90-R (pair)', provider:'Dr. Walsh', status:'completed', amount:'$4,200.00' },
+    { date:'Jan 20, 2026', item:'Custom Ear Molds (pair)', provider:'Dr. Walsh', status:'completed', amount:'$180.00' },
+    { date:'Jan 06, 2026', item:'Comprehensive Audio Eval', provider:'Dr. Walsh', status:'completed', amount:'$325.00' },
+    { date:'Dec 15, 2025', item:'Hearing Aid Batteries (6-pk)', provider:'Staff', status:'completed', amount:'$12.00' },
+    { date:'Nov 01, 2025', item:'Annual Hearing Screening', provider:'Dr. Walsh', status:'completed', amount:'$150.00' },
+  ],
+  default: [
+    { date:'Mar 01, 2026', item:'Office Visit', provider:'Dr. Reyes', status:'completed', amount:'$125.00' },
+    { date:'Feb 15, 2026', item:'Hearing Aid Repair', provider:'Staff', status:'processing', amount:'$85.00' },
+    { date:'Jan 12, 2026', item:'Audiological Evaluation', provider:'Dr. Walsh', status:'completed', amount:'$325.00' },
+    { date:'Dec 01, 2025', item:'Hearing Aid Batteries (6-pk)', provider:'Staff', status:'pending', amount:'$12.00' },
+  ]
+};
+
+// ── Render patient list ───────────────────────────
+const patientListEl = document.getElementById('patientList');
+
+function renderPatientList() {
+  patientListEl.innerHTML = patients.map(p => `
+    <div class="patient-card${p.id === 1 ? ' selected' : ''}" data-id="${p.id}">
+      <span class="status-dot ${p.status}"></span>
+      <div class="info">
+        <div class="name">${p.first} ${p.last}</div>
+        <div class="meta">${p.age}y &middot; ${p.provider}</div>
+      </div>
+      <span class="visit-date">${p.lastVisit.replace(', 2026','').replace(', 2025','')}</span>
+    </div>
+  `).join('');
+}
+renderPatientList();
+
+// ── Render order rows ─────────────────────────────
+function statusPill(s) {
+  const cls = s === 'completed' ? 'pill-completed' : s === 'pending' ? 'pill-pending' : s === 'processing' ? 'pill-processing' : 'pill-cancelled';
+  return `<span class="pill ${cls}">${s.charAt(0).toUpperCase()+s.slice(1)}</span>`;
+}
+
+function renderOrders(patientId) {
+  const orders = ordersData[patientId] || ordersData.default;
+  const rows = orders.map(o => `
+    <tr>
+      <td>${o.date}</td>
+      <td>${o.item}</td>
+      <td>${o.provider}</td>
+      <td>${statusPill(o.status)}</td>
+      <td style="text-align:right" class="amount">${o.amount}</td>
+    </tr>
+  `).join('');
+  document.getElementById('orderBody').innerHTML = rows;
+  document.getElementById('ordersFullBody').innerHTML = rows;
+}
+renderOrders(1);
+
+// ── Select patient ────────────────────────────────
+function selectPatient(id) {
+  const p = patients.find(x => x.id === id);
+  if (!p) return;
+
+  document.querySelectorAll('.patient-card').forEach(el => {
+    el.classList.toggle('selected', parseInt(el.dataset.id) === id);
+  });
+
+  document.getElementById('breadcrumb-patient').textContent = `${p.first} ${p.last}`;
+  document.getElementById('detailAvatar').textContent = p.initials;
+  document.getElementById('detailName').textContent = `${p.first} ${p.last}`;
+
+  const badgeMap = { active:'badge-active', insured:'badge-insured', vip:'badge-vip' };
+  const badgeLabels = { active:'Active', insured:'Insured', vip:'VIP' };
+  document.getElementById('detailBadges').innerHTML = p.badges.map(b =>
+    `<span class="badge ${badgeMap[b]}">${badgeLabels[b]}</span>`
+  ).join('');
+
+  document.getElementById('infoAge').textContent = `${p.dob} (${p.age})`;
+  document.getElementById('infoPhone').textContent = p.phone;
+  document.getElementById('infoEmail').textContent = p.email;
+  document.getElementById('infoProvider').textContent = p.provider;
+  document.getElementById('infoLastVisit').textContent = p.lastVisit;
+  document.getElementById('infoNextAppt').textContent = p.nextAppt;
+  document.getElementById('infoHearingLoss').textContent = p.hearing;
+  document.getElementById('infoDevices').textContent = p.devices;
+  document.getElementById('infoBalance').textContent = p.balance;
+
+  renderOrders(id);
+}
+
+patientListEl.addEventListener('click', e => {
+  const card = e.target.closest('.patient-card');
+  if (card) selectPatient(parseInt(card.dataset.id));
+});
+
+// ── Tabs ──────────────────────────────────────────
+const tabNav = document.getElementById('tabNav');
+tabNav.addEventListener('click', e => {
+  if (e.target.tagName !== 'BUTTON') return;
+  tabNav.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  e.target.classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+  const target = document.getElementById('tab-' + e.target.dataset.tab);
+  if (target) target.classList.add('active');
+
+  // Update context actions row
+  const ctx = document.getElementById('contextActions');
+  const tab = e.target.dataset.tab;
+  if (tab === 'orders') {
+    ctx.innerHTML = `
+      <button class="btn-toolbar primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> New Order</button>
+      <button class="btn-toolbar">Filter by Status</button>
+      <button class="btn-toolbar">Export</button>
+      <div style="flex:1"></div>
+      <span style="font-size:11px;color:var(--ink-soft)">Showing 6 orders</span>`;
+  } else if (tab === 'notes') {
+    ctx.innerHTML = `
+      <button class="btn-toolbar primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add Note</button>
+      <button class="btn-toolbar">Filter by Type</button>
+      <div style="flex:1"></div>
+      <span style="font-size:11px;color:var(--ink-soft)">3 notes</span>`;
+  } else if (tab === 'documents') {
+    ctx.innerHTML = `
+      <button class="btn-toolbar primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Upload</button>
+      <button class="btn-toolbar">Filter by Type</button>
+      <div style="flex:1"></div>
+      <span style="font-size:11px;color:var(--ink-soft)">5 documents</span>`;
+  } else if (tab === 'audiogram') {
+    ctx.innerHTML = `
+      <button class="btn-toolbar primary">New Test</button>
+      <button class="btn-toolbar">Compare</button>
+      <button class="btn-toolbar">Print</button>
+      <div style="flex:1"></div>
+      <span style="font-size:11px;color:var(--ink-soft)">Last tested: Feb 28, 2026</span>`;
+  } else {
+    ctx.innerHTML = `
+      <button class="btn-toolbar primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> New Order</button>
+      <button class="btn-toolbar">Filter by Status</button>
+      <button class="btn-toolbar">Export</button>
+      <div style="flex:1"></div>
+      <span style="font-size:11px;color:var(--ink-soft)">Showing 6 orders</span>`;
+  }
+});
+
+// ── List search filter ────────────────────────────
+document.querySelector('.list-search').addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll('.patient-card').forEach(card => {
+    const name = card.querySelector('.name').textContent.toLowerCase();
+    card.style.display = name.includes(q) ? '' : 'none';
+  });
+});
+</script>
+
+<!-- Variant Selector -->
+<div id="variant-selector" style="position:fixed;bottom:16px;right:16px;z-index:99999;font-family:'Space Grotesk',system-ui,sans-serif;">
+  <button id="vs-toggle" style="width:40px;height:40px;border-radius:12px;border:1px solid rgba(38,34,96,0.12);background:rgba(255,255,255,0.95);backdrop-filter:blur(8px);box-shadow:0 2px 12px rgba(0,0,0,0.1);cursor:pointer;font-size:14px;font-weight:600;color:#262260;display:flex;align-items:center;justify-content:center;transition:all 0.2s;" title="Switch variant">⟐</button>
+  <div id="vs-panel" style="display:none;position:absolute;bottom:48px;right:0;background:rgba(255,255,255,0.97);backdrop-filter:blur(12px);border:1px solid rgba(38,34,96,0.1);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.12);padding:8px;min-width:220px;">
+    <div style="padding:4px 10px 8px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:#9a95ad;">Variant Selector</div>
+    <div id="vs-links"></div>
+    <div style="border-top:1px solid rgba(38,34,96,0.06);margin-top:4px;padding-top:4px;">
+      <a href="README.html" style="display:block;padding:6px 10px;font-size:12px;color:#6c687d;text-decoration:none;border-radius:8px;transition:background 0.15s;" onmouseover="this.style.background='rgba(31,149,184,0.06)'" onmouseout="this.style.background='transparent'">📋 Comparison Notes</a>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var currentVariant = 7;
+  var variants = [
+    {n:1, label:'Dense Clinical Shell'},
+    {n:2, label:'Compact Warm Workspace'},
+    {n:3, label:'Tabbed Record Panels'},
+    {n:4, label:'Split-View Dashboard'},
+    {n:5, label:'Dark Dense Console'},
+    {n:6, label:'Command-Bar Workspace'},
+    {n:7, label:'Split-Pane Console'},
+    {n:8, label:'Clinical Ops Board'},
+    {n:9, label:'Data-Grid Workspace'},
+    {n:10,label:'Ultra-Dense Expert'}
+  ];
+  var linksEl = document.getElementById('vs-links');
+  variants.forEach(function(v){
+    var isCurrent = v.n === currentVariant;
+    var a = document.createElement('a');
+    a.href = 'variant-' + String(v.n).padStart(2,'0') + '.html';
+    a.style.cssText = 'display:flex;align-items:center;gap:8px;padding:5px 10px;font-size:12px;text-decoration:none;border-radius:8px;transition:background 0.15s;color:' + (isCurrent ? '#1f95b8' : '#2f2c3f') + ';font-weight:' + (isCurrent ? '600' : '400') + ';background:' + (isCurrent ? 'rgba(31,149,184,0.08)' : 'transparent');
+    a.innerHTML = '<span style="width:22px;height:22px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;background:' + (isCurrent ? 'rgba(31,149,184,0.15)' : 'rgba(38,34,96,0.06)') + ';color:' + (isCurrent ? '#1f95b8' : '#6c687d') + '">' + String(v.n).padStart(2,'0') + '</span>' + v.label;
+    if(!isCurrent){
+      a.onmouseover = function(){ this.style.background='rgba(31,149,184,0.06)'; };
+      a.onmouseout = function(){ this.style.background='transparent'; };
+    }
+    linksEl.appendChild(a);
+  });
+  var toggle = document.getElementById('vs-toggle');
+  var panel = document.getElementById('vs-panel');
+  toggle.textContent = String(currentVariant).padStart(2,'0');
+  toggle.addEventListener('click', function(){
+    var open = panel.style.display !== 'none';
+    panel.style.display = open ? 'none' : 'block';
+    toggle.style.background = open ? 'rgba(255,255,255,0.95)' : 'rgba(31,149,184,0.1)';
+    toggle.style.borderColor = open ? 'rgba(38,34,96,0.12)' : 'rgba(31,149,184,0.3)';
+    toggle.style.color = open ? '#262260' : '#1f95b8';
+  });
+  document.addEventListener('click', function(e){
+    if(!document.getElementById('variant-selector').contains(e.target)){
+      panel.style.display = 'none';
+      toggle.style.background = 'rgba(255,255,255,0.95)';
+      toggle.style.borderColor = 'rgba(38,34,96,0.12)';
+      toggle.style.color = '#262260';
+    }
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape'){ panel.style.display = 'none'; }
+    if((e.key === '.' || e.key === '>') && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA'){
+      var next = currentVariant < 10 ? currentVariant + 1 : 1;
+      window.location.href = 'variant-' + String(next).padStart(2,'0') + '.html';
+    }
+    if((e.key === ',' || e.key === '<') && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA'){
+      var prev = currentVariant > 1 ? currentVariant - 1 : 10;
+      window.location.href = 'variant-' + String(prev).padStart(2,'0') + '.html';
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

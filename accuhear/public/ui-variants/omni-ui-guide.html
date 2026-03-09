@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280">
+<title>Omni UI Design Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --brand-ink: #262260;
+  --brand-blue: #1f95b8;
+  --brand-orange: #dd6f26;
+  --surface-0: #f8f5f0;
+  --surface-1: #f3efe8;
+  --surface-2: #ece6dd;
+  --surface-3: #e6dfd4;
+  --surface-4: #dfd6c8;
+  --ink-strong: #1b1a27;
+  --ink: #2f2c3f;
+  --ink-muted: #6c687d;
+  --ink-soft: #9a95ad;
+  --success: #1e9b6c;
+  --warning: #c87a2f;
+  --danger: #c94646;
+  --card-bg: rgba(255,255,255,0.82);
+  --card-border: rgba(38,34,96,0.08);
+  --card-shadow: 0 1px 3px rgba(38,34,96,0.06), 0 0 0 1px rgba(38,34,96,0.04);
+  --radius-card: 18px;
+  --radius-pill: 999px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --font-body: 'Open Sans', system-ui, sans-serif;
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; }
+body {
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--surface-0);
+  line-height: 1.5;
+}
+
+/* Guide layout */
+.guide-shell {
+  display: flex;
+  min-height: 100vh;
+}
+.guide-nav {
+  width: 220px;
+  background: var(--brand-ink);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  flex-shrink: 0;
+  padding: 24px 0;
+}
+.guide-nav-logo {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 12px;
+}
+.guide-nav-logo .mark {
+  width: 28px; height: 28px;
+  background: var(--brand-blue);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700; font-size: 13px; color: #fff;
+}
+.guide-nav-logo .name {
+  font-family: var(--font-display);
+  font-size: 13px; font-weight: 600; color: #fff;
+  line-height: 1.2;
+}
+.guide-nav-logo .sub { font-size: 10px; color: rgba(255,255,255,0.45); }
+.guide-nav-section {
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.3);
+  padding: 12px 20px 4px;
+}
+.guide-nav a {
+  display: block;
+  padding: 6px 20px;
+  font-size: 12px; color: rgba(255,255,255,0.55);
+  text-decoration: none;
+  transition: color 0.12s, background 0.12s;
+}
+.guide-nav a:hover { color: rgba(255,255,255,0.9); background: rgba(255,255,255,0.06); }
+.guide-nav a.active { color: #fff; border-left: 2px solid var(--brand-blue); }
+
+.guide-body {
+  flex: 1;
+  max-width: 900px;
+  padding: 48px 56px;
+}
+
+/* Section styles */
+.section { margin-bottom: 64px; }
+.section-anchor { display: block; position: relative; top: -20px; }
+h1 {
+  font-family: var(--font-display);
+  font-size: 28px; font-weight: 700;
+  color: var(--ink-strong);
+  margin-bottom: 6px;
+}
+.guide-subtitle {
+  font-size: 14px; color: var(--ink-muted);
+  margin-bottom: 40px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--surface-2);
+}
+h2 {
+  font-family: var(--font-display);
+  font-size: 18px; font-weight: 600;
+  color: var(--ink-strong);
+  margin-bottom: 4px;
+}
+.section-desc {
+  font-size: 13px; color: var(--ink-muted);
+  margin-bottom: 24px;
+}
+h3 {
+  font-family: var(--font-display);
+  font-size: 13px; font-weight: 600;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 28px 0 12px;
+}
+p { font-size: 13px; color: var(--ink); line-height: 1.6; margin-bottom: 12px; }
+
+/* Rule cards */
+.rule {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+.rule strong { color: var(--ink-strong); font-weight: 600; }
+.rule .val {
+  font-family: var(--font-display);
+  font-size: 12px;
+  background: var(--surface-1);
+  border: 1px solid var(--surface-3);
+  border-radius: 5px;
+  padding: 1px 7px;
+  color: var(--brand-ink);
+  margin-left: 6px;
+}
+.rule .note { font-size: 11px; color: var(--ink-soft); margin-top: 4px; }
+.rule-row { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+
+/* Color swatches */
+.swatch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 24px;
+}
+.swatch {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid rgba(0,0,0,0.06);
+}
+.swatch-color { height: 56px; }
+.swatch-info {
+  padding: 8px 10px;
+  background: #fff;
+}
+.swatch-name { font-size: 11px; font-weight: 600; color: var(--ink-strong); }
+.swatch-hex { font-family: var(--font-display); font-size: 11px; color: var(--ink-muted); }
+.swatch-token { font-size: 10px; color: var(--ink-soft); font-family: var(--font-display); }
+
+/* Type specimens */
+.type-specimen {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  margin-bottom: 10px;
+  display: flex; align-items: baseline; gap: 20px;
+}
+.type-specimen .sample { flex: 1; }
+.type-specimen .meta {
+  text-align: right;
+  font-size: 11px; color: var(--ink-soft);
+  line-height: 1.8;
+  flex-shrink: 0;
+  font-family: var(--font-display);
+}
+
+/* Component demos */
+.demo-block {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-card);
+  padding: 20px 24px;
+  margin-bottom: 16px;
+}
+.demo-label {
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--ink-soft);
+  margin-bottom: 12px;
+  font-family: var(--font-display);
+}
+
+/* Spacing scale viz */
+.spacing-row {
+  display: flex; align-items: center; gap: 16px;
+  margin-bottom: 8px;
+}
+.spacing-bar { background: var(--brand-blue); opacity: 0.25; height: 16px; border-radius: 3px; }
+.spacing-meta { font-family: var(--font-display); font-size: 12px; color: var(--ink-muted); width: 140px; flex-shrink: 0; }
+
+/* Code blocks */
+pre {
+  background: #1b1a27;
+  color: #e8e4f0;
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-x: auto;
+  margin-bottom: 16px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+code { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; }
+.kw { color: #7eb8e0; }
+.val-c { color: #c3e88d; }
+.comment { color: #6c687d; }
+.prop { color: #c792ea; }
+
+/* Layout diagram */
+.layout-diagram {
+  background: var(--surface-1);
+  border: 1px solid var(--surface-3);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  gap: 4px;
+  height: 240px;
+  font-size: 10px;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+  margin-bottom: 16px;
+}
+.ld-col { display: flex; flex-direction: column; gap: 4px; }
+.ld-block {
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 600; color: rgba(255,255,255,0.7);
+  text-align: center; line-height: 1.3;
+}
+
+/* Buttons demo */
+.btn-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.btn {
+  font-family: var(--font-body);
+  cursor: pointer; border: none; background: none;
+  display: inline-flex; align-items: center; gap: 4px;
+  font-weight: 600; transition: background 0.15s, color 0.15s;
+}
+.btn-primary {
+  background: var(--brand-blue); color: #fff;
+  height: 32px; padding: 0 16px;
+  font-size: 13px; border-radius: var(--radius-pill);
+}
+.btn-primary:hover { background: #1a829f; }
+.btn-secondary {
+  background: var(--surface-2); color: var(--ink);
+  height: 32px; padding: 0 16px;
+  font-size: 13px; border-radius: var(--radius-pill);
+}
+.btn-secondary:hover { background: var(--surface-3); }
+.btn-ghost {
+  color: var(--ink-muted);
+  height: 32px; padding: 0 12px;
+  font-size: 13px; border-radius: var(--radius-pill);
+}
+.btn-ghost:hover { background: var(--surface-2); }
+.btn-danger {
+  background: rgba(201,70,70,0.1); color: var(--danger);
+  height: 32px; padding: 0 16px;
+  font-size: 13px; border-radius: var(--radius-pill);
+}
+.btn-sm-p {
+  background: var(--brand-blue); color: #fff;
+  height: 26px; padding: 0 10px;
+  font-size: 11px; border-radius: var(--radius-pill);
+}
+.btn-icon {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink-muted);
+}
+.btn-icon:hover { background: var(--surface-2); }
+
+/* Badge demos */
+.badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: var(--radius-pill); white-space: nowrap; }
+.badge-success { background: rgba(30,155,108,0.1); color: var(--success); }
+.badge-blue { background: rgba(31,149,184,0.1); color: var(--brand-blue); }
+.badge-orange { background: rgba(221,111,38,0.1); color: var(--brand-orange); }
+.badge-danger { background: rgba(201,70,70,0.1); color: var(--danger); }
+.badge-warning { background: rgba(200,122,47,0.1); color: var(--warning); }
+.badge-neutral { background: var(--surface-2); color: var(--ink-muted); }
+
+/* Form demos */
+.form-field-demo { display: flex; flex-direction: column; gap: 2px; margin-bottom: 10px; }
+.form-label-demo { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); }
+.form-value-demo {
+  font-size: 13px; color: var(--ink);
+  padding: 4px 0;
+  border-bottom: 1px solid var(--surface-3);
+  line-height: 1.4;
+}
+.form-input-demo {
+  height: 34px; padding: 0 10px;
+  background: rgba(255,255,255,0.88);
+  border: 1px solid rgba(38,34,96,0.12);
+  border-radius: var(--radius-sm);
+  font-size: 13px; color: var(--ink);
+  font-family: var(--font-body);
+  width: 100%;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.form-input-demo:focus {
+  border-color: rgba(31,149,184,0.45);
+  box-shadow: 0 0 0 3px rgba(31,149,184,0.1);
+}
+
+/* Seg tabs demo */
+.seg-demo { display: inline-flex; background: var(--surface-1); border-radius: var(--radius-sm); padding: 2px; gap: 1px; }
+.seg-tab-demo { font-size: 12px; font-weight: 500; padding: 5px 14px; border-radius: 6px; color: var(--ink-muted); cursor: pointer; border: none; background: none; font-family: var(--font-body); }
+.seg-tab-demo.active { background: #fff; color: var(--ink-strong); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+
+/* Status dot */
+.status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+
+/* Table demo */
+.table-demo { width: 100%; border-collapse: collapse; font-size: 12px; }
+.table-demo th { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--surface-2); }
+.table-demo td { padding: 7px 8px; border-bottom: 1px solid var(--surface-1); color: var(--ink); }
+.table-demo tr:hover td { background: rgba(31,149,184,0.04); }
+.table-demo tr:nth-child(even) td { background: rgba(243,239,232,0.4); }
+
+/* Kbd */
+kbd { font-family: var(--font-display); background: var(--surface-2); border: 1px solid var(--surface-3); border-radius: 4px; padding: 1px 6px; font-size: 11px; color: var(--ink-muted); }
+
+/* Do/Don't */
+.do-dont { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+.do-block { background: rgba(30,155,108,0.04); border: 1px solid rgba(30,155,108,0.15); border-radius: var(--radius-md); padding: 14px 16px; }
+.dont-block { background: rgba(201,70,70,0.04); border: 1px solid rgba(201,70,70,0.12); border-radius: var(--radius-md); padding: 14px 16px; }
+.do-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--success); margin-bottom: 8px; }
+.dont-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--danger); margin-bottom: 8px; }
+.do-block li, .dont-block li { font-size: 12px; color: var(--ink); margin-left: 14px; margin-bottom: 4px; line-height: 1.4; }
+
+/* Divider */
+.divider { border: none; border-top: 1px solid var(--surface-2); margin: 48px 0; }
+</style>
+</head>
+<body>
+
+<div class="guide-shell">
+
+<!-- ═══ Guide Nav ═══ -->
+<nav class="guide-nav">
+  <div class="guide-nav-logo">
+    <div class="mark">O</div>
+    <div>
+      <div class="name">Omni</div>
+      <div class="sub">UI Design Guide</div>
+    </div>
+  </div>
+  <div class="guide-nav-section">Foundation</div>
+  <a href="#colors">Colors</a>
+  <a href="#typography">Typography</a>
+  <a href="#spacing">Spacing</a>
+  <a href="#radius">Radius &amp; Shadow</a>
+
+  <div class="guide-nav-section">Shell</div>
+  <a href="#layout">Layout Structure</a>
+  <a href="#nav">Left Navigation</a>
+  <a href="#topbar">Top Bar</a>
+  <a href="#statusbar">Status Bar</a>
+  <a href="#patient-rail">Patient Rail</a>
+
+  <div class="guide-nav-section">Components</div>
+  <a href="#buttons">Buttons</a>
+  <a href="#badges">Badges &amp; Status</a>
+  <a href="#forms">Forms &amp; Inputs</a>
+  <a href="#cards">Cards</a>
+  <a href="#tables">Tables</a>
+  <a href="#tabs">Tabs</a>
+  <a href="#command">Command Palette</a>
+
+  <div class="guide-nav-section">Patterns</div>
+  <a href="#density">Density Rules</a>
+  <a href="#interactions">Interactions</a>
+  <a href="#principles">Principles</a>
+</nav>
+
+<!-- ═══ Guide Body ═══ -->
+<div class="guide-body">
+
+<h1>Omni UI Design Guide</h1>
+<p class="guide-subtitle">The complete design system for building screens in the Omni clinical workspace. All measurements, colors, type sizes, component patterns, and layout rules are defined here. Follow this guide exactly when creating new views or extending existing ones.</p>
+
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- COLORS -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="section">
+  <span class="section-anchor" id="colors"></span>
+  <h2>Colors</h2>
+  <p class="section-desc">The palette is warm-neutral with three brand accents. Never use colors outside this system. Always reference tokens — never hardcode hex values in component code.</p>
+
+  <h3>Brand Accents</h3>
+  <div class="swatch-grid">
+    <div class="swatch">
+      <div class="swatch-color" style="background:#262260;"></div>
+      <div class="swatch-info">
+        <div class="swatch-name">Brand Ink (Purple)</div>
+        <div class="swatch-hex">#262260</div>
+        <div class="swatch-token">--brand-ink</div>
+      </div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#1f95b8;"></div>
+      <div class="swatch-info">
+        <div class="swatch-name">Brand Blue (Teal)</div>
+        <div class="swatch-hex">#1f95b8</div>
+        <div class="swatch-token">--brand-blue</div>
+      </div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#dd6f26;"></div>
+      <div class="swatch-info">
+        <div class="swatch-name">Brand Orange</div>
+        <div class="swatch-hex">#dd6f26</div>
+        <div class="swatch-token">--brand-orange</div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Surface Scale (Backgrounds)</h3>
+  <p style="font-size:12px;color:var(--ink-muted);margin-bottom:12px;">Five warm-toned surfaces in ascending depth. Use them in order — body uses surface-0, cards/panels use white or surface-1, borders use surface-2/3.</p>
+  <div class="swatch-grid">
+    <div class="swatch">
+      <div class="swatch-color" style="background:#f8f5f0; border-bottom:1px solid #e6dfd4;"></div>
+      <div class="swatch-info"><div class="swatch-name">Surface 0</div><div class="swatch-hex">#f8f5f0</div><div class="swatch-token">--surface-0 · Page bg</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#f3efe8; border-bottom:1px solid #e6dfd4;"></div>
+      <div class="swatch-info"><div class="swatch-name">Surface 1</div><div class="swatch-hex">#f3efe8</div><div class="swatch-token">--surface-1 · Top bar, rail</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#ece6dd; border-bottom:1px solid #e6dfd4;"></div>
+      <div class="swatch-info"><div class="swatch-name">Surface 2</div><div class="swatch-hex">#ece6dd</div><div class="swatch-token">--surface-2 · Dividers</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#e6dfd4; border-bottom:1px solid #dfd6c8;"></div>
+      <div class="swatch-info"><div class="swatch-name">Surface 3</div><div class="swatch-hex">#e6dfd4</div><div class="swatch-token">--surface-3 · Hover bg</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#dfd6c8; border-bottom:1px solid #cfc4b0;"></div>
+      <div class="swatch-info"><div class="swatch-name">Surface 4</div><div class="swatch-hex">#dfd6c8</div><div class="swatch-token">--surface-4 · Separators</div></div>
+    </div>
+  </div>
+
+  <h3>Ink Scale (Text)</h3>
+  <div class="swatch-grid">
+    <div class="swatch">
+      <div class="swatch-color" style="background:#1b1a27;"></div>
+      <div class="swatch-info"><div class="swatch-name">Ink Strong</div><div class="swatch-hex">#1b1a27</div><div class="swatch-token">--ink-strong · Headings</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#2f2c3f;"></div>
+      <div class="swatch-info"><div class="swatch-name">Ink</div><div class="swatch-hex">#2f2c3f</div><div class="swatch-token">--ink · Body text</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#6c687d;"></div>
+      <div class="swatch-info"><div class="swatch-name">Ink Muted</div><div class="swatch-hex">#6c687d</div><div class="swatch-token">--ink-muted · Secondary</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#9a95ad;"></div>
+      <div class="swatch-info"><div class="swatch-name">Ink Soft</div><div class="swatch-hex">#9a95ad</div><div class="swatch-token">--ink-soft · Disabled, meta</div></div>
+    </div>
+  </div>
+
+  <h3>Semantic Colors</h3>
+  <div class="swatch-grid">
+    <div class="swatch">
+      <div class="swatch-color" style="background:#1e9b6c;"></div>
+      <div class="swatch-info"><div class="swatch-name">Success</div><div class="swatch-hex">#1e9b6c</div><div class="swatch-token">--success</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#c87a2f;"></div>
+      <div class="swatch-info"><div class="swatch-name">Warning</div><div class="swatch-hex">#c87a2f</div><div class="swatch-token">--warning</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#c94646;"></div>
+      <div class="swatch-info"><div class="swatch-name">Danger</div><div class="swatch-hex">#c94646</div><div class="swatch-token">--danger</div></div>
+    </div>
+  </div>
+
+  <h3>Color Usage Rules</h3>
+  <div class="rule"><div class="rule-row"><strong>Primary action / CTA</strong> → <span class="val">--brand-blue</span> solid background, white text</div></div>
+  <div class="rule"><div class="rule-row"><strong>Navigation background</strong> → <span class="val">--brand-ink</span> (deep purple)</div></div>
+  <div class="rule"><div class="rule-row"><strong>Active state accent / left border</strong> → <span class="val">--brand-blue</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Page background</strong> → <span class="val">--surface-0</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Card backgrounds</strong> → <span class="val">rgba(255,255,255,0.82)</span> (slight transparency)</div></div>
+  <div class="rule"><div class="rule-row"><strong>Borders</strong> → <span class="val">rgba(38,34,96,0.08)</span> (brand-ink at 8% opacity)</div></div>
+  <div class="rule"><div class="rule-row"><strong>Focus rings</strong> → <span class="val">rgba(31,149,184,0.12)</span> (brand-blue at 12%)</div></div>
+  <div class="rule"><div class="rule-row"><strong>Tinted badge backgrounds</strong> → semantic color at 10–15% opacity</div><div class="note">e.g. success badge: rgba(30,155,108,0.1) bg + --success text</div></div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- TYPOGRAPHY -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="section">
+  <span class="section-anchor" id="typography"></span>
+  <h2>Typography</h2>
+  <p class="section-desc">Two typefaces. Space Grotesk for display, headings, labels, and numbers. Open Sans for body, form values, and prose. Both loaded from Google Fonts at weights 400/500/600/700.</p>
+
+  <pre><span class="comment">/* Load both faces */</span>
+<span class="kw">@import</span> <span class="val-c">url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap')</span>;
+
+<span class="prop">--font-body</span>: <span class="val-c">'Open Sans'</span>, system-ui, sans-serif;
+<span class="prop">--font-display</span>: <span class="val-c">'Space Grotesk'</span>, <span class="val-c">'Open Sans'</span>, system-ui, sans-serif;</pre>
+
+  <h3>Type Scale</h3>
+
+  <div class="type-specimen">
+    <div class="sample" style="font-family:'Space Grotesk';font-size:24px;font-weight:700;color:#1b1a27;line-height:1.2;">Patient Name / Page Title</div>
+    <div class="meta">Space Grotesk 700<br>24px / line-height 1.2<br>color: --ink-strong</div>
+  </div>
+  <div class="type-specimen">
+    <div class="sample" style="font-family:'Space Grotesk';font-size:16px;font-weight:700;color:#1b1a27;">Margaret Chen</div>
+    <div class="meta">Space Grotesk 700<br>16px<br>color: --ink-strong</div>
+  </div>
+  <div class="type-specimen">
+    <div class="sample" style="font-family:'Space Grotesk';font-size:13px;font-weight:600;color:#2f2c3f;">Card Title / Section Heading</div>
+    <div class="meta">Space Grotesk 600<br>13px<br>color: --ink</div>
+  </div>
+  <div class="type-specimen">
+    <div class="sample" style="font-size:13px;color:#2f2c3f;line-height:1.5;">Body text, form values, table cells, note content at 13px Open Sans regular. Dense and readable without being cramped.</div>
+    <div class="meta">Open Sans 400<br>13px / line-height 1.5<br>color: --ink</div>
+  </div>
+  <div class="type-specimen">
+    <div class="sample" style="font-size:12px;color:#6c687d;">Secondary / meta text — provider names, timestamps, helper text</div>
+    <div class="meta">Open Sans 400<br>12px<br>color: --ink-muted</div>
+  </div>
+  <div class="type-specimen">
+    <div class="sample" style="font-size:11px;color:#6c687d;">Tertiary — appointment meta, note timestamps, status subtext</div>
+    <div class="meta">Open Sans 400<br>11px<br>color: --ink-muted</div>
+  </div>
+  <div class="type-specimen">
+    <div class="sample" style="font-family:'Space Grotesk';font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#9a95ad;">SECTION LABEL / TABLE HEADER</div>
+    <div class="meta">Space Grotesk 600<br>10px / uppercase<br>tracking: 0.08em<br>color: --ink-soft</div>
+  </div>
+  <div class="type-specimen">
+    <div class="sample" style="font-family:'Space Grotesk';font-size:10px;font-weight:600;color:#dd6f26;background:rgba(221,111,38,0.1);padding:2px 8px;border-radius:999px;display:inline-block;">Badge Label</div>
+    <div class="meta">Space Grotesk 600<br>10px<br>used in all badges</div>
+  </div>
+
+  <h3>Rules</h3>
+  <div class="rule"><strong>Use Space Grotesk for:</strong> patient names, card titles, section labels, form labels, KPIs, badge text, nav labels, all numeric displays, keyboard hints.</div>
+  <div class="rule"><strong>Use Open Sans for:</strong> form values (contenteditable), note bodies, table cell data, body prose, placeholder text, status bar text.</div>
+  <div class="rule"><strong>Base font-size:</strong> <span class="val">14px</span> on html element. All rem/em values cascade from this.</div>
+  <div class="rule"><strong>Minimum readable size:</strong> <span class="val">10px</span> — only for uppercase labels and badges. Never use below 10px.</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SPACING -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="section">
+  <span class="section-anchor" id="spacing"></span>
+  <h2>Spacing</h2>
+  <p class="section-desc">4px base unit. All spacing is a multiple of 4. The goal is maximum density without crowding — prefer 8px and 12px gaps for most UI, 4px for within-component micro-spacing.</p>
+
+  <div class="demo-block">
+    <div class="demo-label">Spacing Scale</div>
+    <div class="spacing-row"><div class="spacing-bar" style="width:4px;"></div><div class="spacing-meta">4px — micro gap</div><span style="font-size:11px;color:var(--ink-soft);">Between badge icon + label, status dot + text</span></div>
+    <div class="spacing-row"><div class="spacing-bar" style="width:6px;"></div><div class="spacing-meta">6px — tight gap</div><span style="font-size:11px;color:var(--ink-soft);">Button icon + label, inline pairs</span></div>
+    <div class="spacing-row"><div class="spacing-bar" style="width:8px;"></div><div class="spacing-meta">8px — default gap</div><span style="font-size:11px;color:var(--ink-soft);">Content area padding, card gap, form row gap</span></div>
+    <div class="spacing-row"><div class="spacing-bar" style="width:12px;"></div><div class="spacing-meta">12px — medium gap</div><span style="font-size:11px;color:var(--ink-soft);">Card padding, nav item horizontal pad, section gaps</span></div>
+    <div class="spacing-row"><div class="spacing-bar" style="width:16px;"></div><div class="spacing-meta">16px — large gap</div><span style="font-size:11px;color:var(--ink-soft);">Card content padding, panel padding, palette padding</span></div>
+    <div class="spacing-row"><div class="spacing-bar" style="width:24px;"></div><div class="spacing-meta">24px — section gap</div><span style="font-size:11px;color:var(--ink-soft);">Between major card sections, above section titles</span></div>
+  </div>
+
+  <h3>Key Fixed Measurements</h3>
+  <div class="rule"><div class="rule-row"><strong>Content area padding</strong> <span class="val">8px</span> — the gap wrapping the main panel area</div></div>
+  <div class="rule"><div class="rule-row"><strong>Card internal padding</strong> <span class="val">12px 14px</span> (context cards) / <span class="val">12px 16px</span> (record panels)</div></div>
+  <div class="rule"><div class="rule-row"><strong>Top bar height</strong> <span class="val">38px</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Status bar height</strong> <span class="val">24px</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Nav width collapsed</strong> <span class="val">48px</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Nav width expanded</strong> <span class="val">180px</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Patient rail width</strong> <span class="val">170px</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Nav item padding</strong> <span class="val">8px 12px</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Table row padding</strong> <span class="val">6–7px 8px</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Form grid gap</strong> <span class="val">8px vertical, 12px horizontal</span></div></div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- RADIUS & SHADOW -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="section">
+  <span class="section-anchor" id="radius"></span>
+  <h2>Radius &amp; Shadow</h2>
+  <p class="section-desc">Four radius values. Use them consistently — never mix radii within a component. Shadows are very subtle; they define elevation not decoration.</p>
+
+  <div class="demo-block">
+    <div class="demo-label">Radius Scale</div>
+    <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;">
+      <div style="text-align:center;">
+        <div style="width:48px;height:48px;background:var(--brand-blue);opacity:0.2;border-radius:4px;margin:0 auto 6px;"></div>
+        <div style="font-family:var(--font-display);font-size:11px;color:var(--ink-muted);">4px<br>kbd hints</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="width:56px;height:56px;background:var(--brand-blue);opacity:0.2;border-radius:8px;margin:0 auto 6px;"></div>
+        <div style="font-family:var(--font-display);font-size:11px;color:var(--ink-muted);">8px<br>--radius-sm<br>inputs, tabs</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="width:64px;height:64px;background:var(--brand-blue);opacity:0.2;border-radius:12px;margin:0 auto 6px;"></div>
+        <div style="font-family:var(--font-display);font-size:11px;color:var(--ink-muted);">12px<br>--radius-md<br>palette items</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="width:72px;height:72px;background:var(--brand-blue);opacity:0.2;border-radius:18px;margin:0 auto 6px;"></div>
+        <div style="font-family:var(--font-display);font-size:11px;color:var(--ink-muted);">18px<br>--radius-card<br>panels, cards</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="width:80px;height:32px;background:var(--brand-blue);opacity:0.2;border-radius:999px;margin:0 auto 6px;"></div>
+        <div style="font-family:var(--font-display);font-size:11px;color:var(--ink-muted);">999px<br>--radius-pill<br>buttons, badges</div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Shadow System</h3>
+  <div class="rule"><div class="rule-row"><strong>Card shadow</strong> <span class="val">--card-shadow</span></div><div class="note">0 1px 3px rgba(38,34,96,0.06), 0 0 0 1px rgba(38,34,96,0.04) — very subtle, almost invisible. Depth through border, not shadow.</div></div>
+  <div class="rule"><div class="rule-row"><strong>Command palette</strong> <span class="val">0 16px 48px rgba(38,34,96,0.18)</span></div><div class="note">Floating overlays get a larger, more visible shadow to separate from content.</div></div>
+  <div class="rule"><div class="rule-row"><strong>Segmented tab active</strong> <span class="val">0 1px 2px rgba(0,0,0,0.06)</span></div><div class="note">Tiny lift to separate active tab pill from background track.</div></div>
+  <div class="rule"><strong>Never use large decorative shadows on cards.</strong> <span class="note">Depth comes from background tint differences and 1px borders, not drop shadows.</span></div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- LAYOUT -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="section">
+  <span class="section-anchor" id="layout"></span>
+  <h2>Layout Structure</h2>
+  <p class="section-desc">The app shell is a fixed viewport layout. No page scroll — all scrolling is within panels. Min-width 1280px. Designed for desktop-first use on 1280–1920px screens.</p>
+
+  <div class="layout-diagram">
+    <!-- Nav -->
+    <div class="ld-col" style="width:48px;flex-shrink:0;">
+      <div class="ld-block" style="flex:1;background:var(--brand-ink);border-radius:6px;font-size:9px;color:rgba(255,255,255,0.6);">Left<br>Nav<br>48px</div>
+    </div>
+    <!-- Main col -->
+    <div class="ld-col" style="flex:1;">
+      <div class="ld-block" style="height:38px;background:var(--surface-2);border-radius:6px;font-size:9px;color:var(--ink-muted);">Top Bar — 38px</div>
+      <div style="flex:1;display:flex;gap:4px;">
+        <div class="ld-block" style="flex:0 0 60%;background:rgba(31,149,184,0.12);border-radius:6px;font-size:9px;color:var(--brand-blue);">Record Panel<br>60%</div>
+        <div class="ld-block" style="flex:1;background:rgba(221,111,38,0.08);border-radius:6px;font-size:9px;color:var(--brand-orange);">Context<br>Panel<br>40%</div>
+      </div>
+      <div class="ld-block" style="height:24px;background:var(--brand-ink);border-radius:6px;font-size:9px;color:rgba(255,255,255,0.6);">Status Bar — 24px</div>
+    </div>
+    <!-- Patient rail -->
+    <div class="ld-col" style="width:170px;flex-shrink:0;">
+      <div class="ld-block" style="flex:1;background:var(--surface-2);border-radius:6px;font-size:9px;color:var(--ink-muted);">Open Patients<br>Rail — 170px</div>
+    </div>
+  </div>
+
+  <pre><span class="comment">/* Shell structure */</span>
+body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+.shell     { display: flex; flex: 1; overflow: hidden; }
+.left-nav  { width: 48px; flex-shrink: 0; }  <span class="comment">/* expands to 180px on hover */</span>
+.main-col  { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.top-bar   { height: 38px; flex-shrink: 0; }
+.content-area { flex: 1; display: flex; padding: 8px; gap: 8px; overflow: hidden; }
+.record-panel  { flex: 0 0 60%; }
+.context-panel { flex: 0 0 40%; overflow-y: auto; }
+.patient-rail  { width: 170px; flex-shrink: 0; }
+.status-bar    { height: 24px; flex-shrink: 0; }</pre>
+</div>
+
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- LEFT NAV -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="section">
+  <span class="section-anchor" id="nav"></span>
+  <h2>Left Navigation</h2>
+  <p class="section-desc">Icon-only at rest (48px). Expands to 180px on hover with a smooth 0.2s transition. Background is brand-ink (deep purple). Labels fade in only when expanded.</p>
+
+  <div class="rule"><div class="rule-row"><strong>Background</strong> <span class="val">--brand-ink (#262260)</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Collapsed width</strong> <span class="val">48px</span> — icon only, always visible</div></div>
+  <div class="rule"><div class="rule-row"><strong>Expanded width</strong> <span class="val">180px</span> — on :hover, 0.2s cubic-bezier(.4,0,.2,1)</div></div>
+  <div class="rule"><div class="rule-row"><strong>Nav item padding</strong> <span class="val">8px 12px</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Icon size</strong> <span class="val">18px SVG</span> in a <span class="val">24×24px</span> flex container</div></div>
+  <div class="rule"><div class="rule-row"><strong>Inactive color</strong> <span class="val">rgba(255,255,255,0.55)</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Hover bg / color</strong> <span class="val">rgba(255,255,255,0.1)</span> / <span class="val">rgba(255,255,255,0.9)</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Active bg / color</strong> <span class="val">rgba(255,255,255,0.15)</span> / <span class="val">#fff</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Active left accent bar</strong> <span class="val">3px wide</span> / <span class="val">20px tall</span> / color: <span class="val">--brand-blue</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Logo mark</strong> 32×32px, <span class="val">border-radius 10px</span>, background <span class="val">--brand-blue</span>, white "O", Space Grotesk 700 15px</div></div>
+  <div class="rule"><div class="rule-row"><strong>Bottom location bar</strong> border-top <span class="val">rgba(255,255,255,0.08)</span>, text <span class="val">rgba(255,255,255,0.45)</span>, 11px, green status dot 8px</div></div>
+
+  <h3>Nav Items (in order)</h3>
+  <div class="rule">Patients · Scheduling · Orders · Marketing · Recalls · Messages · Journal · Sales · Documents · Settings</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- TOP BAR -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="section">
+  <span class="section-anchor" id="topbar"></span>
+  <h2>Top Utility Bar</h2>
+  <p class="section-desc">38px fixed-height bar. Three zones: left (breadcrumb), center (command bar), right (actions + user).</p>
+
+  <div class="rule"><div class="rule-row"><strong>Height</strong> <span class="val">38px</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Background</strong> <span class="val">--surface-1 (#f3efe8)</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Border bottom</strong> <span class="val">1px solid --card-border</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Padding</strong> <span class="val">0 12px</span>, gap <span class="val">12px</span></div></div>
+
+  <h3>Breadcrumb</h3>
+  <div class="rule">Font-size <span class="val">12px</span>. Separators: <span class="val">›</span> in ink-soft. Current section in <span class="val">--ink</span> semibold 600. Parent sections in <span class="val">--ink-soft</span>.</div>
+
+  <h3>Command Bar</h3>
+  <div class="rule"><div class="rule-row"><strong>Width</strong> <span class="val">420px</span>, centered in flex container</div></div>
+  <div class="rule"><div class="rule-row"><strong>Height</strong> <span class="val">28px</span>, border-radius <span class="val">--radius-pill</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Background</strong> <span class="val">rgba(255,255,255,0.82)</span>, border <span class="val">--card-border</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Focus state</strong> border: <span class="val">--brand-blue</span>, box-shadow: <span class="val">0 0 0 3px rgba(31,149,184,0.12)</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Keyboard hint</strong> ⌘K chip — 10px Space Grotesk, <span class="val">--surface-2</span> background, border-radius 4px</div></div>
+  <div class="rule">Clicking or focusing the command bar triggers the command palette overlay. The input itself does not accept typing inline.</div>
+
+  <h3>Top Buttons</h3>
+  <div class="demo-block">
+    <div class="demo-label">Top Bar Button Variants</div>
+    <div class="btn-row">
+      <button class="btn btn-sm-p">+ Patient</button>
+      <button class="btn btn-ghost" style="height:26px;font-size:11px;">+ Appt</button>
+      <button class="btn btn-ghost" style="height:26px;font-size:11px;">+ Note</button>
+    </div>
+    <p style="font-size:11px;color:var(--ink-muted);margin:0;">Primary action: --brand-blue solid, white text, 26px height, pill radius, 11px semibold. Ghost actions: ink-muted text, surface-2 hover.</p>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- STATUS BAR -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="section">
+  <span class="section-anchor" id="statusbar"></span>
+  <h2>Status Bar</h2>
+  <p class="section-desc">24px bottom bar spanning the full app width. Shows connection, location, user, and system info.</p>
+
+  <div class="rule"><div class="rule-row"><strong>Height</strong> <span class="val">24px</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Background</strong> <span class="val">--brand-ink (#262260)</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Font size</strong> <span class="val">11px</span> Open Sans</div></div>
+  <div class="rule"><div class="rule-row"><strong>Text color</strong> <span class="val">rgba(255,255,255,0.55)</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Active location</strong> <span class="val">rgba(255,255,255,0.8)</span>, weight 600</div></div>
+  <div class="rule"><div class="rule-row"><strong>Separators</strong> pipe | in <span class="val">rgba(255,255,255,0.2)</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Connection dot</strong> 6px circle, color <span class="val">--success</span></div></div>
+  <div class="rule">Right-side items (last sync, version) use margin-left:auto to push to far right.</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- PATIENT RAIL -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="section">
+  <span class="section-anchor" id="patient-rail"></span>
+  <h2>Open Patients Rail</h2>
+  <p class="section-desc">Right-side 170px rail showing currently open patient tabs. Lets staff keep multiple patients in context and switch between them without navigating back to a list.</p>
+
+  <div class="rule"><div class="rule-row"><strong>Width</strong> <span class="val">170px</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Background</strong> <span class="val">--surface-1</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Border left</strong> <span class="val">1px solid rgba(38,34,96,0.06)</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Header label</strong> "OPEN PATIENTS" — 10px Space Grotesk 600 uppercase, --ink-soft, padding 10px 12px 6px</div></div>
+  <div class="rule"><div class="rule-row"><strong>Tab height</strong> ~42px per patient tab</div></div>
+  <div class="rule"><div class="rule-row"><strong>Tab padding</strong> <span class="val">7px 12px</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Active tab</strong> background <span class="val">rgba(31,149,184,0.06)</span>, left border <span class="val">2px solid --brand-blue</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Hover tab</strong> background <span class="val">--surface-2</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Patient avatar</strong> 24×24px circle, initials, gradient background unique per patient</div></div>
+  <div class="rule"><div class="rule-row"><strong>Status dot</strong> 6px circle, color semantic (success/warning/danger), positioned bottom-left of avatar with white border</div></div>
+  <div class="rule"><div class="rule-row"><strong>Close button</strong> ×, 16×16px circle, opacity:0, shown on tab hover</div></div>
+  <div class="rule"><div class="rule-row"><strong>Name format</strong> "Last, First" — 12px Space Grotesk 600, truncated</div></div>
+  <div class="rule"><div class="rule-row"><strong>Sub label</strong> visit type — 10px Open Sans, --ink-soft, truncated</div></div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- BUTTONS -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="section">
+  <span class="section-anchor" id="buttons"></span>
+  <h2>Buttons</h2>
+  <p class="section-desc">All buttons inherit font-family. Pill radius for most buttons. Icon buttons are circular. No rounded-square buttons — use pill or circle only.</p>
+
+  <div class="demo-block">
+    <div class="demo-label">Button Variants</div>
+    <div class="btn-row">
+      <button class="btn btn-primary">Primary Action</button>
+      <button class="btn btn-secondary">Secondary</button>
+      <button class="btn btn-ghost">Ghost</button>
+      <button class="btn btn-danger">Danger</button>
+      <button class="btn btn-icon" style="border-radius:50%;width:32px;height:32px;">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6.5a4 4 0 018 0c0 4 2 5 2 5H2s2-1 2-5z"/><path d="M6.5 14a1.5 1.5 0 003 0"/></svg>
+      </button>
+    </div>
+    <div class="btn-row" style="margin-top:8px;">
+      <button class="btn btn-sm-p">+ Patient</button>
+      <button class="btn btn-ghost" style="height:26px;font-size:11px;">+ Appt</button>
+    </div>
+  </div>
+
+  <h3>Sizes</h3>
+  <div class="rule"><div class="rule-row"><strong>Large (primary CTA)</strong> height <span class="val">32px</span>, padding <span class="val">0 16px</span>, font-size <span class="val">13px</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Small (top bar)</strong> height <span class="val">26px</span>, padding <span class="val">0 10px</span>, font-size <span class="val">11px</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Micro (inline)</strong> height <span class="val">22–24px</span>, padding <span class="val">0 8px</span>, font-size <span class="val">11px</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Icon button</strong> <span class="val">26–32px</span> circle, centered icon, hover: --surface-2 bg</div></div>
+
+  <h3>States</h3>
+  <div class="rule"><strong>Primary hover:</strong> darken brand-blue → <span class="val">#1a829f</span> (about 10% darker)</div>
+  <div class="rule"><strong>Ghost hover:</strong> <span class="val">--surface-2</span> background</div>
+  <div class="rule"><strong>All transitions:</strong> <span class="val">0.15s</span> ease on background and color</div>
+  <div class="rule"><strong>Disabled:</strong> opacity <span class="val">0.4</span>, cursor not-allowed, no hover effects</div>
+  <div class="rule"><strong>Font weight:</strong> always <span class="val">600</span> (semibold)</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- BADGES & STATUS -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="section">
+  <span class="section-anchor" id="badges"></span>
+  <h2>Badges &amp; Status</h2>
+
+  <div class="demo-block">
+    <div class="demo-label">Badge Variants</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+      <span class="badge badge-success">Active</span>
+      <span class="badge badge-blue">Ins. Verified</span>
+      <span class="badge badge-orange">Has Aids</span>
+      <span class="badge badge-warning">Needs Follow-up</span>
+      <span class="badge badge-danger">Urgent</span>
+      <span class="badge badge-neutral">Inactive</span>
+    </div>
+  </div>
+
+  <div class="demo-block">
+    <div class="demo-label">Status Dots</div>
+    <div style="display:flex;gap:16px;align-items:center;font-size:12px;color:var(--ink-muted);">
+      <span><span class="status-dot" style="background:var(--success);"></span> Active / Connected</span>
+      <span><span class="status-dot" style="background:var(--warning);"></span> Waiting / Pending</span>
+      <span><span class="status-dot" style="background:var(--danger);"></span> Urgent / Error</span>
+      <span><span class="status-dot" style="background:var(--ink-soft);"></span> Inactive</span>
+    </div>
+  </div>
+
+  <div class="rule"><div class="rule-row"><strong>Badge font</strong> Space Grotesk 600, <span class="val">10px</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Badge padding</strong> <span class="val">2px 8px</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Badge radius</strong> <span class="val">--radius-pill (999px)</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Badge background formula</strong> semantic color at <span class="val">10–15% opacity</span>, text at full semantic color</div></div>
+  <div class="rule"><div class="rule-row"><strong>Status dot size</strong> <span class="val">6px</span> in tables and lists, <span class="val">8px</span> in nav bottom</div></div>
+  <div class="rule"><strong>Never use colored text without a tinted background.</strong> Always pair the two.</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- FORMS -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="section">
+  <span class="section-anchor" id="forms"></span>
+  <h2>Forms &amp; Inputs</h2>
+  <p class="section-desc">Two form patterns: inline-editable display fields (click to edit, underline focus) and traditional bordered inputs. Use inline-edit for patient record forms. Use bordered inputs for search, notes, and modal forms.</p>
+
+  <div class="demo-block">
+    <div class="demo-label">Inline Edit Field (Patient Records)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px 12px;">
+      <div class="form-field-demo">
+        <div class="form-label-demo">First Name</div>
+        <div class="form-value-demo" contenteditable="true">Margaret</div>
+      </div>
+      <div class="form-field-demo">
+        <div class="form-label-demo">Last Name</div>
+        <div class="form-value-demo" contenteditable="true">Chen</div>
+      </div>
+      <div class="form-field-demo">
+        <div class="form-label-demo">Date of Birth</div>
+        <div class="form-value-demo" contenteditable="true">04/12/1958</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-block">
+    <div class="demo-label">Bordered Input</div>
+    <input class="form-input-demo" type="text" placeholder="Search patients…" style="max-width:280px;">
+  </div>
+
+  <h3>Inline Edit Pattern</h3>
+  <div class="rule"><div class="rule-row"><strong>Label</strong> 10px Space Grotesk 600, uppercase, <span class="val">letter-spacing 0.05em</span>, color <span class="val">--ink-soft</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Value</strong> 13px Open Sans 400, color <span class="val">--ink</span>, padding <span class="val">4px 0</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Hover state</strong> border-bottom <span class="val">1px solid --surface-3</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Focus state</strong> border-bottom <span class="val">1px solid --brand-blue</span>, no outline</div></div>
+  <div class="rule">Label-value gap: <span class="val">2px</span>. Row gap in 3-col form grid: <span class="val">8px vertical, 12px horizontal</span>.</div>
+
+  <h3>Bordered Input Pattern</h3>
+  <div class="rule"><div class="rule-row"><strong>Height</strong> <span class="val">34px</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Background</strong> <span class="val">rgba(255,255,255,0.88)</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Border</strong> <span class="val">1px solid rgba(38,34,96,0.12)</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Border radius</strong> <span class="val">--radius-sm (8px)</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Focus</strong> border <span class="val">rgba(31,149,184,0.45)</span>, ring <span class="val">0 0 0 3px rgba(31,149,184,0.1)</span></div></div>
+
+  <h3>Section Dividers (within forms)</h3>
+  <div class="rule">Space Grotesk 600, 12px, color <span class="val">--ink-muted</span>, margin <span class="val">14px 0 8px</span>, border-bottom <span class="val">1px solid --surface-2</span>, padding-bottom <span class="val">4px</span>.</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- CARDS -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="section">
+  <span class="section-anchor" id="cards"></span>
+  <h2>Cards</h2>
+  <p class="section-desc">Cards are the primary content containers. Slight white transparency with a very subtle shadow and 1px purple-tinted border.</p>
+
+  <div class="demo-block" style="background:var(--surface-0);border-radius:18px;box-shadow:var(--card-shadow);">
+    <div class="demo-label">Card — Standard</div>
+    <div style="font-size:13px;color:var(--ink);">Card content here. Background is rgba(255,255,255,0.82). Border is 1px rgba(38,34,96,0.08). Radius is 18px.</div>
+  </div>
+
+  <div class="rule"><div class="rule-row"><strong>Background</strong> <span class="val">rgba(255,255,255,0.82)</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Border</strong> <span class="val">1px solid rgba(38,34,96,0.08)</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Border radius</strong> <span class="val">18px (--radius-card)</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Shadow</strong> <span class="val">--card-shadow</span> — almost invisible, just slight depth</div></div>
+  <div class="rule"><div class="rule-row"><strong>Context card padding</strong> <span class="val">12px 14px</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Record panel padding</strong> <span class="val">12px 16px</span> for header/content</div></div>
+
+  <h3>Card Title Row</h3>
+  <div class="rule">Space Grotesk 600, 12px, color <span class="val">--ink</span>, margin-bottom 8px. Right side: count chip — surface-2 bg, 10px, ink-muted text, pill radius, padding 1px 7px.</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- TABLES -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="section">
+  <span class="section-anchor" id="tables"></span>
+  <h2>Tables</h2>
+
+  <div class="demo-block">
+    <div class="demo-label">Mini Table (Context Panel)</div>
+    <table class="table-demo">
+      <thead>
+        <tr><th>Date</th><th>Type</th><th>Provider</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>02/18/2026</td><td>Follow-up</td><td>Dr. Torres</td><td><span class="status-dot" style="background:var(--success);margin-right:4px;"></span>Completed</td></tr>
+        <tr><td>03/19/2026</td><td>Ear Mold Fitting</td><td>Dr. Torres</td><td><span class="status-dot" style="background:var(--warning);margin-right:4px;"></span>Scheduled</td></tr>
+        <tr><td>06/18/2026</td><td>6-Month Follow-up</td><td>Dr. Torres</td><td><span class="status-dot" style="background:var(--ink-soft);margin-right:4px;"></span>Pending</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="rule"><div class="rule-row"><strong>Header</strong> 10px Space Grotesk 600, uppercase, <span class="val">letter-spacing 0.04em</span>, --ink-soft, border-bottom 1px --surface-2</div></div>
+  <div class="rule"><div class="rule-row"><strong>Cell padding</strong> <span class="val">6–7px 8px</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Cell font</strong> 12px Open Sans, color --ink</div></div>
+  <div class="rule"><div class="rule-row"><strong>Row separator</strong> border-bottom <span class="val">1px solid --surface-1</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Even row tint</strong> <span class="val">rgba(243,239,232,0.4)</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Hover row</strong> <span class="val">rgba(31,149,184,0.04)</span></div></div>
+  <div class="rule">Status in tables: 6px dot + text, no badges (too heavy). Reserve badges for patient header only.</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- TABS -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="section">
+  <span class="section-anchor" id="tabs"></span>
+  <h2>Segmented Control Tabs</h2>
+  <p class="section-desc">Used instead of traditional underline tabs. The active tab appears as a white pill lifted from a surface-1 track. Cleaner than underline tabs at small sizes.</p>
+
+  <div class="demo-block">
+    <div class="demo-label">Segmented Control</div>
+    <div class="seg-demo">
+      <button class="seg-tab-demo active">Demographics</button>
+      <button class="seg-tab-demo">Audiogram</button>
+      <button class="seg-tab-demo">History</button>
+      <button class="seg-tab-demo">Orders</button>
+      <button class="seg-tab-demo">Notes</button>
+    </div>
+  </div>
+
+  <div class="rule"><div class="rule-row"><strong>Track background</strong> <span class="val">--surface-1</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Track radius</strong> <span class="val">--radius-sm (8px)</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Track padding</strong> <span class="val">2px</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Active tab bg</strong> <span class="val">#fff</span>, shadow <span class="val">0 1px 2px rgba(0,0,0,0.06)</span>, radius <span class="val">6px</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Active font</strong> 12px Open Sans 600, color <span class="val">--ink-strong</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Inactive font</strong> 12px Open Sans 500, color <span class="val">--ink-muted</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Tab padding</strong> <span class="val">5px 14px</span></div></div>
+  <div class="rule">Tabs are placed at <span class="val">padding: 8px 16px 0</span> from the card edge — no bottom padding (content follows directly).</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- COMMAND PALETTE -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="section">
+  <span class="section-anchor" id="command"></span>
+  <h2>Command Palette</h2>
+  <p class="section-desc">The primary power-user navigation pattern. Triggered by Cmd+K or clicking the command bar. Full keyboard navigation. Sections, icons, and shortcut hints.</p>
+
+  <div class="rule"><div class="rule-row"><strong>Trigger</strong> <kbd>⌘K</kbd> or click command bar input</div></div>
+  <div class="rule"><div class="rule-row"><strong>Overlay bg</strong> <span class="val">rgba(27,26,39,0.25)</span> + backdrop-filter blur 2px</div></div>
+  <div class="rule"><div class="rule-row"><strong>Palette width</strong> <span class="val">560px</span>, max-height <span class="val">420px</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Palette bg</strong> <span class="val">#fff</span>, radius <span class="val">--radius-card (18px)</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Palette shadow</strong> <span class="val">0 16px 48px rgba(38,34,96,0.18)</span> + 1px border</div></div>
+  <div class="rule"><div class="rule-row"><strong>Entry animation</strong> <span class="val">0.15s ease-out</span>, translateY(-8px) + scale(0.98) → neutral</div></div>
+  <div class="rule"><div class="rule-row"><strong>Input font</strong> 15px Open Sans 500 — larger than UI for scan-friendly typing</div></div>
+  <div class="rule"><div class="rule-row"><strong>Section title</strong> 10px Space Grotesk 700, uppercase, <span class="val">letter-spacing 0.06em</span>, --ink-soft</div></div>
+  <div class="rule"><div class="rule-row"><strong>Item padding</strong> <span class="val">7px 16px</span></div></div>
+  <div class="rule"><div class="rule-row"><strong>Item hover / selected</strong> <span class="val">--surface-1</span> background</div></div>
+  <div class="rule"><div class="rule-row"><strong>Item icon</strong> 22×22px, radius 6px, surface-2 bg. Colored variants: blue, orange, purple at 10% opacity</div></div>
+  <div class="rule"><div class="rule-row"><strong>Keyboard hint chip</strong> 10px Space Grotesk, surface-2 bg, radius 4px, padding 1px 6px</div></div>
+  <div class="rule"><div class="rule-row"><strong>Footer</strong> <kbd>↑</kbd><kbd>↓</kbd> navigate, <kbd>Enter</kbd> select, <kbd>Esc</kbd> close — 10px, --ink-soft</div></div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- DENSITY RULES -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="section">
+  <span class="section-anchor" id="density"></span>
+  <h2>Density Rules</h2>
+  <p class="section-desc">This is a dense, operator-focused UI. The goal is maximum information in the viewport with no vertical wasted space. Every sizing decision should bias toward compact.</p>
+
+  <div class="do-dont">
+    <div class="do-block">
+      <div class="do-label">✓ Do</div>
+      <ul>
+        <li>Use 12–13px for most body content</li>
+        <li>Prefer 6–8px row padding in tables</li>
+        <li>Show data inline, not in modal sheets</li>
+        <li>Use segmented controls, not full tab bars</li>
+        <li>Stack multiple data points in single rows</li>
+        <li>Use 10px uppercase labels (not 12px)</li>
+        <li>Truncate with ellipsis + tooltip rather than wrapping</li>
+        <li>Put quick actions in the header row of a card</li>
+        <li>Use status dots in tables, not full badge pills</li>
+      </ul>
+    </div>
+    <div class="dont-block">
+      <div class="dont-label">✗ Don't</div>
+      <ul>
+        <li>Use font sizes below 10px anywhere</li>
+        <li>Add excessive vertical padding between sections</li>
+        <li>Wrap text in table cells — truncate instead</li>
+        <li>Use decorative empty states with illustrations</li>
+        <li>Add margin between every single component</li>
+        <li>Use full badge pills in dense tables</li>
+        <li>Leave large empty areas "for breathing room"</li>
+        <li>Put confirmation dialogs for routine actions</li>
+        <li>Use more than 4px gap between label and value</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- INTERACTIONS -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="section">
+  <span class="section-anchor" id="interactions"></span>
+  <h2>Interaction &amp; Animation</h2>
+
+  <div class="rule"><div class="rule-row"><strong>Standard transition</strong> <span class="val">0.15s ease</span> — all hover state changes (background, color, border)</div></div>
+  <div class="rule"><div class="rule-row"><strong>Nav expand</strong> <span class="val">0.2s cubic-bezier(.4,0,.2,1)</span> — slightly more physical</div></div>
+  <div class="rule"><div class="rule-row"><strong>Palette open</strong> <span class="val">0.15s ease-out</span> with translateY(-8px) → 0 + scale(0.98) → 1</div></div>
+  <div class="rule"><div class="rule-row"><strong>Label fade (nav)</strong> <span class="val">opacity 0 → 1, 0.15s</span></div></div>
+  <div class="rule"><strong>No bounce, no spring physics, no delayed entrances.</strong> Everything is immediate and precise. Clinical tools require predictable interfaces.</div>
+  <div class="rule"><strong>No page transitions.</strong> Content swaps are instant. Only overlay appearances get animation.</div>
+
+  <h3>Keyboard Shortcuts (built in)</h3>
+  <div class="rule"><div class="rule-row"><kbd>⌘K</kbd> — Open command palette</div></div>
+  <div class="rule"><div class="rule-row"><kbd>Esc</kbd> — Close palette / dismiss overlay</div></div>
+  <div class="rule"><div class="rule-row"><kbd>↑</kbd> <kbd>↓</kbd> — Navigate palette items</div></div>
+  <div class="rule"><div class="rule-row"><kbd>Enter</kbd> — Select palette item</div></div>
+  <div class="rule"><div class="rule-row"><kbd>.</kbd> / <kbd>,</kbd> — Next / previous variant (guide tool only)</div></div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- PRINCIPLES -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="section">
+  <span class="section-anchor" id="principles"></span>
+  <h2>Design Principles</h2>
+
+  <div class="rule"><strong>1. Density over whitespace.</strong> This is a workplace tool used 8+ hours a day. Staff need to see maximum data, not breathe. Every pixel should earn its place.</div>
+  <div class="rule"><strong>2. Keyboard-first, mouse-second.</strong> The command palette, keyboard shortcuts, and segmented controls all reduce mouse travel. Design new patterns with keyboard access as the primary path.</div>
+  <div class="rule"><strong>3. Inline editing, not modal sheets.</strong> Patient records use contenteditable fields. Prefer editing in context over opening forms in modals wherever practical.</div>
+  <div class="rule"><strong>4. Status is always visible.</strong> Patient status, connection health, location, and current context (breadcrumb) are always on screen. Never make staff hunt for state.</div>
+  <div class="rule"><strong>5. Warm neutrals, not cold grays.</strong> The surface palette has a warm, slightly cream/tan undertone. This makes the interface feel less clinical and reduces eye strain over long sessions.</div>
+  <div class="rule"><strong>6. One primary action per context.</strong> Each panel or card has one clearly weighted primary button. Secondary actions are ghost or icon-only.</div>
+  <div class="rule"><strong>7. Consistent token usage.</strong> Never hardcode hex values. Always use CSS custom properties. This enables future theming and ensures visual consistency across all screens.</div>
+  <div class="rule"><strong>8. Preserve the shell.</strong> Left nav, top bar, status bar, and patient rail are invariant. Content panels change; the shell does not. New views are always content panel replacements, not full-page replacements.</div>
+
+  <hr class="divider">
+  <p style="font-size:12px;color:var(--ink-soft);text-align:center;">Omni UI Guide · Derived from Variant 06 · March 2026</p>
+</div>
+
+</div><!-- /guide-body -->
+</div><!-- /guide-shell -->
+
+</body>
+</html>

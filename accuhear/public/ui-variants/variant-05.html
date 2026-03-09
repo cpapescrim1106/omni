@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Omni UI Variant 05</title>
+  <style>
+    :root {
+      --bg: #e8edf1;
+      --shell: #f6f8fa;
+      --panel: #ffffff;
+      --panel-2: #f2f5f7;
+      --line: #d4dce3;
+      --line-strong: #bac5cf;
+      --text: #101820;
+      --muted: #51606f;
+      --soft: #7c8a97;
+      --nav: #111920;
+      --nav-text: #dde5ec;
+      --accent: #0b7fab;
+      --accent-soft: #d8eef6;
+      --good: #137a5b;
+      --warn: #aa640f;
+      --shadow: 0 10px 24px rgba(16, 24, 32, 0.06);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: linear-gradient(180deg, #f0f4f7 0%, #e8edf1 100%);
+      color: var(--text);
+      font: 12px/1.35 "Segoe UI", "Helvetica Neue", sans-serif;
+    }
+    a { color: inherit; text-decoration: none; }
+    .app { min-height: 100vh; display:grid; grid-template-columns: 214px minmax(0,1fr); gap:10px; padding:10px; }
+    .sidebar, .topbar, .strip, .panel { border:1px solid var(--line); border-radius:16px; background:var(--panel); box-shadow: var(--shadow); }
+    .sidebar {
+      background: linear-gradient(180deg, #111920 0%, #0a1218 100%);
+      color: var(--nav-text);
+      padding: 12px; display:flex; flex-direction:column; gap:10px;
+    }
+    .brand { display:flex; gap:8px; align-items:center; }
+    .mark { width:34px; height:34px; border-radius:10px; background:linear-gradient(135deg, #0f90c0, #1c3a54); display:grid; place-items:center; font-weight:800; }
+    .caps, th { font-size: 10px; text-transform: uppercase; letter-spacing: .09em; color: var(--soft); }
+    .nav { display:grid; gap:2px; }
+    .nav a { padding:8px 10px; border-radius:10px; display:flex; justify-content:space-between; align-items:center; }
+    .nav a.active, .nav a:hover { background: rgba(255,255,255,.08); }
+    .side-mini { margin-top:auto; padding:10px; border-radius:12px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08); }
+    .main { display:grid; gap:8px; min-width:0; }
+    .topbar {
+      display:grid; grid-template-columns: minmax(0,1.2fr) auto auto auto; gap:8px; align-items:center; padding:8px 10px;
+    }
+    .search, .control, textarea {
+      width:100%; border:1px solid var(--line); border-radius:9px; background:#fff; padding:7px 9px; color:var(--text); font:inherit;
+    }
+    .btn, .chip {
+      border:1px solid var(--line); border-radius:999px; background:#fff; color:var(--text); padding:5px 9px; font:inherit; font-weight:700;
+    }
+    .btn.primary { background: var(--accent); color:#fff; border-color: var(--accent); }
+    .chip.accent { background: var(--accent-soft); color:#07536f; border-color:#bfdce8; }
+    .chip.good { background:#dff4eb; color:var(--good); border-color:#c4e7d8; }
+    .chip.warn { background:#f7e6d2; color:var(--warn); border-color:#ebcda9; }
+    .strip { padding:8px 10px; display:grid; gap:8px; }
+    .hero {
+      display:grid; grid-template-columns: minmax(0,1.6fr) minmax(0,1fr) auto;
+      gap:8px; align-items:center;
+    }
+    .patient { display:grid; grid-template-columns: 42px minmax(0,1fr); gap:9px; align-items:start; }
+    .avatar { width:42px; height:42px; border-radius:12px; background:var(--accent-soft); color:var(--accent); display:grid; place-items:center; font-weight:800; }
+    .title { font-size:18px; font-weight:800; line-height:1.05; }
+    .sub { color:var(--muted); }
+    .toolbar, .chips { display:flex; flex-wrap:wrap; gap:6px; }
+    .hero-metrics { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:6px; }
+    .metric { background: var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:7px; }
+    .metric strong { display:block; font-size:13px; margin-top:2px; }
+    .board { display:grid; grid-template-columns: minmax(0, 1.9fr) minmax(300px,.8fr); gap:8px; }
+    .stack { display:grid; gap:8px; min-width:0; }
+    .panel { padding:8px 10px; }
+    .head { display:flex; justify-content:space-between; gap:8px; align-items:center; margin-bottom:8px; }
+    .head strong { font-size:14px; }
+    .task-table, .dense-table { width:100%; border-collapse: collapse; }
+    .task-table th, .task-table td, .dense-table th, .dense-table td {
+      text-align:left; padding:6px 5px; border-top:1px solid #e8edf1; vertical-align:top;
+    }
+    .task-table tbody tr:hover, .dense-table tbody tr:hover { background:#f8fbfc; }
+    .form-grid { display:grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap:6px; }
+    label { display:block; margin-bottom:3px; color:var(--muted); font-weight:700; }
+    textarea { min-height:66px; resize:vertical; }
+    .notes-grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap:6px; }
+    .feed { display:grid; gap:6px; }
+    .feed-item { padding:7px 8px; border-radius:10px; background:var(--panel-2); border:1px solid var(--line); }
+    @media (max-width: 1220px) {
+      .topbar, .hero, .board { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: repeat(3, minmax(0,1fr)); }
+    }
+    @media (max-width: 900px) {
+      .app { grid-template-columns: 1fr; }
+      .hero-metrics, .notes-grid { grid-template-columns: 1fr 1fr; }
+      .form-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="mark">O</div>
+        <div><div style="font-weight:800">Omni</div><div class="caps" style="color:#9ab0c1">Power mode</div></div>
+      </div>
+      <nav class="nav">
+        <a class="active" href="#">Patients <span>124</span></a>
+        <a href="#">Scheduling <span>18</span></a>
+        <a href="#">Orders <span>9</span></a>
+        <a href="#">Messages <span>14</span></a>
+        <a href="#">Recalls <span>32</span></a>
+        <a href="#">Journal <span>7</span></a>
+        <a href="#">Sales <span>5</span></a>
+        <a href="#">Documents</a>
+        <a href="#">Settings</a>
+      </nav>
+      <div class="side-mini">
+        <div class="caps" style="color:#9ab0c1">Open tabs</div>
+        <div style="margin-top:4px">Eleanor Pena · Victor Lang · Maya Patel</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <input class="search" value="Search / patient / serial / claim / note / invoice / shortcut" aria-label="Search" />
+        <button class="btn">SHD</button>
+        <button class="btn">Ctrl K</button>
+        <button class="btn primary">Close visit</button>
+      </div>
+
+      <section class="strip">
+        <div class="hero">
+          <div class="patient">
+            <div class="avatar">EP</div>
+            <div>
+              <div class="caps">Dense patient workspace</div>
+              <div class="title">Eleanor Pena</div>
+              <div class="sub">MRN 004821 · DOB 06/17/1954 · Dr. Maya Singh · Follow-up fitting · Medicare Advantage PPO</div>
+              <div class="chips" style="margin-top:5px">
+                <span class="chip accent">Room 4</span>
+                <span class="chip good">Delivered left aid</span>
+                <span class="chip warn">$148 due</span>
+                <span class="chip">Recall Apr 5</span>
+                <span class="chip">3 open messages</span>
+              </div>
+            </div>
+          </div>
+          <div class="hero-metrics">
+            <div class="metric"><div class="caps">Wear</div><strong>9.4 hr</strong></div>
+            <div class="metric"><div class="caps">Audio</div><strong>Dec 18</strong></div>
+            <div class="metric"><div class="caps">Claim</div><strong>11 d</strong></div>
+            <div class="metric"><div class="caps">No-show</div><strong>0%</strong></div>
+          </div>
+          <div class="toolbar" style="justify-content:flex-end">
+            <button class="btn">Devices</button>
+            <button class="btn">Invoice</button>
+            <button class="btn">Text</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="board">
+        <div class="stack">
+          <section class="panel">
+            <div class="head">
+              <div><div class="caps">Task matrix</div><strong>Everything above the fold</strong></div>
+              <div class="toolbar"><span class="chip">Summary</span><span class="chip">Devices</span><span class="chip">Claims</span><span class="chip">Checkout</span></div>
+            </div>
+            <table class="task-table">
+              <thead><tr><th>Priority</th><th>Task</th><th>Context</th><th>Owner</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td>1</td><td><strong>Verify right receiver 2-85</strong></td><td>Cabinet B2 staged for room 4 fitting</td><td>Tech</td><td><span class="chip">Prep</span></td></tr>
+                <tr><td>2</td><td><strong>Collect earmold balance</strong></td><td>Invoice 44818 patient-responsible $148.00</td><td>Front desk</td><td><span class="chip warn">Due today</span></td></tr>
+                <tr><td>3</td><td><strong>Schedule 30-day recall</strong></td><td>Offer Apr 5 or Apr 7 at 10:30 AM</td><td>Provider</td><td><span class="chip">Pending</span></td></tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section class="panel">
+            <div class="head">
+              <div><div class="caps">Encounter grid</div><strong>High-density charting</strong></div>
+              <button class="btn">Save draft</button>
+            </div>
+            <div class="form-grid">
+              <div><label>Visit</label><select class="control"><option>Follow-up fitting</option></select></div>
+              <div><label>Provider</label><select class="control"><option>Dr. Maya Singh</option></select></div>
+              <div><label>Priority</label><select class="control"><option>Comfort</option></select></div>
+              <div><label>Recall</label><select class="control"><option>30 days</option></select></div>
+              <div><label>Left device</label><input class="control" value="No changes" /></div>
+              <div><label>Right device</label><input class="control" value="2-85 receiver" /></div>
+              <div><label>Otoscopy</label><input class="control" value="Clear bilateral" /></div>
+              <div><label>Datalog</label><input class="control" value="9.4 hr/day" /></div>
+              <div><label>Goal</label><input class="control" value="Restaurant noise" /></div>
+              <div><label>Coach</label><input class="control" value="App volume + charger" /></div>
+              <div><label>Payer hold</label><input class="control" value="1 auth correction" /></div>
+              <div><label>Packet</label><input class="control" value="AVS + warranty" /></div>
+            </div>
+            <div class="notes-grid" style="margin-top:6px">
+              <div><label>Clinical note</label><textarea>Reduced right HF sharpness by 1 dB, verified insertion depth, and updated speech-in-noise access to manual quick selection.</textarea></div>
+              <div><label>Checkout note</label><textarea>Collect balance, schedule recall, and text wax filter + charger instructions after visit close.</textarea></div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="head">
+              <div><div class="caps">Order ledger</div><strong>Fulfillment + finance</strong></div>
+              <button class="btn">PO-28741</button>
+            </div>
+            <table class="dense-table">
+              <thead><tr><th>Item</th><th>Stage</th><th>Serial</th><th>Warranty</th><th>Amount</th><th>Note</th></tr></thead>
+              <tbody>
+                <tr><td>Intent 2 R / right</td><td><span class="chip good">Received</span></td><td>1AB92384</td><td>01/19/2029</td><td>$0 due</td><td>Ready in room</td></tr>
+                <tr><td>Intent 2 R / left</td><td><span class="chip good">Delivered</span></td><td>1AB92377</td><td>01/19/2029</td><td>Claim pending</td><td>Fit complete</td></tr>
+                <tr><td>Earmold remake</td><td><span class="chip warn">Review</span></td><td>RM-8821</td><td>Remake window</td><td>Included</td><td>Rush requested</td></tr>
+              </tbody>
+            </table>
+          </section>
+        </div>
+
+        <div class="stack">
+          <section class="panel">
+            <div class="head">
+              <div><div class="caps">Activity</div><strong>Recent feed</strong></div>
+            </div>
+            <div class="feed">
+              <div class="feed-item"><strong>08:52 AM</strong> Arrival call logged. Patient requested text summary after visit.</div>
+              <div class="feed-item"><strong>Mar 7</strong> Claim docs uploaded with signed receipt and programming sheet.</div>
+              <div class="feed-item"><strong>Mar 6</strong> Secondary payer auth correction still pending.</div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="head">
+              <div><div class="caps">Closeout</div><strong>Communication controls</strong></div>
+            </div>
+            <div><label>Preferred contact</label><select class="control"><option>Text then call</option></select></div>
+            <div style="margin-top:6px"><label>After-visit message</label><textarea>Bring charger and connected phone to next visit. Replace wax filters weekly. Call sooner if retention issue returns.</textarea></div>
+            <div class="toolbar" style="margin-top:6px">
+              <button class="btn">Send text</button>
+              <button class="btn">Print AVS</button>
+              <button class="btn primary">Finalize</button>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="head">
+              <div><div class="caps">Auxiliary stats</div><strong>Side scan</strong></div>
+            </div>
+            <div class="feed">
+              <div class="feed-item"><strong>Balance</strong> $148.00 patient-responsible today</div>
+              <div class="feed-item"><strong>Recall window</strong> 27 days remaining</div>
+              <div class="feed-item"><strong>Open patient tabs</strong> 3 current workspace tabs</div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+<!-- Variant Selector -->
+<div id="variant-selector" style="position:fixed;bottom:16px;right:16px;z-index:99999;font-family:'Space Grotesk',system-ui,sans-serif;">
+  <button id="vs-toggle" style="width:40px;height:40px;border-radius:12px;border:1px solid rgba(38,34,96,0.12);background:rgba(255,255,255,0.95);backdrop-filter:blur(8px);box-shadow:0 2px 12px rgba(0,0,0,0.1);cursor:pointer;font-size:14px;font-weight:600;color:#262260;display:flex;align-items:center;justify-content:center;transition:all 0.2s;" title="Switch variant">⟐</button>
+  <div id="vs-panel" style="display:none;position:absolute;bottom:48px;right:0;background:rgba(255,255,255,0.97);backdrop-filter:blur(12px);border:1px solid rgba(38,34,96,0.1);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.12);padding:8px;min-width:220px;">
+    <div style="padding:4px 10px 8px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:#9a95ad;">Variant Selector</div>
+    <div id="vs-links"></div>
+    <div style="border-top:1px solid rgba(38,34,96,0.06);margin-top:4px;padding-top:4px;">
+      <a href="README.html" style="display:block;padding:6px 10px;font-size:12px;color:#6c687d;text-decoration:none;border-radius:8px;transition:background 0.15s;" onmouseover="this.style.background='rgba(31,149,184,0.06)'" onmouseout="this.style.background='transparent'">📋 Comparison Notes</a>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var currentVariant = 5;
+  var variants = [
+    {n:1, label:'Dense Clinical Shell'},
+    {n:2, label:'Compact Warm Workspace'},
+    {n:3, label:'Tabbed Record Panels'},
+    {n:4, label:'Split-View Dashboard'},
+    {n:5, label:'Dark Dense Console'},
+    {n:6, label:'Command-Bar Workspace'},
+    {n:7, label:'Split-Pane Console'},
+    {n:8, label:'Clinical Ops Board'},
+    {n:9, label:'Data-Grid Workspace'},
+    {n:10,label:'Ultra-Dense Expert'}
+  ];
+  var linksEl = document.getElementById('vs-links');
+  variants.forEach(function(v){
+    var isCurrent = v.n === currentVariant;
+    var a = document.createElement('a');
+    a.href = 'variant-' + String(v.n).padStart(2,'0') + '.html';
+    a.style.cssText = 'display:flex;align-items:center;gap:8px;padding:5px 10px;font-size:12px;text-decoration:none;border-radius:8px;transition:background 0.15s;color:' + (isCurrent ? '#1f95b8' : '#2f2c3f') + ';font-weight:' + (isCurrent ? '600' : '400') + ';background:' + (isCurrent ? 'rgba(31,149,184,0.08)' : 'transparent');
+    a.innerHTML = '<span style="width:22px;height:22px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;background:' + (isCurrent ? 'rgba(31,149,184,0.15)' : 'rgba(38,34,96,0.06)') + ';color:' + (isCurrent ? '#1f95b8' : '#6c687d') + '">' + String(v.n).padStart(2,'0') + '</span>' + v.label;
+    if(!isCurrent){
+      a.onmouseover = function(){ this.style.background='rgba(31,149,184,0.06)'; };
+      a.onmouseout = function(){ this.style.background='transparent'; };
+    }
+    linksEl.appendChild(a);
+  });
+  var toggle = document.getElementById('vs-toggle');
+  var panel = document.getElementById('vs-panel');
+  toggle.textContent = String(currentVariant).padStart(2,'0');
+  toggle.addEventListener('click', function(){
+    var open = panel.style.display !== 'none';
+    panel.style.display = open ? 'none' : 'block';
+    toggle.style.background = open ? 'rgba(255,255,255,0.95)' : 'rgba(31,149,184,0.1)';
+    toggle.style.borderColor = open ? 'rgba(38,34,96,0.12)' : 'rgba(31,149,184,0.3)';
+    toggle.style.color = open ? '#262260' : '#1f95b8';
+  });
+  document.addEventListener('click', function(e){
+    if(!document.getElementById('variant-selector').contains(e.target)){
+      panel.style.display = 'none';
+      toggle.style.background = 'rgba(255,255,255,0.95)';
+      toggle.style.borderColor = 'rgba(38,34,96,0.12)';
+      toggle.style.color = '#262260';
+    }
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape'){ panel.style.display = 'none'; }
+    if((e.key === '.' || e.key === '>') && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA'){
+      var next = currentVariant < 10 ? currentVariant + 1 : 1;
+      window.location.href = 'variant-' + String(next).padStart(2,'0') + '.html';
+    }
+    if((e.key === ',' || e.key === '<') && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA'){
+      var prev = currentVariant > 1 ? currentVariant - 1 : 10;
+      window.location.href = 'variant-' + String(prev).padStart(2,'0') + '.html';
+    }
+  });
+})();
+</script>
+</body>
+</html>

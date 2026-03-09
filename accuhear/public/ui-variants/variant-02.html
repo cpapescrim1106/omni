@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Omni UI Variant 02</title>
+  <style>
+    :root {
+      --bg: #f4eee4;
+      --shell: #fbf7f1;
+      --panel: #fffdfa;
+      --panel-2: #f5eee4;
+      --line: #dfd0bd;
+      --text: #30261d;
+      --muted: #6f5d4f;
+      --soft: #8e7e70;
+      --nav: #3f352d;
+      --nav-text: #f3e5d6;
+      --accent: #186d67;
+      --accent-2: #c7752d;
+      --good: #2c7a57;
+      --radius: 18px;
+      --shadow: 0 12px 28px rgba(72, 49, 25, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at top right, rgba(199,117,45,.12), transparent 34%),
+        linear-gradient(180deg, #f6f0e7 0%, #f1e8dc 100%);
+      color: var(--text);
+      font: 13px/1.4 "Trebuchet MS", "Segoe UI", sans-serif;
+    }
+    a { color: inherit; text-decoration: none; }
+    .app { min-height: 100vh; display: grid; grid-template-columns: 228px minmax(0,1fr); gap: 14px; padding: 14px; }
+    .sidebar, .topbar, .band, .panel { border-radius: 22px; box-shadow: var(--shadow); }
+    .sidebar {
+      background: linear-gradient(180deg, #453a32 0%, #342b24 100%);
+      color: var(--nav-text);
+      padding: 18px 14px; display: flex; flex-direction: column; gap: 16px;
+    }
+    .brand { display:flex; gap:10px; align-items:center; }
+    .brand-mark { width: 42px; height: 42px; border-radius: 14px; background: #f0d6b8; color: #3f352d; display:grid; place-items:center; font-weight:800; }
+    .eyebrow, .tag, th { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+    .nav { display:grid; gap:4px; }
+    .nav a { padding:10px 12px; border-radius: 12px; display:flex; justify-content:space-between; }
+    .nav a.active, .nav a:hover { background: rgba(255,255,255,.09); }
+    .side-note { margin-top:auto; padding:12px; border-radius: 14px; background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08); }
+    .main { display:grid; gap:12px; }
+    .topbar, .band, .panel { background: rgba(255,253,250,.94); border:1px solid var(--line); }
+    .topbar { display:grid; grid-template-columns: minmax(0,1fr) auto auto; gap:10px; padding:10px 12px; align-items:center; }
+    input, select, textarea, button { font: inherit; }
+    .search, .control, textarea {
+      width:100%; border:1px solid var(--line); border-radius:12px; background:#fff; padding:9px 11px; color:var(--text);
+    }
+    .btn, .chip {
+      border:1px solid var(--line); background:#fff; color:var(--text); border-radius:999px; padding:7px 11px; font-weight:700;
+    }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color:#fff; }
+    .btn.secondary { background: #f2e5d4; }
+    .chip { background: var(--panel-2); font-size: 12px; }
+    .chip.good { color: var(--good); background: #e3f1e8; border-color: #c9e1d0; }
+    .chip.warn { color: #8e4e12; background: #f8e6d0; border-color: #efd0ab; }
+    .band { padding: 12px; }
+    .band-grid { display:grid; grid-template-columns: minmax(0,1.4fr) minmax(280px,.9fr); gap:12px; }
+    .patient { display:grid; grid-template-columns: 56px minmax(0,1fr); gap:12px; }
+    .avatar { width:56px; height:56px; border-radius:18px; background:#e8d3bd; color:#5b4636; display:grid; place-items:center; font-size:18px; font-weight:800; }
+    .title { font-size: 24px; font-weight: 800; line-height:1.05; }
+    .muted { color: var(--muted); }
+    .toolbar { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+    .summary {
+      display:grid; gap:8px;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+    }
+    .summary .cell { border:1px solid var(--line); border-radius:14px; background:#fff; padding:10px; }
+    .workspace { display:grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr); gap:12px; }
+    .stack { display:grid; gap:12px; }
+    .panel { padding:12px; }
+    .head { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:10px; }
+    .head strong { font-size: 16px; }
+    .clinical-grid { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:10px; }
+    label { display:block; margin-bottom:5px; color: var(--muted); font-weight:700; }
+    textarea { min-height: 86px; resize: vertical; }
+    .list { display:grid; gap:8px; }
+    .item { padding:10px; border-radius:14px; background: var(--panel-2); border:1px solid var(--line); }
+    table { width:100%; border-collapse:collapse; }
+    th, td { text-align:left; padding:8px 6px; border-top:1px solid #ebdfd1; vertical-align:top; }
+    .timeline { display:grid; gap:8px; }
+    .entry { display:grid; grid-template-columns: 84px 1fr; gap:10px; padding-top:8px; border-top:1px solid #ebdfd1; }
+    .entry:first-child { border-top:0; padding-top:0; }
+    @media (max-width: 1100px) {
+      .band-grid, .workspace, .topbar { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 860px) {
+      .app { grid-template-columns: 1fr; }
+      .clinical-grid, .summary { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">O</div>
+        <div><div style="font-weight:800">Omni</div><div class="eyebrow">Patient operations</div></div>
+      </div>
+      <nav class="nav">
+        <a class="active" href="#">Patients <span>124</span></a>
+        <a href="#">Scheduling <span>18</span></a>
+        <a href="#">Orders <span>9</span></a>
+        <a href="#">Messages <span>14</span></a>
+        <a href="#">Recalls <span>32</span></a>
+        <a href="#">Journal <span>7</span></a>
+        <a href="#">Sales <span>5</span></a>
+        <a href="#">Documents</a>
+        <a href="#">Settings</a>
+      </nav>
+      <div class="side-note">
+        <div class="eyebrow">Clinic status</div>
+        <div style="font-size:18px; font-weight:800; margin:4px 0">4 rooms active</div>
+        <div>Same-day hearing aid checks are running 11 minutes ahead of schedule.</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <input class="search" value="Find patient, insurer, device serial, or journal note" aria-label="Search" />
+        <div style="display:flex; gap:8px; flex-wrap:wrap">
+          <button class="btn secondary">Spring Hill East</button>
+          <button class="btn secondary">Audiology</button>
+        </div>
+        <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap">
+          <button class="btn">Call patient</button>
+          <button class="btn primary">Start checkout</button>
+        </div>
+      </div>
+
+      <section class="band">
+        <div class="band-grid">
+          <div class="patient">
+            <div class="avatar">EP</div>
+            <div>
+              <div class="eyebrow">Today / device follow-up</div>
+              <div class="title">Eleanor Pena</div>
+              <div class="muted">MRN 004821 · 71 years · Mobile preferred · Medicare Advantage PPO</div>
+              <div class="toolbar">
+                <span class="chip good">Arrived 8:52 AM</span>
+                <span class="chip">Interpreter not needed</span>
+                <span class="chip warn">Balance due $148.00</span>
+                <span class="chip">Recall in 27 days</span>
+              </div>
+              <div class="toolbar">
+                <button class="btn primary">Seat patient</button>
+                <button class="btn">Device worksheet</button>
+                <button class="btn">Collect balance</button>
+                <button class="btn">Open journal</button>
+              </div>
+            </div>
+          </div>
+          <div class="summary">
+            <div class="cell"><div class="eyebrow">Hearing goals</div><strong>Dine-out speech clarity</strong></div>
+            <div class="cell"><div class="eyebrow">Last programming</div><strong>Mar 2, 2026</strong></div>
+            <div class="cell"><div class="eyebrow">Provider</div><strong>Dr. Maya Singh</strong></div>
+            <div class="cell"><div class="eyebrow">Payer issue</div><strong>1 auth correction</strong></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="workspace">
+        <div class="stack">
+          <section class="panel">
+            <div class="head">
+              <div><div class="eyebrow">Clinical prep</div><strong>Warm, chart-first workspace</strong></div>
+              <div style="display:flex; gap:6px"><span class="chip">Summary</span><span class="chip">Devices</span><span class="chip">Billing</span></div>
+            </div>
+            <div class="list">
+              <div class="item"><strong>Comfort concern</strong><div class="muted">Patient reports right receiver loosens after 5-6 hours. Re-check retention tail placement and insertion coaching.</div></div>
+              <div class="item"><strong>Financial cue</strong><div class="muted">Collect earmold balance before scheduling next recall. Insurance payment not expected before Apr 1.</div></div>
+              <div class="item"><strong>Close-out cue</strong><div class="muted">Send after-visit text with app-control steps and replace wax filters from stock bin 3.</div></div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="head">
+              <div><div class="eyebrow">Encounter form</div><strong>Structured note capture</strong></div>
+              <button class="btn secondary">Save draft</button>
+            </div>
+            <div class="clinical-grid">
+              <div><label>Visit reason</label><select class="control"><option>Follow-up fitting</option></select></div>
+              <div><label>Provider</label><select class="control"><option>Dr. Maya Singh</option></select></div>
+              <div><label>Left device change</label><input class="control" value="No shell changes" /></div>
+              <div><label>Right device change</label><input class="control" value="Receiver swapped to 2-85" /></div>
+              <div><label>Care plan</label><select class="control"><option>30-day recall</option></select></div>
+              <div><label>Home support</label><select class="control"><option>Daughter assists with pairing</option></select></div>
+            </div>
+            <div style="margin-top:10px"><label>Clinical summary</label><textarea>Reviewed insertion depth, completed in-office restaurant-noise demo, and reduced HF sharpness by 1 dB on the right. Patient repeated teach-back for charger positioning and app volume adjustment.</textarea></div>
+          </section>
+
+          <section class="panel">
+            <div class="head">
+              <div><div class="eyebrow">Orders</div><strong>Fulfillment and warranty</strong></div>
+              <button class="btn">Open PO-28741</button>
+            </div>
+            <table>
+              <thead><tr><th>Item</th><th>Stage</th><th>Serial</th><th>Coverage</th></tr></thead>
+              <tbody>
+                <tr><td><strong>Oticon Intent 2 miniRITE R</strong>Right side · silver grey</td><td><span class="chip good">Received</span></td><td>1AB92384</td><td>Warranty to Jan 2029</td></tr>
+                <tr><td><strong>Oticon Intent 2 miniRITE R</strong>Left side · silver grey</td><td><span class="chip good">Delivered</span></td><td>1AB92377</td><td>Loss/damage active</td></tr>
+                <tr><td><strong>Earmold remake</strong>Rush request</td><td><span class="chip warn">In manufacturer review</span></td><td>RM-8821</td><td>Remake window open</td></tr>
+              </tbody>
+            </table>
+          </section>
+        </div>
+
+        <div class="stack">
+          <section class="panel">
+            <div class="head">
+              <div><div class="eyebrow">Room prep</div><strong>Checkout controls</strong></div>
+            </div>
+            <div class="clinical-grid">
+              <div><label>Preferred follow-up contact</label><select class="control"><option>Text then call</option></select></div>
+              <div><label>Packet ready</label><select class="control"><option>AVS + warranty + claim sheet</option></select></div>
+            </div>
+            <div style="margin-top:10px"><label>Patient-facing reminder</label><textarea>Bring charger and app-connected phone to next visit. Replace wax filter weekly. Call sooner if retention issue returns after one week.</textarea></div>
+            <div class="toolbar">
+              <button class="btn">Text summary</button>
+              <button class="btn">Print AVS</button>
+              <button class="btn primary">Close visit</button>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="head">
+              <div><div class="eyebrow">Recent chart events</div><strong>Activity feed</strong></div>
+              <button class="btn secondary">Full journal</button>
+            </div>
+            <div class="timeline">
+              <div class="entry"><div class="eyebrow">Today 8:52</div><div><strong>Arrival call logged</strong><div class="muted">Patient confirmed ride and requested text summary after appointment.</div></div></div>
+              <div class="entry"><div class="eyebrow">Mar 7</div><div><strong>Claim documents uploaded</strong><div class="muted">Delivery receipt and programming sheet attached to insurance packet.</div></div></div>
+              <div class="entry"><div class="eyebrow">Mar 6</div><div><strong>Prior auth correction pending</strong><div class="muted">Secondary payer code mismatch still unresolved.</div></div></div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="head">
+              <div><div class="eyebrow">Task strip</div><strong>Fast queue context</strong></div>
+            </div>
+            <div class="list">
+              <div class="item"><strong>Cabinet pull</strong><div class="muted">Right-side receiver and wax filters staged in room 4.</div></div>
+              <div class="item"><strong>Billing</strong><div class="muted">Collect $148.00 balance or document hardship note.</div></div>
+              <div class="item"><strong>Recall</strong><div class="muted">Offer Apr 5 or Apr 7 at 10:30 AM.</div></div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+<!-- Variant Selector -->
+<div id="variant-selector" style="position:fixed;bottom:16px;right:16px;z-index:99999;font-family:'Space Grotesk',system-ui,sans-serif;">
+  <button id="vs-toggle" style="width:40px;height:40px;border-radius:12px;border:1px solid rgba(38,34,96,0.12);background:rgba(255,255,255,0.95);backdrop-filter:blur(8px);box-shadow:0 2px 12px rgba(0,0,0,0.1);cursor:pointer;font-size:14px;font-weight:600;color:#262260;display:flex;align-items:center;justify-content:center;transition:all 0.2s;" title="Switch variant">⟐</button>
+  <div id="vs-panel" style="display:none;position:absolute;bottom:48px;right:0;background:rgba(255,255,255,0.97);backdrop-filter:blur(12px);border:1px solid rgba(38,34,96,0.1);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.12);padding:8px;min-width:220px;">
+    <div style="padding:4px 10px 8px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:#9a95ad;">Variant Selector</div>
+    <div id="vs-links"></div>
+    <div style="border-top:1px solid rgba(38,34,96,0.06);margin-top:4px;padding-top:4px;">
+      <a href="README.html" style="display:block;padding:6px 10px;font-size:12px;color:#6c687d;text-decoration:none;border-radius:8px;transition:background 0.15s;" onmouseover="this.style.background='rgba(31,149,184,0.06)'" onmouseout="this.style.background='transparent'">📋 Comparison Notes</a>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var currentVariant = 2;
+  var variants = [
+    {n:1, label:'Dense Clinical Shell'},
+    {n:2, label:'Compact Warm Workspace'},
+    {n:3, label:'Tabbed Record Panels'},
+    {n:4, label:'Split-View Dashboard'},
+    {n:5, label:'Dark Dense Console'},
+    {n:6, label:'Command-Bar Workspace'},
+    {n:7, label:'Split-Pane Console'},
+    {n:8, label:'Clinical Ops Board'},
+    {n:9, label:'Data-Grid Workspace'},
+    {n:10,label:'Ultra-Dense Expert'}
+  ];
+  var linksEl = document.getElementById('vs-links');
+  variants.forEach(function(v){
+    var isCurrent = v.n === currentVariant;
+    var a = document.createElement('a');
+    a.href = 'variant-' + String(v.n).padStart(2,'0') + '.html';
+    a.style.cssText = 'display:flex;align-items:center;gap:8px;padding:5px 10px;font-size:12px;text-decoration:none;border-radius:8px;transition:background 0.15s;color:' + (isCurrent ? '#1f95b8' : '#2f2c3f') + ';font-weight:' + (isCurrent ? '600' : '400') + ';background:' + (isCurrent ? 'rgba(31,149,184,0.08)' : 'transparent');
+    a.innerHTML = '<span style="width:22px;height:22px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;background:' + (isCurrent ? 'rgba(31,149,184,0.15)' : 'rgba(38,34,96,0.06)') + ';color:' + (isCurrent ? '#1f95b8' : '#6c687d') + '">' + String(v.n).padStart(2,'0') + '</span>' + v.label;
+    if(!isCurrent){
+      a.onmouseover = function(){ this.style.background='rgba(31,149,184,0.06)'; };
+      a.onmouseout = function(){ this.style.background='transparent'; };
+    }
+    linksEl.appendChild(a);
+  });
+  var toggle = document.getElementById('vs-toggle');
+  var panel = document.getElementById('vs-panel');
+  toggle.textContent = String(currentVariant).padStart(2,'0');
+  toggle.addEventListener('click', function(){
+    var open = panel.style.display !== 'none';
+    panel.style.display = open ? 'none' : 'block';
+    toggle.style.background = open ? 'rgba(255,255,255,0.95)' : 'rgba(31,149,184,0.1)';
+    toggle.style.borderColor = open ? 'rgba(38,34,96,0.12)' : 'rgba(31,149,184,0.3)';
+    toggle.style.color = open ? '#262260' : '#1f95b8';
+  });
+  document.addEventListener('click', function(e){
+    if(!document.getElementById('variant-selector').contains(e.target)){
+      panel.style.display = 'none';
+      toggle.style.background = 'rgba(255,255,255,0.95)';
+      toggle.style.borderColor = 'rgba(38,34,96,0.12)';
+      toggle.style.color = '#262260';
+    }
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape'){ panel.style.display = 'none'; }
+    if((e.key === '.' || e.key === '>') && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA'){
+      var next = currentVariant < 10 ? currentVariant + 1 : 1;
+      window.location.href = 'variant-' + String(next).padStart(2,'0') + '.html';
+    }
+    if((e.key === ',' || e.key === '<') && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA'){
+      var prev = currentVariant > 1 ? currentVariant - 1 : 10;
+      window.location.href = 'variant-' + String(prev).padStart(2,'0') + '.html';
+    }
+  });
+})();
+</script>
+</body>
+</html>
