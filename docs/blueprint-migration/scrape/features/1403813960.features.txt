@@ -1,0 +1,8 @@
+Font shows up wrong
+Text in a text box wraps unexpectedly
+Letter has more pages than expected
+Letter is less than one page long; next letter starts on the same page
+Too much vertical line spacing in a multi-line address
+Address is not fully visible through envelope window
+Merge field fails to make image appear
+Can't see how to add alt text to an image in a table

@@ -1,0 +1,11 @@
+Overview
+Managing email headers and footers
+Viewing marketing email templates
+Creating a new marketing email template
+Editing translations
+Launching the template editor
+Duplicating templates
+Previewing templates
+Deleting translations
+Using custom email templates with marketing automation campaigns
+Using custom email templates with manual marketing campaigns

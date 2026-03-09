@@ -1,0 +1,14 @@
+Overview
+Photo sources
+Steps for uploading a patient photo
+Step 1 - Initiate photo capture
+Using a webcam, a mobile device/tablet, or a computer file as the photo source
+Using an archived document as the photo source
+Step 2 - Select photo source
+Step 3 - Capture photo (or select file)
+Using a computer file as the photo source
+Using a mobile device as the photo source
+Using a webcam as the photo source
+Recommendation
+Step 4 - Cropping and saving
+Removing a patient photo

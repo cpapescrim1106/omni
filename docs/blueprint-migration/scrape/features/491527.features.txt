@@ -1,0 +1,9 @@
+Categorizing documents (v4.8.0)
+Upload documents
+Viewing documents
+Printing documents
+Editing a document's title, category, status, description, or Display in audiology status
+Changing document status
+Downloading documents
+Deleting documents
+Permanently delete documents (v4.8.0)

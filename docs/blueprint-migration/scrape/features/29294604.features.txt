@@ -1,0 +1,6 @@
+Adding document categories
+Editing or deactivating document categories
+Adding document statuses
+Editing document statuses
+Searching by document status
+Document settings

@@ -1,0 +1,2 @@
+Printing the schedule
+Printing the schedule using the Daily Schedule Report

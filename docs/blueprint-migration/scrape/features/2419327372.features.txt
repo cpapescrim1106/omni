@@ -1,0 +1,8 @@
+Interactive filtering
+Interactive widgets
+Focusing on a specific group
+Changing the timescale resolution
+Changing the granularity
+Resetting filters
+Creating automatic alerts
+Printing or downloading a PDF version of the dashboard

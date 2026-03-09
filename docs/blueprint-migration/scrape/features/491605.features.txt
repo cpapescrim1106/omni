@@ -1,0 +1,4 @@
+Key features of the Blueprint OMS integrated scheduler
+Integration with other areas of Blueprint OMS
+Appointment Status Icons Key
+Saved Schedule Settings

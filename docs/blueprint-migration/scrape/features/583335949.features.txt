@@ -1,0 +1,4 @@
+Viewing the list of Audiometers
+Creating new audiometers
+Edit a location's audiometers
+Deactivate a location's audiometers

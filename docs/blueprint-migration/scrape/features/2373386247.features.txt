@@ -1,0 +1,6 @@
+Overview
+The QuickBooks synchronization module
+Company file
+The Synchronize tab
+The Manual entry tab
+The Old skipped transactions tab

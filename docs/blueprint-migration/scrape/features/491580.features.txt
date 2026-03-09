@@ -1,0 +1,13 @@
+Overview
+Viewing the list of recalls Viewing the list of recalls
+Filtering the list of recalls
+Managing time-sensitive or Action Required recalls
+Managing automatic recalls
+Managing Overdue recalls
+Adding recalls
+Changing recall statuses
+Completing/canceling recalls
+Editing recalls
+Postponing recalls
+Viewing patient details
+Booking an appointment or viewing the details of an existing appointment Booking an appointment or viewing the details of an existing appointment

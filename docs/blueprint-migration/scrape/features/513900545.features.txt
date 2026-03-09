@@ -1,0 +1,8 @@
+Overview
+Tip
+Notification badge of unverified online booking
+QuickAdd patients
+Verifying a booking
+Online forms requests
+Telehealth appointment invitations
+Rejecting a booking

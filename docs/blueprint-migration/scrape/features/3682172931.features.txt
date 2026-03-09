@@ -1,0 +1,10 @@
+Start a conversation
+Options
+Blueprint AI Rewrite
+Reply
+Dictation
+Emojis
+Insert clinic name
+Insert user signature
+Note
+Receiving an SMS from an unsaved mobile number

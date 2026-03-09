@@ -1,0 +1,9 @@
+Edit employee usernames and details
+Uploading a user signature
+Change user passwords
+Editing user privileges
+Editing user reports
+Editing user scheduling and location access
+Edit provider tax numbers
+Editing provider license numbers
+Deactivating users

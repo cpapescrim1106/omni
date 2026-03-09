@@ -1,0 +1,10 @@
+Recall statuses
+Viewing the list of recall statuses
+Adding new recall statuses
+Editing recall statuses
+Deleting recall statuses
+Recall types
+Viewing the list of recall types
+Adding new recall types
+Editing recall types
+Deleting recall types

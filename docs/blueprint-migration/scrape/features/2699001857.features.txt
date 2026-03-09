@@ -1,0 +1,3 @@
+Overview
+Setting up schedule start/end time
+Selecting the schedule time format

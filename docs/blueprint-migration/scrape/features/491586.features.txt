@@ -1,0 +1,7 @@
+Selecting loaned aids
+Generating loaner agreements
+Signing loaner agreements electronically
+Signing using a tablet
+Signing using a signature pad
+Archiving loaner agreements Archiving loaner agreements
+Extracting the loaner agreement out of Blueprint OMS

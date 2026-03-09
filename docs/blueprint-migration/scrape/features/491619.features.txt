@@ -1,0 +1,5 @@
+Overview of filtering appointments
+Filtering by people
+Filtering by resource
+Filtering by event type
+Filtering by appointment status Filtering by appointment status

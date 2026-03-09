@@ -1,0 +1,17 @@
+Selling items
+Selecting items for sale
+Removing items from sale Removing items from sale
+Selecting the insurer
+Adjusting item quantities Adjusting item quantities
+Changing order date Changing order date
+Changing order location Changing order location
+Changing order provider Changing order provider
+Changing order referral source Changing referral source
+Selecting the invoice template Selecting the invoice template
+Decreasing item prices Decreasing item prices
+Increasing item prices Increasing item prices
+Allocating costs between the patient and insurers (non-claims tracking)
+Entering an authorization or claim number  Entering authorization or claim number
+Creating quotesCreating quotes
+Completing the sale
+Entering payment details for a sales receipt Entering payment details for a sales receipt

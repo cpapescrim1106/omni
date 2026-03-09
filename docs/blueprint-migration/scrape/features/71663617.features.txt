@@ -1,0 +1,4 @@
+Overview of installing Blueprint OMS
+Native Windows installer (v2.8+)
+Java Web Start
+Restricting database access to specific IP addresses

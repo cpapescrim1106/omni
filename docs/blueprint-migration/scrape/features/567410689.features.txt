@@ -1,0 +1,7 @@
+Keep in mind
+Merge Patients Wizard
+Step 1.
+Step 2. resolving contact details discrepancies
+Step 3. resolving alternate contact discrepancies (if any exist)
+Step 4. Resolving patient insurers discrepancies (if any exist)
+Be Aware

@@ -1,0 +1,13 @@
+Overview of the patient Audiology tab
+Viewing hearing assessments, documents, and journal entries
+Entering new hearing assessments
+Entering diagnostic codesEntering diagnostic codes
+Entering audiometric data points
+Entering Speech data points
+Entering Impedance data points
+Editing hearing assessments
+Deleting hearing assessments, journal entries, and documents
+Removing journal entries from the Audiology tab without deleting them
+Removing documents from the Audiology tab without deleting them
+Unlinking journal entries and documents from audiogram without removing them from the Audiology tab
+Setting patient types selectingapatienttype

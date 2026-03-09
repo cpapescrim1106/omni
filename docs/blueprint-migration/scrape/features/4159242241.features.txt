@@ -1,0 +1,8 @@
+Controls
+Transaction type
+Item name
+Revenue Breakdown
+Graphs
+Pie Chart Gross Revenue Breakdown
+Gross Revenue Breakdown over time
+Adjustable Gross Revenue Breakdown Bar Chart

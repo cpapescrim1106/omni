@@ -1,0 +1,4 @@
+Viewing the list of bundles
+Creating new bundles
+Editing bundles
+Deleting bundles

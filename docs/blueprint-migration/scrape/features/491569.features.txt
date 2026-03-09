@@ -1,0 +1,4 @@
+Receiving patient payments Receiving patient payments
+Receiving/applying patient payments
+Issuing patient credits Issuing patient credits
+Applying patient credits Applying credit

@@ -1,0 +1,12 @@
+Viewing contact details
+Click-to-call patient
+Viewing patient statistics
+Viewing patient-specific information
+Adding or editing patient notes
+Clearing patient notes
+Viewing next and last appointments
+Viewing last assessments
+Viewing current aids
+Viewing current ALDs/Accessories
+Saving/printing patient summaries
+Archiving patient summaries

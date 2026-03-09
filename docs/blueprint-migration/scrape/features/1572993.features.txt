@@ -1,0 +1,4 @@
+Faxing documents
+Viewing sent faxes
+Scanning and faxing
+Faxing Status

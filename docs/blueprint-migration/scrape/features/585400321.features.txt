@@ -1,0 +1,9 @@
+Viewing patient groups
+Creating patient groups
+Editing patient groups
+Deactivating patient groups
+Reactivating deactivated patient groups
+Viewing members in patient groups
+Manually adding/removing patients to/from patient groups
+Printing correspondence for patient groups
+Exporting patient groups

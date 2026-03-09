@@ -1,0 +1,14 @@
+How do I get started with the automated appointment reminder, invitation, and notification feature?
+How are appointment reminders sent out?
+What if I prefer that SMS is the default method, rather than email?
+Can I choose the default method of communication on a case-to-case basis?
+Why is email preferred over text messages when both are available for a given patient?
+When are reminders sent out?
+If a patient gets a reminder 3 days ahead for a tentative event, and then the appointment gets marked confirmed, do they get re-reminded one day ahead of their now confirmed event?
+Can I see if a patient opened their reminder?
+What do the different status icons mean?
+How can we ensure that patients who cancel their appointments electronically are contacted for rebooking?
+what_is_a_landing_pageWhat are the "Landing" pages referred to in the setup form?
+Can I remove the option for the patient to cancel their appointment via the reminder?
+Can I change the wording on my appointment reminders?
+Appointment reminders are being marked as "spam" &ndash; what can I do about it?

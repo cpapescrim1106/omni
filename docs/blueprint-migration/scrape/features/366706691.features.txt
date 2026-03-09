@@ -1,0 +1,7 @@
+Enabling online booking for the first time
+oab_setup_wizardOnline Booking Setup Wizard
+Step 1: Set the sending email address for booking confirmations
+Step 2: Choose the locations that will have online booking enabled
+Step 3: Choose the providers that will be available for online bookings
+Step 4: Choose how appointment times will be available to patients for online bookings
+Step 5:  Select which appointme nt types can be booked online

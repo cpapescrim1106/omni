@@ -1,0 +1,12 @@
+Overview
+General format for a text-type editable field: {{merge field name}}[field type:merge field name:required or not required:validation type]
+Part 1: field type
+Single-line text field: text
+Multi-line text field with text snippet capability: textarea
+Drop-down menu: select|value1|value2...
+Checkbox: check|value|current value
+Radio button: radio|group|value|current value
+Electronic signature: sig
+Part 2: merge field name
+Part 3: req or nonreq
+Part 4: validation

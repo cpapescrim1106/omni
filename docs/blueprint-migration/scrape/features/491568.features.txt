@@ -1,0 +1,6 @@
+QuickBooks
+Viewing the list of accessories
+Creating new accessories
+Editing accessories
+Deleting accessories
+Why you should add an item as an accessory vs an orderable item

@@ -1,0 +1,10 @@
+Assigning Recalls
+Viewing the list of My Recalls
+Filtering the list of My Recalls
+Managing time-sensitive or Action Required recalls
+Managing Overdue My Recalls
+Adding recalls to My Recalls
+Completing/cancelling recalls
+Postponing recalls
+Viewing patient details
+Booking an appointment or viewing the details of an existing appointment Booking an appointment or viewing the details of an existing appointment

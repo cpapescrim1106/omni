@@ -1,0 +1,4 @@
+Writing off 3rd party invoices
+Deleting a 3rd party write off
+Editing a 3rd party payment
+Deleting a 3rd party payment

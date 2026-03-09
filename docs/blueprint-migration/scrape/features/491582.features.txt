@@ -1,0 +1,3 @@
+Go paperless with Blueprint OMS
+Checking Document Storage
+Email and fax documents directly from Blueprint OMS

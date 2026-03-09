@@ -1,0 +1,7 @@
+Editing invoices
+Editing payment details
+Deleting payments
+Deleting write offs
+Editing credits
+Deleting credits
+Deleting refunds

@@ -1,0 +1,4 @@
+Viewing the list of batteries
+Creating new batteries
+Editing batteries
+Deleting batteries

@@ -1,0 +1,8 @@
+Enabling marketing automation for the first time
+Marketing Automation Setup Wizard
+Step 1:  Select which platform type you want to use
+Step 2: How should emails be sent to recipients?
+Step 3: Set up your unsubscribed website address
+Step 4: Set the sending email address
+Location-specific sending addresses
+Ensuring reliable email delivery

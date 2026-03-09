@@ -1,0 +1,5 @@
+Entering deposits
+Viewing saved deposits
+Printing saved deposits
+Clearing bank deposits
+Deleting bank deposits

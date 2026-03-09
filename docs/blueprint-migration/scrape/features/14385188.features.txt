@@ -1,0 +1,8 @@
+Overview
+Getting started with integrated payment processingGettingstartedwithintegratedpayments
+Enabling integrated payment processing
+User privilege
+Attention current customers using integrated payments with WorldPay (card swiping)
+Using integrated payment processing
+Receiving credit/debit card payments from insurers
+Automatic transaction settlement

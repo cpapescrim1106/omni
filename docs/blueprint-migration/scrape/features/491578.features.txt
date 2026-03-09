@@ -1,0 +1,4 @@
+Viewing the list of services
+Creating new services
+Editing services
+Deleting services

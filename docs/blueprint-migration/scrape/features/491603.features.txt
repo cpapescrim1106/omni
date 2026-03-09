@@ -1,0 +1,13 @@
+Viewing the list of hearing aids
+Creating new hearing aids
+Changing hearing aid prices
+Editing hearing aid details
+Deleting hearing aids
+Hearing aid catalog updates
+Viewing catalog updates
+Applying/Deleting Pricing Updates
+Viewing the list of aid options
+Creating new aid options
+Changing aid option prices
+Editing aid option details
+Deleting aid options

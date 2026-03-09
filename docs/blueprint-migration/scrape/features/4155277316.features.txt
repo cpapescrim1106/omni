@@ -1,0 +1,19 @@
+Controls
+Group By
+Appointment Status
+Opportunity Day Range
+Appointment Type
+Patient Linked
+Closing Rate Calculations
+Appointment Counts / Calculations
+Total Number of Appointments
+Total Number of Aidable Loss Appointments
+Total Number of Sales Opportunity Appointments
+Total Number of Aidable Loss Sales Opportunity Appointments
+Closing Rate
+Unique Patients
+Booked Online
+Graphs
+Appointment Total By Date
+Appointments Per User
+Appointment Type Count

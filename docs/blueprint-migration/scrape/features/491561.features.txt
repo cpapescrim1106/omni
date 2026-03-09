@@ -1,0 +1,11 @@
+Overview
+Generating audiological reports
+Editing audiological report instances
+Editing single-line text fields
+Editing multi-line text fields
+Signing reports electronically
+Signing reports using clinic tablets
+Signing reports using signature pads
+Archiving an audiological report or audiological report draftArchiving reports
+Emailing an audiological report
+Faxing an audiological report

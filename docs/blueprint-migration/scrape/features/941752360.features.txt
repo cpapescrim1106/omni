@@ -1,0 +1,11 @@
+Enabling the feature for the first time
+Setting sending addresses
+Setting the default form expiration period
+Setting the default behavior for processing QuickAdds' forms requests
+Setting email templates
+Setting online form templates
+Ida Institute tools
+All other online forms
+Customizing your clinic's templates
+Special properties of online forms
+Associating online forms with event types

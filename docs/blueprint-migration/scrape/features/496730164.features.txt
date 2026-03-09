@@ -1,0 +1,11 @@
+Booking timeslot interval
+Availability blocks available for online booking by default
+Online booking notification email addresses
+Minimum advanced booking time (in minutes)
+Maximum advanced booking time (in days)
+Branding Theme color
+Branding:  Font family
+Branding:  Font size
+Optional contact fields
+Terms and conditions
+Setting age restriction for online booking

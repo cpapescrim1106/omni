@@ -1,0 +1,7 @@
+Overview
+System preferences
+Theme
+User preferences
+Patient arrival notification preferences
+ENTER key behavior
+Chat notification preferences

@@ -1,0 +1,4 @@
+Viewing the list of discounts
+Creating new discounts
+Editing discount reasons
+Inactivate discount reasons

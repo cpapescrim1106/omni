@@ -1,0 +1,33 @@
+Overview
+Incoming online bookings
+Verify booking
+Reject booking
+Unlink from patient
+Today's appointments: in-clinic monitoring
+Mark "Arrived"
+Mark "Arrived & Ready"
+Mark "Ready"
+Mark "In progress"
+Mark "Completed"
+Basic actions on events
+Delete
+Edit details
+Pin for rescheduling
+Reschedule
+Event history
+Change status
+Journal entries
+Create linked journal entry
+Link journal entries
+View linked journal entries
+Telehealth videoconferences
+Initiate videoconference
+Join videoconference
+Send videoconference instructions
+Online forms
+Send online forms
+View online forms
+Details about the linked patient or QuickAdd
+Link to patient
+Patient details
+QuickAdd details

@@ -1,0 +1,4 @@
+Viewing the list of insurers/3rd party payers
+Creating a new insurer/3rd party payer
+Editing an insurer/3rd party payer
+Deleting an insurer/3rd party payer

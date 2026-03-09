@@ -1,0 +1,4 @@
+Viewing the list of patient types
+Creating new patient types
+Edit a patient type
+Deactivating a patient type

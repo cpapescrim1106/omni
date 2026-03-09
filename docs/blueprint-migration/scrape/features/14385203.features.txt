@@ -1,0 +1,6 @@
+Viewing the list of orderable items
+Creating new orderable items
+Changing orderable item prices
+Editing orderable items
+Deleting orderable items
+Why you should add an item as an orderable item vs an accessory
