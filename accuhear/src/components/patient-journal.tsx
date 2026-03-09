@@ -12,8 +12,8 @@ type JournalEntry = {
 };
 
 const USER_FILTERS = [
-  "Cal, SHD",
-  "Pape, Chris",
+  "C + C, SHD",
+  "Chris Pape",
   "Pape, Robin",
   "Rodeo, Amy",
   "Solutions, Blueprint",

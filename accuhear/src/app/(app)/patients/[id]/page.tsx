@@ -43,7 +43,7 @@ export default async function PatientProfilePage({
   searchParams,
 }: {
   params: { id: string } | Promise<{ id: string }>;
-  searchParams?: { tab?: string } | Promise<{ tab?: string }>;
+  searchParams?: { tab?: string; purchase?: string } | Promise<{ tab?: string; purchase?: string }>;
 }) {
   const resolvedParams = params instanceof Promise ? await params : params;
   const resolvedSearchParams =
@@ -51,6 +51,7 @@ export default async function PatientProfilePage({
   const patient = await getPatientById(resolvedParams.id);
   if (!patient) notFound();
   const activeTab = resolvedSearchParams?.tab ?? "Summary";
+  const purchaseMode = resolvedSearchParams?.purchase ?? "";
   const patientLabel = `${patient.lastName}, ${patient.firstName}${patient.preferredName ? ` (${patient.preferredName})` : ""}`;
 
   const age = patient.dateOfBirth ? dayjs().diff(dayjs(patient.dateOfBirth), "year") : null;
@@ -94,8 +95,29 @@ export default async function PatientProfilePage({
               {patient.firstName.charAt(0)}
             </div>
             <div className="min-w-0">
-              <div className="truncate text-lg font-semibold text-ink-strong">
-                {patient.lastName}, {patient.firstName}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="truncate text-lg font-semibold text-ink-strong">
+                  {patient.lastName}, {patient.firstName}
+                </div>
+                <details className="group relative">
+                  <summary className="list-none rounded-full bg-success px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(34,197,94,0.22)] transition hover:bg-success/90">
+                    Purchase
+                  </summary>
+                  <div className="absolute left-0 top-[calc(100%+8px)] z-10 min-w-[220px] rounded-2xl border border-surface-2 bg-white p-2 shadow-[0_18px_40px_rgba(24,20,50,0.14)]">
+                    <Link
+                      href={`/patients/${patient.id}?tab=${encodeURIComponent("Hearing aids")}&purchase=tracked`}
+                      className="block rounded-xl px-3 py-2 text-sm text-ink hover:bg-surface-1"
+                    >
+                      Devices
+                    </Link>
+                    <Link
+                      href={`/patients/${patient.id}?tab=${encodeURIComponent("Sales history")}&purchase=direct`}
+                      className="block rounded-xl px-3 py-2 text-sm text-ink hover:bg-surface-1"
+                    >
+                      Supplies/Service
+                    </Link>
+                  </div>
+                </details>
               </div>
               <div className="text-xs text-ink-muted">
                 {patient.dateOfBirth
@@ -168,7 +190,7 @@ export default async function PatientProfilePage({
       {activeTab === "Audiology" ? (
         <PatientAudiology patientId={patient.id} />
       ) : activeTab === "Devices" || activeTab === "Hearing aids" ? (
-        <PatientDevices patientId={patient.id} />
+        <PatientDevices patientId={patient.id} autoOpenCreate={purchaseMode === "tracked"} />
       ) : activeTab === "Journal" ? (
         <PatientJournal patientId={patient.id} />
       ) : activeTab === "Insurance/Payers" || activeTab === "3rd party payers" ? (
@@ -176,7 +198,7 @@ export default async function PatientProfilePage({
       ) : activeTab === "Messaging" ? (
         <PatientMessaging patientId={patient.id} />
       ) : activeTab === "Sales history" ? (
-        <PatientSales patientId={patient.id} />
+        <PatientSales patientId={patient.id} autoOpenCreate={purchaseMode === "direct"} />
       ) : activeTab === "Documents" ? (
         <PatientDocuments patientId={patient.id} />
       ) : activeTab === "Details" ? (

@@ -159,7 +159,7 @@ export function PatientAudiology({ patientId }: { patientId: string }) {
               <div className="grid gap-3 sm:grid-cols-2 text-xs text-ink-muted">
                 <div>
                   <div className="font-semibold text-ink-strong">Provider</div>
-                  <div>Pape, Chris</div>
+                  <div>Chris Pape</div>
                 </div>
                 <div>
                   <div className="font-semibold text-ink-strong">Test method</div>

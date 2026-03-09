@@ -1,7 +1,7 @@
 const entries = [
-  { date: "01/17/2026", type: "Consult", user: "Pape, Chris", text: "Adjusted HA, reviewed warranty." },
+  { date: "01/17/2026", type: "Consult", user: "Chris Pape", text: "Adjusted HA, reviewed warranty." },
   { date: "01/07/2026", type: "Payment", user: "Rodeo, Amy", text: "$99.00 received." },
-  { date: "12/19/2025", type: "Note", user: "Pape, Chris", text: "Patient doing well." },
+  { date: "12/19/2025", type: "Note", user: "Chris Pape", text: "Patient doing well." },
   { date: "12/02/2025", type: "Marketing contact", user: "Alaimo, Nicole", text: "Click2Mail response." },
 ];
 

@@ -1,53 +1,25 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 import { Prisma } from "@prisma/client";
+import { prisma } from "@/lib/db";
+import { formatSaleTransaction } from "@/lib/commerce";
 
 type SaleTransactionWithRelations = Prisma.SaleTransactionGetPayload<{
-  include: { lineItems: true; payments: true; patient: true };
+  include: {
+    patient: true;
+    purchaseOrder: { include: { lineItems: true } };
+    lineItems: true;
+    payments: true;
+    documents: true;
+  };
 }>;
 
 function parseDateParam(value: string | null, endOfDay = false) {
   if (!value) return null;
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return null;
-  if (endOfDay) {
-    parsed.setHours(23, 59, 59, 999);
-  } else {
-    parsed.setHours(0, 0, 0, 0);
-  }
+  if (endOfDay) parsed.setHours(23, 59, 59, 999);
+  else parsed.setHours(0, 0, 0, 0);
   return parsed;
-}
-
-function formatSale(transaction: SaleTransactionWithRelations) {
-  const paymentTotal = transaction.payments.reduce((sum, payment) => sum + payment.amount, 0);
-  return {
-    id: transaction.id,
-    patientId: transaction.patientId,
-    patient: transaction.patient
-      ? {
-          id: transaction.patient.id,
-          firstName: transaction.patient.firstName,
-          lastName: transaction.patient.lastName,
-          preferredName: transaction.patient.preferredName,
-        }
-      : null,
-    txnId: transaction.txnId,
-    txnType: transaction.txnType,
-    date: transaction.date.toISOString(),
-    location: transaction.location,
-    provider: transaction.provider,
-    total: transaction.total ?? paymentTotal,
-    lineItems: transaction.lineItems.map((item) => ({
-      id: item.id,
-      item: item.item,
-      revenue: item.revenue,
-    })),
-    payments: transaction.payments.map((payment) => ({
-      id: payment.id,
-      amount: payment.amount,
-      method: payment.method,
-    })),
-  };
 }
 
 export async function GET(request: Request) {
@@ -70,11 +42,13 @@ export async function GET(request: Request) {
     where,
     orderBy: { date: "desc" },
     include: {
+      patient: true,
+      purchaseOrder: { include: { lineItems: true } },
       lineItems: true,
       payments: true,
-      patient: true,
+      documents: true,
     },
   });
 
-  return NextResponse.json({ sales: transactions.map(formatSale) });
+  return NextResponse.json({ sales: transactions.map((transaction) => formatSaleTransaction(transaction as SaleTransactionWithRelations)) });
 }

@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-
-const fallbackProviders = ["Chris Pape", "C + C, SHD"];
+import { normalizeProviderName } from "@/lib/provider-names";
 
 export async function GET() {
-  const [types, statuses, providerRows, range] = await Promise.all([
+  const [types, statuses, providerRows, providerScheduleRows, range] = await Promise.all([
     prisma.appointmentType.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
     prisma.appointmentStatus.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
     prisma.appointment.findMany({
+      distinct: ["providerName"],
+      select: { providerName: true },
+      orderBy: { providerName: "asc" },
+    }),
+    prisma.providerSchedule.findMany({
       distinct: ["providerName"],
       select: { providerName: true },
       orderBy: { providerName: "asc" },
@@ -18,10 +22,16 @@ export async function GET() {
     }),
   ]);
 
-  const providers = providerRows.map((row) => row.providerName).filter(Boolean);
+  const providers = Array.from(
+    new Set(
+      [...providerRows, ...providerScheduleRows]
+        .map((row) => normalizeProviderName(row.providerName))
+        .filter(Boolean)
+    )
+  ).sort((a, b) => a.localeCompare(b));
 
   return NextResponse.json({
-    providers: providers.length ? providers : fallbackProviders,
+    providers,
     types,
     statuses,
     rangeStart: range._min.startTime?.toISOString() ?? null,

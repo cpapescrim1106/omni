@@ -19,6 +19,7 @@ type NavItem = {
 const navItems: readonly NavItem[] = [
   { label: "Patients", href: "/patients" },
   { label: "Scheduling", href: "/scheduling" },
+  { label: "Orders", href: "/orders" },
   { label: "Marketing", href: "/marketing" },
   { label: "Recalls", href: "/recalls" },
   { label: "Messages", href: "/messages", showsBadge: true },

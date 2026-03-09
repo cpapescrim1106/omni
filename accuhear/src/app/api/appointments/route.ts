@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { emitEvent } from "@/lib/event-bus";
 import { getLatestMarketingContact } from "@/lib/marketing-contacts";
+import { normalizeProviderName } from "@/lib/provider-names";
 
 function getRange(startParam?: string | null, endParam?: string | null, dateParam?: string | null) {
   if (startParam && endParam) {
@@ -22,7 +23,7 @@ export async function GET(request: Request) {
     searchParams.get("end"),
     searchParams.get("date")
   );
-  const provider = searchParams.get("provider") || undefined;
+  const provider = normalizeProviderName(searchParams.get("provider")) || undefined;
 
   const appointments = await prisma.appointment.findMany({
     where: {
@@ -43,8 +44,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const body = await request.json();
   const { patientId, providerName, location, typeId, statusId, startTime, endTime, notes, referralSource } = body;
+  const normalizedProviderName = normalizeProviderName(providerName);
 
-  if (!providerName || !location || !typeId || !statusId || !startTime || !endTime) {
+  if (!normalizedProviderName || !location || !typeId || !statusId || !startTime || !endTime) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
@@ -53,7 +55,7 @@ export async function POST(request: Request) {
 
   const conflict = await prisma.appointment.findFirst({
     where: {
-      providerName,
+      providerName: normalizedProviderName,
       startTime: { lt: end },
       endTime: { gt: start },
     },
@@ -72,7 +74,7 @@ export async function POST(request: Request) {
   const appointment = await prisma.appointment.create({
     data: {
       patientId: patientId || null,
-      providerName,
+      providerName: normalizedProviderName,
       location,
       referralSource: resolvedReferralSource,
       typeId,

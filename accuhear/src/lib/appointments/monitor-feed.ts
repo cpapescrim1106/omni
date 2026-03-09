@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { normalizeProviderName } from "@/lib/provider-names";
 import {
   sortAppointmentTransitionHistory,
   toLifecycleStatusLabel,
@@ -172,7 +173,7 @@ export async function fetchMonitorAppointments(params: {
 }) {
   const { start, end } = getMonitorDateRange(params.start, params.end, params.date);
   const now = params.now ?? new Date();
-  const provider = params.provider?.trim();
+  const provider = normalizeProviderName(params.provider);
 
   const appointments = await prisma.appointment.findMany({
     where: {
