@@ -1,23 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import type { Document } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { normalizeDocumentCategory } from "@/lib/documents/categories";
-import { documentStorage } from "@/lib/documents/storage";
-
-function serializeDocument(document: Document) {
-  return {
-    id: document.id,
-    title: document.title,
-    category: document.category,
-    uploadedAt: document.createdAt.toISOString(),
-    addedBy: document.addedBy || "System",
-    fileName: document.fileName,
-    contentType: document.contentType,
-    sizeBytes: document.sizeBytes,
-    storageProvider: document.storageProvider,
-    storageKey: document.storageKey,
-  };
-}
+import { createPatientDocumentRecord, serializeDocument } from "@/lib/documents/records";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: patientId } = await params;
@@ -51,26 +35,53 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: "Missing patient id" }, { status: 400 });
   }
 
-  let body: Record<string, unknown> | null = null;
-  try {
-    body = (await request.json()) as Record<string, unknown>;
-  } catch {
-    body = null;
+  const contentTypeHeader = request.headers.get("content-type") || "";
+
+  let title = "";
+  let categoryInput = "";
+  let fileName = "";
+  let contentType = "";
+  let parsedSize = NaN;
+  let addedBy: string | null = null;
+  let fileData: Buffer | undefined;
+
+  if (contentTypeHeader.includes("multipart/form-data")) {
+    const formData = await request.formData();
+    const file = formData.get("file");
+
+    if (!(file instanceof File) || file.size <= 0) {
+      return NextResponse.json({ error: "Missing uploaded file" }, { status: 400 });
+    }
+
+    title = typeof formData.get("title") === "string" ? (formData.get("title") as string).trim() : "";
+    categoryInput =
+      typeof formData.get("category") === "string" ? (formData.get("category") as string).trim() : "";
+    fileName = file.name.trim();
+    contentType = file.type?.trim() || "application/octet-stream";
+    parsedSize = file.size;
+    addedBy = typeof formData.get("addedBy") === "string" ? (formData.get("addedBy") as string).trim() : null;
+    fileData = Buffer.from(await file.arrayBuffer());
+  } else {
+    let body: Record<string, unknown> | null = null;
+    try {
+      body = (await request.json()) as Record<string, unknown>;
+    } catch {
+      body = null;
+    }
+
+    title = typeof body?.title === "string" ? body.title.trim() : "";
+    categoryInput = typeof body?.category === "string" ? body.category.trim() : "";
+    fileName = typeof body?.fileName === "string" ? body.fileName.trim() : "";
+    contentType = typeof body?.contentType === "string" ? body.contentType.trim() : "";
+    const sizeBytesRaw = body?.sizeBytes;
+    addedBy = typeof body?.addedBy === "string" ? body.addedBy.trim() : null;
+    parsedSize =
+      typeof sizeBytesRaw === "number" && Number.isFinite(sizeBytesRaw)
+        ? sizeBytesRaw
+        : typeof sizeBytesRaw === "string" && sizeBytesRaw.trim()
+          ? Number(sizeBytesRaw)
+          : NaN;
   }
-
-  const title = typeof body?.title === "string" ? body.title.trim() : "";
-  const categoryInput = typeof body?.category === "string" ? body.category.trim() : "";
-  const fileName = typeof body?.fileName === "string" ? body.fileName.trim() : "";
-  const contentType = typeof body?.contentType === "string" ? body.contentType.trim() : "";
-  const sizeBytesRaw = body?.sizeBytes;
-  const addedBy = typeof body?.addedBy === "string" ? body.addedBy.trim() : null;
-
-  const parsedSize =
-    typeof sizeBytesRaw === "number" && Number.isFinite(sizeBytesRaw)
-      ? sizeBytesRaw
-      : typeof sizeBytesRaw === "string" && sizeBytesRaw.trim()
-        ? Number(sizeBytesRaw)
-        : NaN;
 
   if (!title || !categoryInput || !fileName || !contentType || !Number.isFinite(parsedSize)) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -85,27 +96,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: "Invalid sizeBytes" }, { status: 400 });
   }
 
-  const storage = await documentStorage.uploadDocument({
+  const document = await createPatientDocumentRecord({
     patientId,
-    metadata: {
-      fileName,
-      contentType,
-      sizeBytes: parsedSize,
-    },
-  });
-
-  const document = await prisma.document.create({
-    data: {
-      patientId,
-      title,
-      category: normalizedCategory,
-      addedBy,
-      fileName: storage.fileName,
-      contentType: storage.contentType,
-      sizeBytes: storage.sizeBytes,
-      storageProvider: storage.provider,
-      storageKey: storage.storageKey,
-    },
+    title,
+    category: normalizedCategory,
+    addedBy,
+    fileName,
+    contentType,
+    sizeBytes: parsedSize,
+    fileData,
   });
 
   return NextResponse.json({ document: serializeDocument(document) });
