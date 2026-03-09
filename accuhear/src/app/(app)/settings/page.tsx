@@ -16,28 +16,12 @@ type CatalogManufacturer = {
   active: boolean;
 };
 
-type DeviceImportItem = {
-  key: string;
-  sourceManufacturer: string | null;
-  manufacturer: string | null;
-  name: string;
-  count: number;
-  exists: boolean;
-  wouldImportAsActive: boolean;
-  wouldImportAsPinned: boolean;
-};
-
-type DeviceImportSummary = {
-  totalDistinctDevices: number;
-  importable: number;
-  alreadyInCatalog: number;
-  unknownManufacturerCount: number;
-};
-
 type CatalogItem = {
   id: string;
   name: string;
   manufacturer: string | null;
+  family: string | null;
+  technologyLevel: number | null;
   category: CatalogItemCategory;
   active: boolean;
   cptHcpcsCode: string | null;
@@ -69,6 +53,8 @@ type CatalogItem = {
 type CatalogForm = {
   name: string;
   manufacturer: string;
+  family: string;
+  technologyLevel: string;
   category: CatalogItemCategory;
   active: boolean;
   cptHcpcsCode: string;
@@ -109,6 +95,8 @@ const CATEGORIES: Array<{ value: CatalogItemCategory; label: string }> = [
 const EMPTY_FORM: CatalogForm = {
   name: "",
   manufacturer: "",
+  family: "",
+  technologyLevel: "",
   category: "hearing_aid",
   active: true,
   cptHcpcsCode: "",
@@ -141,6 +129,8 @@ function toForm(item: CatalogItem): CatalogForm {
   return {
     name: item.name,
     manufacturer: item.manufacturer ?? "",
+    family: item.family ?? "",
+    technologyLevel: item.technologyLevel === null ? "" : String(item.technologyLevel),
     category: item.category,
     active: item.active,
     cptHcpcsCode: item.cptHcpcsCode ?? "",
@@ -209,11 +199,19 @@ function toPayload(form: CatalogForm) {
   });
   if (batteryCellQuantity.error) return { error: batteryCellQuantity.error };
 
+  const technologyLevel = numberStringOrNull(form.technologyLevel, "Technology level", {
+    integer: true,
+    allowZero: false,
+  });
+  if (technologyLevel.error) return { error: technologyLevel.error };
+
   return {
     error: null as string | null,
     payload: {
       name: form.name.trim(),
       manufacturer: form.manufacturer || null,
+      family: form.family.trim() || null,
+      technologyLevel: technologyLevel.value,
       category: form.category,
       active: form.active,
       cptHcpcsCode: form.cptHcpcsCode.trim() || null,
@@ -255,6 +253,8 @@ function boolInput(label: string, checked: boolean, onChange: (value: boolean) =
 
 function itemMeta(item: CatalogItem) {
   const bits = [
+    item.family ? `Family ${item.family}` : null,
+    item.technologyLevel ? `Level ${item.technologyLevel}` : null,
     item.cptHcpcsCode ? `Code ${item.cptHcpcsCode}` : null,
     item.technology ? `Tech ${item.technology}` : null,
     item.style ? `Style ${item.style}` : null,
@@ -271,7 +271,7 @@ export default function SettingsPage() {
   const [manufacturers, setManufacturers] = useState<CatalogManufacturer[]>([]);
   const [loading, setLoading] = useState(true);
   const [catalogQuery, setCatalogQuery] = useState("");
-  const [catalogStatusFilter, setCatalogStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [showInactiveCatalogItems, setShowInactiveCatalogItems] = useState(false);
   const [catalogCategoryFilter, setCatalogCategoryFilter] = useState<"all" | CatalogItemCategory>("all");
   const [catalogFavoriteFilter, setCatalogFavoriteFilter] = useState<"all" | "favorites">("all");
   const [message, setMessage] = useState<string | null>(null);
@@ -280,11 +280,9 @@ export default function SettingsPage() {
   const [newForm, setNewForm] = useState<CatalogForm>({ ...EMPTY_FORM });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingForm, setEditingForm] = useState<CatalogForm>({ ...EMPTY_FORM });
+  const [showNewCatalogItemForm, setShowNewCatalogItemForm] = useState(false);
   const [manufacturerDraft, setManufacturerDraft] = useState("");
   const [manufacturerTarget, setManufacturerTarget] = useState<"new" | "edit" | null>(null);
-  const [deviceImportSummary, setDeviceImportSummary] = useState<DeviceImportSummary | null>(null);
-  const [deviceImportPreview, setDeviceImportPreview] = useState<DeviceImportItem[]>([]);
-  const [deviceImportQuery, setDeviceImportQuery] = useState("");
 
   const setErrorMessage = useCallback((nextError: string | null) => {
     setError(nextError);
@@ -312,49 +310,42 @@ export default function SettingsPage() {
     }
   }, [setErrorMessage]);
 
-  const loadDeviceImportPreview = useCallback(async () => {
-    try {
-      const response = await fetch("/api/catalog/import/devices", { cache: "no-store" });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "Unable to load device import preview.");
-      setDeviceImportSummary((payload.summary ?? null) as DeviceImportSummary | null);
-      setDeviceImportPreview((payload.items ?? []) as DeviceImportItem[]);
-    } catch (previewError) {
-      setErrorMessage(previewError instanceof Error ? previewError.message : "Unable to load device import preview.");
-    }
-  }, [setErrorMessage]);
-
   useEffect(() => {
     void loadCatalog();
-    void loadDeviceImportPreview();
-  }, [loadCatalog, loadDeviceImportPreview]);
+  }, [loadCatalog]);
 
   const sortedCatalog = useMemo(() => {
     const query = catalogQuery.trim().toLowerCase();
+    const queryTerms = query.split(/\s+/).filter(Boolean);
     return [...catalog]
       .filter((item) => {
-        if (catalogStatusFilter === "active" && !item.active) return false;
-        if (catalogStatusFilter === "inactive" && item.active) return false;
+        if (!showInactiveCatalogItems && !item.active) return false;
         if (catalogCategoryFilter !== "all" && item.category !== catalogCategoryFilter) return false;
         if (catalogFavoriteFilter === "favorites" && !item.isPinned) return false;
-        if (!query) return true;
-        return (
-          item.name.toLowerCase().includes(query) ||
-          (item.manufacturer ?? "").toLowerCase().includes(query) ||
-          item.category.toLowerCase().includes(query) ||
-          (item.technology ?? "").toLowerCase().includes(query) ||
-          (item.style ?? "").toLowerCase().includes(query) ||
-          (item.cptHcpcsCode ?? "").toLowerCase().includes(query)
-        );
+        if (!queryTerms.length) return true;
+        const searchText = [
+          item.name,
+          item.manufacturer ?? "",
+          item.category,
+          item.family ?? "",
+          item.technologyLevel === null ? "" : String(item.technologyLevel),
+          item.technology ?? "",
+          item.style ?? "",
+          item.cptHcpcsCode ?? "",
+        ]
+          .join(" ")
+          .toLowerCase();
+        return queryTerms.every((term) => searchText.includes(term));
       })
       .sort(
         (a, b) =>
           Number(b.isPinned) - Number(a.isPinned) ||
+          Number(b.active) - Number(a.active) ||
           a.category.localeCompare(b.category) ||
           (a.manufacturer ?? "").localeCompare(b.manufacturer ?? "") ||
           a.name.localeCompare(b.name)
       );
-  }, [catalog, catalogCategoryFilter, catalogFavoriteFilter, catalogQuery, catalogStatusFilter]);
+  }, [catalog, catalogCategoryFilter, catalogFavoriteFilter, catalogQuery, showInactiveCatalogItems]);
 
   const beginEdit = useCallback((item: CatalogItem) => {
     setEditingId(item.id);
@@ -437,27 +428,6 @@ export default function SettingsPage() {
       setSubmitting(null);
     }
   }, [loadCatalog, newForm, setErrorMessage, setMessageText]);
-
-  const importFromDevices = useCallback(async () => {
-    setSubmitting("import-devices");
-    setErrorMessage(null);
-    setMessageText(null);
-    try {
-      const response = await fetch("/api/catalog/import/devices", { method: "POST" });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "Unable to import devices.");
-      setManufacturers((payload.manufacturers ?? []) as CatalogManufacturer[]);
-      setMessageText(
-        payload.created > 0 ? `${payload.created} device types imported into the catalog.` : "No new device types to import."
-      );
-      await loadCatalog();
-      await loadDeviceImportPreview();
-    } catch (importError) {
-      setErrorMessage(importError instanceof Error ? importError.message : "Unable to import devices.");
-    } finally {
-      setSubmitting(null);
-    }
-  }, [loadCatalog, loadDeviceImportPreview, setErrorMessage, setMessageText]);
 
   const saveItem = useCallback(
     async (itemId: string) => {
@@ -616,6 +586,25 @@ export default function SettingsPage() {
             className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
             value={form.name}
             onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+          />
+        </label>
+        <label className="text-xs text-ink-muted">
+          Family
+          <input
+            className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+            value={form.family}
+            onChange={(event) => setForm((current) => ({ ...current, family: event.target.value }))}
+          />
+        </label>
+        <label className="text-xs text-ink-muted">
+          Technology level
+          <input
+            type="number"
+            min={1}
+            step="1"
+            className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+            value={form.technologyLevel}
+            onChange={(event) => setForm((current) => ({ ...current, technologyLevel: event.target.value }))}
           />
         </label>
         <label className="text-xs text-ink-muted">
@@ -796,87 +785,31 @@ export default function SettingsPage() {
         </p>
 
         <div className="mt-4 rounded-3xl border border-surface-2 bg-surface-1/45 p-4">
-          <div className="rounded-2xl border border-surface-2 bg-white/70 p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <div className="text-sm font-semibold text-ink-strong">Import device types from existing records</div>
-                <div className="mt-1 text-xs text-ink-muted">
-                  Review the one-time import set gathered from existing patient device records. Nothing imports from here yet.
-                </div>
-                {deviceImportSummary ? (
-                  <div className="mt-2 text-xs text-ink-muted">
-                    {deviceImportSummary.totalDistinctDevices} distinct models found · {deviceImportSummary.importable} ready to import · {deviceImportSummary.alreadyInCatalog} already in catalog · {deviceImportSummary.unknownManufacturerCount} with unknown manufacturer in source data
-                  </div>
-                ) : null}
-              </div>
-              <div className="flex w-full max-w-md gap-2">
-                <input
-                  className="w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
-                  placeholder="Filter models"
-                  value={deviceImportQuery}
-                  onChange={(event) => setDeviceImportQuery(event.target.value)}
-                />
-                <button
-                  type="button"
-                  className="tab-pill bg-success/10 text-xs text-success"
-                  onClick={() => void importFromDevices()}
-                  disabled={submitting === "import-devices" || (deviceImportSummary?.importable ?? 0) === 0}
-                >
-                  {submitting === "import-devices" ? "Importing..." : "Import all"}
-                </button>
-              </div>
-            </div>
-            {deviceImportPreview.length ? (
-              <div className="mt-3 overflow-hidden rounded-2xl border border-surface-2">
-                <div className="grid grid-cols-[1.1fr_1fr_0.7fr_0.7fr_0.8fr] gap-3 bg-surface-1/70 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
-                  <div>Model</div>
-                  <div>Source manufacturer</div>
-                  <div>Import manufacturer</div>
-                  <div>Seen</div>
-                  <div>Status</div>
-                </div>
-                <div className="max-h-80 overflow-auto">
-                  {deviceImportPreview
-                    .filter((item) => {
-                      const q = deviceImportQuery.trim().toLowerCase();
-                      if (!q) return true;
-                      return (
-                        item.name.toLowerCase().includes(q) ||
-                        (item.sourceManufacturer ?? "").toLowerCase().includes(q) ||
-                        (item.manufacturer ?? "").toLowerCase().includes(q)
-                      );
-                    })
-                    .map((item) => (
-                      <div
-                        key={item.key}
-                        className="grid grid-cols-[1.1fr_1fr_0.7fr_0.7fr_0.8fr] gap-3 border-t border-surface-2 px-4 py-3 text-sm"
-                      >
-                        <div className="font-medium text-ink-strong">{item.name}</div>
-                        <div className="text-ink-muted">{item.sourceManufacturer ?? "Unknown"}</div>
-                        <div className="text-ink-muted">{item.manufacturer ?? "Blank"}</div>
-                        <div className="text-ink-muted">{item.count}</div>
-                        <div className={item.exists ? "text-ink-muted" : "text-brand-ink"}>
-                          {item.exists ? "Already in catalog" : "Would import active"}
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            ) : null}
-          </div>
-
-          <div className="text-sm font-semibold text-ink-strong">Add new catalog item</div>
-          <div className="mt-3">{formGrid(newForm, setNewForm, "new")}</div>
-          <div className="mt-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-sm font-semibold text-ink-strong">Add new catalog item</div>
             <button
               type="button"
-              className="tab-pill bg-brand-blue/10 text-xs text-brand-ink"
-              onClick={() => void createItem()}
-              disabled={submitting === "new"}
+              className="tab-pill bg-surface-2 text-xs"
+              onClick={() => setShowNewCatalogItemForm((current) => !current)}
             >
-              {submitting === "new" ? "Saving..." : "Create catalog item"}
+              {showNewCatalogItemForm ? "Collapse" : "Expand"}
             </button>
           </div>
+          {showNewCatalogItemForm ? (
+            <>
+              <div className="mt-3">{formGrid(newForm, setNewForm, "new")}</div>
+              <div className="mt-4">
+                <button
+                  type="button"
+                  className="tab-pill bg-brand-blue/10 text-xs text-brand-ink"
+                  onClick={() => void createItem()}
+                  disabled={submitting === "new"}
+                >
+                  {submitting === "new" ? "Saving..." : "Create catalog item"}
+                </button>
+              </div>
+            </>
+          ) : null}
         </div>
       </section>
 
@@ -895,17 +828,15 @@ export default function SettingsPage() {
               onChange={(event) => setCatalogQuery(event.target.value)}
             />
           </label>
-          <label className="text-xs text-ink-muted">
-            Status
-            <select
-              className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
-              value={catalogStatusFilter}
-              onChange={(event) => setCatalogStatusFilter(event.target.value as "all" | "active" | "inactive")}
-            >
-              <option value="all">All</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
+          <label className="flex items-end pb-2 text-xs text-ink-muted">
+            <span className="inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={showInactiveCatalogItems}
+                onChange={(event) => setShowInactiveCatalogItems(event.target.checked)}
+              />
+              Show inactive
+            </span>
           </label>
           <label className="text-xs text-ink-muted">
             Category
