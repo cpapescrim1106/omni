@@ -155,10 +155,6 @@ export function PatientDevices({
   const [deliverOrderId, setDeliverOrderId] = useState<string | null>(null);
   const [returnOrderId, setReturnOrderId] = useState<string | null>(null);
   const [draftItems, setDraftItems] = useState<DraftLineItem[]>([]);
-  const [draftProvider, setDraftProvider] = useState("");
-  const [draftLocation, setDraftLocation] = useState("");
-  const [draftPrescriber, setDraftPrescriber] = useState("");
-  const [draftFitter, setDraftFitter] = useState("");
   const [draftNotes, setDraftNotes] = useState("");
   const [draftDeposit, setDraftDeposit] = useState("");
   const [draftDepositMethod, setDraftDepositMethod] = useState("Patient");
@@ -171,10 +167,6 @@ export function PatientDevices({
 
   const resetCreateForm = useCallback(() => {
     setDraftItems([{ catalogItemId: "", side: "Left", quantity: 1 }]);
-    setDraftProvider("");
-    setDraftLocation("");
-    setDraftPrescriber("");
-    setDraftFitter("");
     setDraftNotes("");
     setDraftDeposit("");
     setDraftDepositMethod("Patient");
@@ -272,10 +264,6 @@ export function PatientDevices({
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          provider: draftProvider || null,
-          location: draftLocation || null,
-          prescriber: draftPrescriber || null,
-          fitter: draftFitter || null,
           notes: draftNotes || null,
           lineItems: draftItems,
           payments: draftDeposit
@@ -305,12 +293,8 @@ export function PatientDevices({
   }, [
     draftDeposit,
     draftDepositMethod,
-    draftFitter,
     draftItems,
-    draftLocation,
     draftNotes,
-    draftPrescriber,
-    draftProvider,
     loadWorkspace,
     patientId,
   ]);
@@ -491,25 +475,6 @@ export function PatientDevices({
             <button type="button" className="text-xs text-ink-muted" onClick={() => setCreating(false)}>
               Close
             </button>
-          </div>
-
-          <div className="mt-4 grid gap-3 lg:grid-cols-2">
-            <label className="text-xs text-ink-muted">
-              Provider
-              <input className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm" value={draftProvider} onChange={(event) => setDraftProvider(event.target.value)} />
-            </label>
-            <label className="text-xs text-ink-muted">
-              Location
-              <input className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm" value={draftLocation} onChange={(event) => setDraftLocation(event.target.value)} />
-            </label>
-            <label className="text-xs text-ink-muted">
-              Prescriber
-              <input className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm" value={draftPrescriber} onChange={(event) => setDraftPrescriber(event.target.value)} />
-            </label>
-            <label className="text-xs text-ink-muted">
-              Fitter
-              <input className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm" value={draftFitter} onChange={(event) => setDraftFitter(event.target.value)} />
-            </label>
           </div>
 
           <div className="mt-4 space-y-3">

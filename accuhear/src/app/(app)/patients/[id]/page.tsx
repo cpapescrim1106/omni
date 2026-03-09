@@ -12,6 +12,7 @@ import { PatientPayers } from "@/components/patient-payers";
 import { PatientDetails } from "@/components/patient-details";
 import { PatientMarketing } from "@/components/patient-marketing";
 import { PatientTabRegistrar } from "@/components/patient-tabs";
+import { PurchaseButton } from "@/components/purchase-dialog";
 
 const tabs = [
   "Summary",
@@ -99,25 +100,7 @@ export default async function PatientProfilePage({
                 <div className="truncate text-lg font-semibold text-ink-strong">
                   {patient.lastName}, {patient.firstName}
                 </div>
-                <details className="group relative">
-                  <summary className="list-none rounded-full bg-success px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(34,197,94,0.22)] transition hover:bg-success/90">
-                    Purchase
-                  </summary>
-                  <div className="absolute left-0 top-[calc(100%+8px)] z-10 min-w-[220px] rounded-2xl border border-surface-2 bg-white p-2 shadow-[0_18px_40px_rgba(24,20,50,0.14)]">
-                    <Link
-                      href={`/patients/${patient.id}?tab=${encodeURIComponent("Hearing aids")}&purchase=tracked`}
-                      className="block rounded-xl px-3 py-2 text-sm text-ink hover:bg-surface-1"
-                    >
-                      Devices
-                    </Link>
-                    <Link
-                      href={`/patients/${patient.id}?tab=${encodeURIComponent("Sales history")}&purchase=direct`}
-                      className="block rounded-xl px-3 py-2 text-sm text-ink hover:bg-surface-1"
-                    >
-                      Supplies/Service
-                    </Link>
-                  </div>
-                </details>
+                <PurchaseButton patientId={patient.id} />
               </div>
               <div className="text-xs text-ink-muted">
                 {patient.dateOfBirth

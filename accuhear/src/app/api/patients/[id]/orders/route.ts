@@ -57,7 +57,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   await ensureStarterCatalog();
 
   const body = await request.json();
-  const { provider, location, prescriber, fitter, notes, fittingDate, lineItems, payments, txnId } = body ?? {};
+  const { provider, location, prescriber, fitter, notes, fittingDate, lineItems, payments, txnId, total: totalOverride } = body ?? {};
 
   if (!Array.isArray(lineItems) || lineItems.length === 0) {
     return NextResponse.json({ error: "At least one tracked item is required" }, { status: 400 });
@@ -131,7 +131,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const orderDate = new Date();
   const parsedFittingDate =
     fittingDate && !Number.isNaN(new Date(fittingDate).getTime()) ? new Date(fittingDate) : null;
-  const total = normalizedLineItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+  const computedTotal = normalizedLineItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+  const total = typeof totalOverride === "number" && Number.isFinite(totalOverride) && totalOverride >= 0
+    ? totalOverride
+    : computedTotal;
   const invoiceStatus = computeInvoiceStatus(total, normalizedPayments);
 
   try {
