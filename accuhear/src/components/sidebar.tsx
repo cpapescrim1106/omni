@@ -14,19 +14,116 @@ type NavItem = {
   label: string;
   href: string;
   showsBadge?: boolean;
+  icon: React.ReactNode;
 };
 
 const navItems: readonly NavItem[] = [
-  { label: "Patients", href: "/patients" },
-  { label: "Scheduling", href: "/scheduling" },
-  { label: "Orders", href: "/orders" },
-  { label: "Marketing", href: "/marketing" },
-  { label: "Recalls", href: "/recalls" },
-  { label: "Messages", href: "/messages", showsBadge: true },
-  { label: "Journal", href: "/journal" },
-  { label: "Sales", href: "/sales" },
-  { label: "Documents", href: "/documents" },
-  { label: "Settings", href: "/settings" },
+  {
+    label: "Patients",
+    href: "/patients",
+    icon: (
+      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M13 15v-1.5a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3V15"/>
+        <circle cx="8.5" cy="5.5" r="2.5"/>
+        <path d="M15 8.5a2 2 0 0 0-1.5-1.94"/>
+        <path d="M13.5 3.56a2 2 0 0 1 0 3.88"/>
+      </svg>
+    ),
+  },
+  {
+    label: "Scheduling",
+    href: "/scheduling",
+    icon: (
+      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="4" width="12" height="12" rx="2"/>
+        <path d="M3 8h12M7 2v4M11 2v4"/>
+      </svg>
+    ),
+  },
+  {
+    label: "Orders",
+    href: "/orders",
+    icon: (
+      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 4h10l-1 8H5L4 4z"/>
+        <path d="M4 4L3 2"/>
+        <circle cx="7" cy="15" r="1"/>
+        <circle cx="12" cy="15" r="1"/>
+      </svg>
+    ),
+  },
+  {
+    label: "Marketing",
+    href: "/marketing",
+    icon: (
+      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 9l6-6 6 6"/>
+        <path d="M5 7v7a1 1 0 001 1h6a1 1 0 001-1V7"/>
+      </svg>
+    ),
+  },
+  {
+    label: "Recalls",
+    href: "/recalls",
+    icon: (
+      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 9a6 6 0 0112 0"/>
+        <path d="M3 9l2-2m-2 2l2 2"/>
+        <path d="M9 5v4l2 2"/>
+      </svg>
+    ),
+  },
+  {
+    label: "Messages",
+    href: "/messages",
+    showsBadge: true,
+    icon: (
+      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 5h10a1 1 0 011 1v6a1 1 0 01-1 1H6l-3 3V6a1 1 0 011-1z"/>
+      </svg>
+    ),
+  },
+  {
+    label: "Journal",
+    href: "/journal",
+    icon: (
+      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M5 3h9a1 1 0 011 1v10a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z"/>
+        <path d="M7 7h4M7 10h2"/>
+      </svg>
+    ),
+  },
+  {
+    label: "Sales",
+    href: "/sales",
+    icon: (
+      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 2v14"/>
+        <path d="M5 6c0-1.1 1.8-2 4-2s4 .9 4 2"/>
+        <path d="M5 12c0 1.1 1.8 2 4 2s4-.9 4-2"/>
+      </svg>
+    ),
+  },
+  {
+    label: "Documents",
+    href: "/documents",
+    icon: (
+      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M5 3h6l4 4v8a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z"/>
+        <path d="M11 3v4h4"/>
+      </svg>
+    ),
+  },
+  {
+    label: "Settings",
+    href: "/settings",
+    icon: (
+      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="9" cy="9" r="2.5"/>
+        <path d="M9 2v2m0 10v2M2 9h2m10 0h2M4 4l1.5 1.5m7 7L14 14M14 4l-1.5 1.5m-7 7L4 14"/>
+      </svg>
+    ),
+  },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -73,52 +170,31 @@ export function Sidebar() {
   }, [inboxSummary.needsAttentionCount]);
 
   return (
-    <aside className="flex h-full flex-col gap-6 rounded-[28px] bg-white/80 p-6 shadow-[0_22px_40px_rgba(24,20,50,0.12)]">
-      <div className="flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[radial-gradient(circle_at_top,#1F95B8_0%,#262260_70%)] text-white shadow-[0_10px_24px_rgba(31,149,184,0.25)]">
-          <span className="text-lg font-semibold">A</span>
-        </div>
-        <div>
-          <div className="section-title text-sm text-brand-ink">AccuHear</div>
-          <div className="text-xs text-ink-soft">CRM Workspace</div>
-        </div>
-      </div>
-
-      <nav className="flex flex-1 flex-col gap-2">
+    <nav className="left-nav" aria-label="Main navigation">
+      <div className="nav-logo">O</div>
+      <div className="nav-items">
         {navItems.map((item) => {
           const active = isActive(pathname, item.href);
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`group flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-medium transition hover:bg-surface-1 ${
-                active ? "bg-surface-1 text-ink-strong" : "text-ink"
-              }`}
+              className={`nav-item${active ? " active" : ""}`}
+              data-tip={item.label}
             >
-              <span>{item.label}</span>
-              <span className="flex items-center gap-2">
-                {item.showsBadge && badge ? (
-                  <span className="inline-flex min-w-[22px] justify-center rounded-full bg-brand-orange/20 px-2 py-0.5 text-[11px] font-semibold text-brand-ink">
-                    {badge}
-                  </span>
-                ) : null}
-                <span className={`text-xs text-ink-soft transition ${active ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
-                  →
-                </span>
-              </span>
+              <span className="nav-icon">{item.icon}</span>
+              <span className="nav-label">{item.label}</span>
+              {item.showsBadge && badge ? (
+                <span className="nav-badge">{badge}</span>
+              ) : null}
             </Link>
           );
         })}
-      </nav>
-
-      <div className="rounded-2xl bg-surface-1 p-4 text-xs text-ink-muted">
-        <div className="font-semibold text-ink">Active location</div>
-        <div>Spring Hill (SHD)</div>
-        <div className="mt-3 flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-success"></span>
-          System healthy
-        </div>
       </div>
-    </aside>
+      <div className="nav-bottom">
+        <span className="nav-bottom-dot" />
+        <span className="nav-label">Spring Hill</span>
+      </div>
+    </nav>
   );
 }
