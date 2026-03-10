@@ -7,9 +7,8 @@ import isoWeek from "dayjs/plugin/isoWeek";
 import type { OpUnitType } from "dayjs";
 import {
   Activity,
-  BadgeCheck,
   CalendarIcon,
-  CircleCheck,
+  Check,
   CircleCheckBig,
   CircleHelp,
   CircleX,
@@ -17,11 +16,12 @@ import {
   FilterIcon,
   HouseIcon,
   ListChecksIcon,
+  Lock,
   LogIn,
   PhoneCall,
   PhoneMissed,
-  PinIcon,
-  PinOffIcon,
+  LockIcon,
+  UnlockIcon,
   RefreshCw,
   UserCheck,
   UsersIcon,
@@ -153,14 +153,14 @@ type StatusIconConfig = { Icon: React.ElementType; color: string };
 function getStatusIcon(statusName?: string): StatusIconConfig {
   const n = (statusName ?? "").toLowerCase();
   if (n === "tentative")                                    return { Icon: CircleHelp,      color: "#9b8ec4" };
-  if (n === "confirmed")                                    return { Icon: BadgeCheck,       color: "#2e9e6e" };
+  if (n === "confirmed")                                    return { Icon: Check,            color: "#2e9e6e" };
   if (n === "left message")                                 return { Icon: PhoneCall,        color: "#c27c1a" };
   if (n === "no answer")                                    return { Icon: PhoneMissed,      color: "#c94646" };
   if (n === "arrived")                                      return { Icon: LogIn,            color: "rgba(31,149,184,0.7)" };
   if (n === "arrived & ready" || n === "arrived and ready") return { Icon: UserCheck,        color: "#1f95b8" };
-  if (n === "ready")                                        return { Icon: CircleCheck,      color: "#2e9e6e" };
+  if (n === "ready")                                        return { Icon: CircleCheckBig,   color: "#2e9e6e" };
   if (n === "in progress")                                  return { Icon: Activity,         color: "#1f95b8" };
-  if (n === "completed")                                    return { Icon: CircleCheckBig,   color: "#1a6e47" };
+  if (n === "completed")                                    return { Icon: Lock,             color: "#1a6e47" };
   if (n === "cancelled" || n === "canceled")                return { Icon: CircleX,          color: "#c94646" };
   if (n === "no-show" || n === "no show")                   return { Icon: UserX,            color: "#c94646" };
   if (n === "rescheduled")                                  return { Icon: RefreshCw,        color: "#c27c1a" };
@@ -328,6 +328,8 @@ export function BigSchedule() {
     calendar: true,
   });
   const [isSidebarPinned, setIsSidebarPinned] = useState(true);
+  const [clinicPatients, setClinicPatients] = useState<{ id: string; name: string; arrivedAt: string | null }[]>([]);
+  const [clinicNow, setClinicNow] = useState(() => Date.now());
   const [pinnedAppointmentId, setPinnedAppointmentId] = useState<string | null>(null);
   const resizeRef = useRef<{
     id: string;
@@ -458,16 +460,17 @@ export function BigSchedule() {
   }, [meta]);
   const orderedStatusOptions = useMemo(() => {
     const preferred = [
-      "Ready",
-      "Arrived",
-      "In progress",
-      "Completed",
-      "Confirmed",
       "Tentative",
+      "Confirmed",
+      "Left message",
+      "No answer",
+      "Arrived",
+      "Ready",
+      "In Progress",
+      "Completed",
+      "No-show",
       "Rescheduled",
-      "No show",
       "Cancelled",
-      "Scheduled",
     ];
     const used = new Set<string>();
     const ordered = preferred
@@ -478,8 +481,9 @@ export function BigSchedule() {
         return status;
       });
 
+    const excluded = new Set(["scheduled", "arrived & ready", "arrived and ready"]);
     const extras = (meta?.statuses ?? [])
-      .filter((status) => !used.has(status.name.toLowerCase()))
+      .filter((status) => !used.has(status.name.toLowerCase()) && !excluded.has(status.name.toLowerCase()))
       .sort((a, b) => a.name.localeCompare(b.name));
 
     return [...ordered, ...extras];
@@ -844,6 +848,34 @@ export function BigSchedule() {
 
   const showError = useCallback((message: string) => {
     setToastMessage(message);
+  }, []);
+
+  useEffect(() => {
+    const IN_CLINIC = new Set(["arrived", "ready", "in progress"]);
+    function formatDateOnly(d: Date) {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    }
+    async function fetchClinic() {
+      try {
+        const res = await fetch(`/api/appointments/monitor?date=${formatDateOnly(new Date())}`, { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json() as { appointments: { id: string; patient: { firstName: string; lastName: string } | null; status: { name: string }; arrivedAt: string | null }[] };
+        setClinicPatients(
+          data.appointments
+            .filter((a) => IN_CLINIC.has(a.status.name.toLowerCase()))
+            .map((a) => ({
+              id: a.id,
+              name: a.patient ? `${a.patient.lastName}, ${a.patient.firstName}` : "—",
+              arrivedAt: a.arrivedAt,
+            }))
+        );
+        setClinicNow(Date.now());
+      } catch { /* silent */ }
+    }
+    void fetchClinic();
+    const interval = window.setInterval(() => { void fetchClinic(); }, 30_000);
+    const tick = window.setInterval(() => setClinicNow(Date.now()), 60_000);
+    return () => { window.clearInterval(interval); window.clearInterval(tick); };
   }, []);
 
   useEffect(() => {
@@ -1257,9 +1289,11 @@ export function BigSchedule() {
         )}&provider=${encodeURIComponent(providerName)}`
       );
       const data = await response.json();
+      const TERMINAL_STATUSES = new Set(["completed", "cancelled", "canceled", "no-show", "no show", "rescheduled"]);
       const appointmentsList: Appointment[] = data.appointments || [];
       return appointmentsList.some((appt) => {
         if (ignoreId && appt.id === ignoreId) return false;
+        if (TERMINAL_STATUSES.has((appt.statusName ?? "").toLowerCase())) return false;
         const start = parseAppointmentTime(appt.startTime);
         const end = parseAppointmentTime(appt.endTime);
         return start.isBefore(endTime) && end.isAfter(startTime);
@@ -1849,7 +1883,7 @@ export function BigSchedule() {
                   />
                 }
               >
-                {isSidebarPinned ? <PinOffIcon size={14} /> : <PinIcon size={14} />}
+                {isSidebarPinned ? <UnlockIcon size={14} /> : <LockIcon size={14} />}
               </TooltipTrigger>
               <TooltipContent side="right">{isSidebarPinned ? "Unpin filters" : "Pin filters open"}</TooltipContent>
             </Tooltip>
@@ -1893,6 +1927,29 @@ export function BigSchedule() {
             <Button className="mt-3" variant="ghost" size="sm" onClick={() => setSelectedProviders(providers)} type="button">
               Select all
             </Button>
+          </div>
+
+          <div className="schedule-sidebar-card">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft mb-2">Patients in Clinic</div>
+            {clinicPatients.length === 0 ? (
+              <div className="text-[11px] text-ink-soft">No patients currently in clinic.</div>
+            ) : (
+              <div className="grid gap-1.5">
+                {clinicPatients.map((p) => {
+                  const mins = p.arrivedAt ? Math.floor((clinicNow - new Date(p.arrivedAt).getTime()) / 60_000) : null;
+                  return (
+                    <div key={p.id} className="flex items-center justify-between gap-2">
+                      <span className="text-[12px] font-medium text-ink truncate">{p.name}</span>
+                      {mins !== null ? (
+                        <span className={cn("text-[11px] tabular-nums shrink-0", mins >= 5 ? "text-destructive" : "text-ink-muted")}>
+                          {mins}m
+                        </span>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className={cn("schedule-sidebar-card", !sidebarSections.status && "is-collapsed")}>
@@ -1996,6 +2053,7 @@ export function BigSchedule() {
               <MiniCalendar viewDate={viewDate} onSelect={(date) => setViewDate(date)} className="mt-2" />
             ) : null}
           </div>
+
         </aside>
 
         <div className="schedule-board" ref={scheduleBoardRef}>

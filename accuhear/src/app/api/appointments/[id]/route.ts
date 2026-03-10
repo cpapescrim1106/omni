@@ -60,22 +60,6 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid appointment time range" }, { status: 400 });
   }
 
-  const conflict = await prisma.appointment.findFirst({
-    where: {
-      id: { not: id },
-      providerName: normalizedProviderName,
-      startTime: { lt: end },
-      endTime: { gt: start },
-      status: {
-        name: { notIn: ["Completed", "Cancelled", "Canceled"] },
-      },
-    },
-  });
-
-  if (conflict) {
-    return NextResponse.json({ error: "Scheduling conflict" }, { status: 409 });
-  }
-
   const current = await prisma.appointment.findUnique({
     where: { id },
     include: { status: true },
@@ -83,6 +67,29 @@ export async function PATCH(
 
   if (!current) {
     return NextResponse.json({ error: "Appointment not found" }, { status: 404 });
+  }
+
+  const timeUnchanged =
+    current.providerName === normalizedProviderName &&
+    current.startTime.getTime() === start.getTime() &&
+    current.endTime.getTime() === end.getTime();
+
+  if (!timeUnchanged) {
+    const conflict = await prisma.appointment.findFirst({
+      where: {
+        id: { not: id },
+        providerName: normalizedProviderName,
+        startTime: { lt: end },
+        endTime: { gt: start },
+        status: {
+          name: { notIn: ["Completed", "Cancelled", "Canceled", "No-show", "No show", "Rescheduled"] },
+        },
+      },
+    });
+
+    if (conflict) {
+      return NextResponse.json({ error: "Scheduling conflict" }, { status: 409 });
+    }
   }
 
   const actorId = resolveActorId(request, body);

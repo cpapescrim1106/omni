@@ -890,12 +890,12 @@ a {
 .schedule-shell.is-hoverable .schedule-board {
   grid-column: 2;
 }
-.schedule-shell.is-hoverable .schedule-sidebar > :not(.schedule-sidebar-pin) {
+.schedule-shell.is-hoverable .schedule-sidebar > :not(.schedule-sidebar-pin):not(.schedule-sidebar-icons) {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.15s ease;
 }
-.schedule-shell.is-hoverable .schedule-sidebar:hover > :not(.schedule-sidebar-pin) {
+.schedule-shell.is-hoverable .schedule-sidebar:hover > :not(.schedule-sidebar-pin):not(.schedule-sidebar-icons) {
   opacity: 1;
   pointer-events: auto;
 }
