@@ -26,6 +26,7 @@ import {
   UserCheck,
   UsersIcon,
   UserX,
+  X,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,17 @@ import {
 } from "@/lib/appointments/transition-history";
 import { cn } from "@/lib/utils";
 import { normalizeProviderName } from "@/lib/provider-names";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const DATE_FORMAT = "YYYY-MM-DD";
 
@@ -312,8 +324,7 @@ export function BigSchedule() {
   const [hasExplicitDate, setHasExplicitDate] = useState(false);
   const [hasExplicitProviders, setHasExplicitProviders] = useState(false);
   const [hasAutoFocused, setHasAutoFocused] = useState(false);
-  const [actionMenu, setActionMenu] = useState<{ id: string; x: number; y: number } | null>(null);
-  const [actionMenuView, setActionMenuView] = useState<"main" | "status" | "complete-6mo">("main");
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [scheduleContextState, setScheduleContextState] = useState<{
     appointmentId: string;
     isToday: boolean;
@@ -330,7 +341,10 @@ export function BigSchedule() {
   const [isSidebarPinned, setIsSidebarPinned] = useState(true);
   const [clinicPatients, setClinicPatients] = useState<{ id: string; name: string; arrivedAt: string | null }[]>([]);
   const [clinicNow, setClinicNow] = useState(() => Date.now());
-  const [pinnedAppointmentId, setPinnedAppointmentId] = useState<string | null>(null);
+  const [dockedAppointment, setDockedAppointment] = useState<{
+    event: ScheduleEvent;
+    originalAppointment: Appointment;
+  } | null>(null);
   const resizeRef = useRef<{
     id: string;
     start: dayjs.Dayjs;
@@ -340,8 +354,6 @@ export function BigSchedule() {
   } | null>(null);
   const isResizingRef = useRef(false);
   const scheduleBoardRef = useRef<HTMLDivElement | null>(null);
-  const actionMenuRef = useRef<HTMLDivElement | null>(null);
-  const clickTimeoutRef = useRef<number | null>(null);
   const draggingRef = useRef(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -378,23 +390,6 @@ export function BigSchedule() {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [statusPicker]);
-
-  useEffect(() => {
-    if (!actionMenu) return;
-    function handlePointerDown(event: PointerEvent) {
-      if (actionMenuRef.current?.contains(event.target as Node)) return;
-      setActionMenu(null);
-    }
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setActionMenu(null);
-    }
-    window.addEventListener("pointerdown", handlePointerDown);
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("pointerdown", handlePointerDown);
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [actionMenu]);
 
   useEffect(() => {
     if (hasSynced) return;
@@ -638,7 +633,7 @@ export function BigSchedule() {
     setPatientResults([]);
     setModalError(null);
     setIsModalOpen(true);
-    setActionMenu(null);
+    setOpenMenuId(null);
   }, [buildDefaultForm]);
 
   useEffect(() => {
@@ -685,7 +680,7 @@ export function BigSchedule() {
       setModalError(null);
       setEditHistory([]);
       setIsModalOpen(true);
-      setActionMenu(null);
+      setOpenMenuId(null);
 
       fetch(`/api/appointments/${appointment.id}/history`)
         .then((res) => res.json())
@@ -716,7 +711,7 @@ export function BigSchedule() {
       setModalError(null);
       setEditHistory([]);
       setIsModalOpen(true);
-      setActionMenu(null);
+      setOpenMenuId(null);
     },
     [buildDefaultForm]
   );
@@ -728,7 +723,7 @@ export function BigSchedule() {
     setPatientQuery("");
     setPatientResults([]);
     setModalError(null);
-    setActionMenu(null);
+    setOpenMenuId(null);
   }, []);
 
   useEffect(() => {
@@ -794,56 +789,21 @@ export function BigSchedule() {
     return new Map(appointments.map((appointment) => [appointment.id, appointment]));
   }, [appointments]);
 
-  const actionAppointment = actionMenu ? appointmentMap.get(actionMenu.id) ?? null : null;
-
-  const actionMenuSummary = useMemo(() => {
-    if (!actionAppointment) return null;
-    const start = parseAppointmentTime(actionAppointment.startTime);
-    const end = parseAppointmentTime(actionAppointment.endTime);
-    const patientName = actionAppointment.patient
-      ? `${actionAppointment.patient.lastName}, ${actionAppointment.patient.firstName}`
-      : "Reserved";
-    const typeName = actionAppointment.type?.name || "Appointment";
-    return {
-      title: `${patientName} · ${typeName}`,
-      timeLabel: `${start.format("h:mm A")} – ${end.format("h:mm A")}`,
-      patientId: actionAppointment.patient?.id ?? null,
-    };
-  }, [actionAppointment]);
+  const actionAppointment = openMenuId ? appointmentMap.get(openMenuId) ?? null : null;
 
   const scheduleContextActions = useMemo(() => {
-    if (!actionMenu || !scheduleContextState || scheduleContextState.appointmentId !== actionMenu.id) {
+    if (!openMenuId || !scheduleContextState || scheduleContextState.appointmentId !== openMenuId) {
       return [] as InClinicScheduleAction[];
     }
 
     const available = new Set(scheduleContextState.availableActions);
     return IN_CLINIC_ACTION_ORDER.filter((action) => available.has(action));
-  }, [actionMenu, scheduleContextState]);
+  }, [openMenuId, scheduleContextState]);
 
   const isInClinicActionPending = Boolean(scheduleContextState?.pendingAction);
 
-  const openActionMenu = useCallback((appointmentId: string, rect: DOMRect) => {
-    const board = scheduleBoardRef.current;
-    if (!board) return;
-    const boardRect = board.getBoundingClientRect();
-    const menuWidth = 260;
-    const menuHeight = 520;
-    const padding = 8;
-    let x = rect.right - boardRect.left + 8;
-    if (x + menuWidth > boardRect.width - padding) {
-      x = rect.left - boardRect.left - menuWidth - 8;
-    }
-    if (x < padding) x = padding;
-    let y = rect.top - boardRect.top;
-    if (y + menuHeight > boardRect.height - padding) {
-      y = boardRect.height - menuHeight - padding;
-    }
-    if (y < padding) y = padding;
-    setActionMenu({ id: appointmentId, x, y });
-  }, []);
-
   useEffect(() => {
-    setActionMenu(null);
+    setOpenMenuId(null);
   }, [viewDate, viewType, selectedProviders, selectedTypes, selectedStatus]);
 
   const showError = useCallback((message: string) => {
@@ -879,19 +839,13 @@ export function BigSchedule() {
   }, []);
 
   useEffect(() => {
-    if (actionMenu) {
-      setActionMenuView("main");
-    }
-  }, [actionMenu]);
-
-  useEffect(() => {
-    if (!actionMenu) {
+    if (!openMenuId) {
       setScheduleContextState(null);
       return;
     }
 
     const controller = new AbortController();
-    const appointmentId = actionMenu.id;
+    const appointmentId = openMenuId;
     setScheduleContextState({
       appointmentId,
       isToday: false,
@@ -940,7 +894,7 @@ export function BigSchedule() {
       });
 
     return () => controller.abort();
-  }, [actionMenu]);
+  }, [openMenuId]);
 
   const openPatientFromAppointment = useCallback(
     (appointmentId: string) => {
@@ -966,6 +920,107 @@ export function BigSchedule() {
       router.push(`/patients/${patientId}?tab=${encodeURIComponent(tab)}`);
     },
     [appointmentMap, router, showError]
+  );
+
+  const scheduleFollowUp = useCallback(
+    async (appointmentId: string, typeLabel: "HE" | "C+C") => {
+      const appt = appointmentMap.get(appointmentId);
+      if (!appt) return;
+
+      const targetProvider = typeLabel === "HE" ? "Chris Pape" : "C + C, SHD";
+      const targetTypeName = typeLabel === "HE" ? "Hearing Evaluation" : "Clean and Check";
+      const targetTypeId = meta?.types.find((t) => t.name === targetTypeName)?.id ?? defaultTypeId;
+
+      const apptStart = parseAppointmentTime(appt.startTime);
+      const apptEnd = parseAppointmentTime(appt.endTime);
+      const durationMinutes = apptEnd.diff(apptStart, "minute");
+      const targetHour = apptStart.hour();
+      const targetMinute = apptStart.minute();
+      const targetDate = apptStart.add(182, "day");
+
+      // Mark current appointment completed
+      const completeRes = await fetch(`/api/appointments/${appointmentId}/schedule-context`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "Completed" }),
+      });
+      if (!completeRes.ok) {
+        const payload = await completeRes.json().catch(() => ({})) as { error?: string };
+        showError(payload.error ?? "Unable to complete appointment.");
+        return;
+      }
+      await loadAppointments();
+
+      // Fetch provider appointments in search window (target day + 30 days forward)
+      const searchStart = targetDate.startOf("day");
+      const searchEnd = targetDate.add(30, "day").endOf("day");
+      const res = await fetch(
+        `/api/appointments?start=${formatLocalDateTime(searchStart)}&end=${formatLocalDateTime(searchEnd)}&provider=${encodeURIComponent(targetProvider)}`
+      );
+      const data = await res.json() as { appointments: Appointment[] };
+      const TERMINAL = new Set(["completed", "cancelled", "canceled", "no-show", "no show", "rescheduled"]);
+      const active = (data.appointments ?? []).filter(
+        (a) => !TERMINAL.has((a.statusName ?? "").toLowerCase())
+      );
+
+      function isSlotFree(slotStart: dayjs.Dayjs, slotEnd: dayjs.Dayjs) {
+        return !active.some((a) => {
+          const aStart = parseAppointmentTime(a.startTime);
+          const aEnd = parseAppointmentTime(a.endTime);
+          return aStart.isBefore(slotEnd) && aEnd.isAfter(slotStart);
+        });
+      }
+
+      // Search: same day ±60 min in 15-min increments ordered by closeness, then walk forward day by day
+      let foundSlot: dayjs.Dayjs | null = null;
+      const DAY_START_H = 8;
+      const DAY_END_H = 17;
+
+      for (let dayOffset = 0; dayOffset <= 30 && !foundSlot; dayOffset++) {
+        const candidateDate = targetDate.add(dayOffset, "day");
+        const minuteOffsets =
+          dayOffset === 0
+            ? [0, -15, 15, -30, 30, -45, 45, -60, 60]
+            : [0];
+
+        for (const offset of minuteOffsets) {
+          const slotStart = candidateDate.hour(targetHour).minute(targetMinute).second(0).add(offset, "minute");
+          const slotEnd = slotStart.add(durationMinutes, "minute");
+          if (slotStart.hour() < DAY_START_H || slotEnd.hour() > DAY_END_H || (slotEnd.hour() === DAY_END_H && slotEnd.minute() > 0)) continue;
+          if (isSlotFree(slotStart, slotEnd)) {
+            foundSlot = slotStart;
+            break;
+          }
+        }
+      }
+
+      // Fallback: use target date/time as-is and let user adjust
+      if (!foundSlot) foundSlot = targetDate.hour(targetHour).minute(targetMinute).second(0);
+
+      const foundEnd = foundSlot.add(durationMinutes, "minute");
+      const patientName = appt.patient ? `${appt.patient.lastName}, ${appt.patient.firstName}` : "";
+
+      setEditingId(null);
+      setFormState({
+        patientId: appt.patient?.id ?? "",
+        patientName,
+        isNaBlock: !appt.patient?.id,
+        date: foundSlot.format("YYYY-MM-DD"),
+        startTime: foundSlot.format("HH:mm"),
+        endTime: foundEnd.format("HH:mm"),
+        providerName: targetProvider,
+        typeId: targetTypeId,
+        statusId: defaultStatusId,
+        notes: "",
+      });
+      setPatientQuery(patientName);
+      setPatientResults([]);
+      setModalError(null);
+      setEditHistory([]);
+      setIsModalOpen(true);
+      setOpenMenuId(null);
+    },
+    [appointmentMap, meta, defaultTypeId, defaultStatusId, loadAppointments, showError]
   );
 
   const runScheduleContextAction = useCallback(
@@ -998,7 +1053,7 @@ export function BigSchedule() {
       }
 
       await loadAppointments();
-      setActionMenu(null);
+      setOpenMenuId(null);
     },
     [loadAppointments, showError]
   );
@@ -1061,8 +1116,8 @@ export function BigSchedule() {
         return;
       }
 
-      setPinnedAppointmentId((current) => (current === appointmentId ? null : current));
-      setActionMenu(null);
+      setDockedAppointment((current) => (current?.event.id === appointmentId ? null : current));
+      setOpenMenuId(null);
       await loadAppointments();
     },
     [loadAppointments, showError]
@@ -1218,19 +1273,74 @@ export function BigSchedule() {
     await loadAppointments();
   }
 
+  function dockAppointment(appointmentId: string) {
+    if (dockedAppointment) return; // only one at a time
+    const evt = eventMap.get(appointmentId);
+    if (!evt) return;
+    const original = appointments.find((a) => a.id === appointmentId);
+    if (!original) return;
+    setDockedAppointment({ event: evt, originalAppointment: { ...original } });
+  }
+
+  function undockAppointment() {
+    setDockedAppointment(null);
+  }
+
+  async function placeDocked(payload: { date: string; time: string; provider: string }) {
+    if (!dockedAppointment) return;
+    const { event: dockedEvt, originalAppointment } = dockedAppointment;
+    const [hour, minute] = payload.time.split(":").map((value) => Number(value));
+    const base = dayjs(payload.date).hour(hour).minute(minute).second(0);
+    let newStart = base;
+    let newEnd = base.add(dockedEvt.durationMinutes, "minute");
+    const dayEnd = dayjs(payload.date).hour(DAY_END_HOUR).minute(0).second(0);
+    if (newEnd.isAfter(dayEnd)) {
+      newEnd = dayEnd;
+      newStart = dayEnd.subtract(dockedEvt.durationMinutes, "minute");
+    }
+
+    const snapshot = appointments;
+    setAppointments((current) =>
+      current.map((item) =>
+        item.id === dockedEvt.id
+          ? {
+              ...item,
+              providerName: payload.provider,
+              startTime: formatLocalDateTime(newStart),
+              endTime: formatLocalDateTime(newEnd),
+            }
+          : item
+      )
+    );
+    setDockedAppointment(null);
+    await patchAppointment(dockedEvt.id, payload.provider, newStart, newEnd, snapshot);
+  }
+
   function handleDragStart(event: React.DragEvent<HTMLDivElement>, appointmentId: string) {
     if (isResizingRef.current) {
       event.preventDefault();
       return;
     }
-    if (clickTimeoutRef.current) {
-      window.clearTimeout(clickTimeoutRef.current);
-      clickTimeoutRef.current = null;
-    }
-    setActionMenu(null);
+    setOpenMenuId(null);
     draggingRef.current = true;
-    event.dataTransfer.setData("application/json", JSON.stringify({ id: appointmentId }));
+    event.dataTransfer.setData("application/json", JSON.stringify({ id: appointmentId, fromDock: false }));
     event.dataTransfer.effectAllowed = "move";
+  }
+
+  function handleDockDragStart(event: React.DragEvent<HTMLDivElement>) {
+    if (!dockedAppointment) return;
+    draggingRef.current = true;
+    event.dataTransfer.setData("application/json", JSON.stringify({ id: dockedAppointment.event.id, fromDock: true }));
+    event.dataTransfer.effectAllowed = "move";
+  }
+
+  function handleDockDrop(event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const raw = event.dataTransfer.getData("application/json");
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as { id: string; fromDock?: boolean };
+    if (parsed.fromDock) return; // already docked
+    dockAppointment(parsed.id);
   }
 
   async function handleDrop(
@@ -1240,7 +1350,14 @@ export function BigSchedule() {
     event.preventDefault();
     const raw = event.dataTransfer.getData("application/json");
     if (!raw) return;
-    const parsed = JSON.parse(raw) as { id: string };
+    const parsed = JSON.parse(raw) as { id: string; fromDock?: boolean };
+
+    // If dropped from the dock, use placeDocked instead
+    if (parsed.fromDock && dockedAppointment?.event.id === parsed.id) {
+      await placeDocked(payload);
+      return;
+    }
+
     const appointment = eventMap.get(parsed.id);
     if (!appointment) return;
 
@@ -1461,9 +1578,43 @@ export function BigSchedule() {
   return (
     <section className="card schedule-card p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <div className="section-title text-xs text-brand-ink">Scheduling</div>
-          <div className="text-sm text-ink-muted">Drag and drop to reschedule across providers.</div>
+        <div
+          className={cn(
+            "flex items-center gap-3 min-h-[40px] px-3 py-1.5 rounded-xl border-2 border-dashed border-transparent transition-colors duration-150",
+            !dockedAppointment && "hover:border-surface-3 hover:bg-surface-1",
+            dockedAppointment && "border-solid border-brand-orange bg-brand-orange/[0.06]"
+          )}
+          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
+          onDrop={handleDockDrop}
+        >
+          {dockedAppointment ? (
+            <div
+              className="flex w-full items-center gap-2 cursor-grab active:cursor-grabbing"
+              draggable
+              onDragStart={handleDockDragStart}
+              onDragEnd={() => { window.setTimeout(() => { draggingRef.current = false; }, 0); }}
+            >
+              <div className="flex flex-1 flex-col min-w-0">
+                <span className="text-[13px] font-semibold text-ink truncate">{dockedAppointment.event.title}</span>
+                <span className="text-[11px] text-ink-muted whitespace-nowrap">
+                  {dockedAppointment.event.start.format("h:mm A")} · {dockedAppointment.event.durationMinutes}min · {dockedAppointment.event.providerName}
+                </span>
+              </div>
+              <Tooltip>
+                <TooltipTrigger render={
+                  <Button type="button" variant="ghost" size="icon-sm" onClick={undockAppointment} aria-label="Cancel reschedule" />
+                }>
+                  <X size={14} />
+                </TooltipTrigger>
+                <TooltipContent>Cancel reschedule</TooltipContent>
+              </Tooltip>
+            </div>
+          ) : (
+            <div>
+              <div className="section-title text-xs text-brand-ink">Scheduling</div>
+              <div className="text-sm text-ink-muted">Drag and drop to reschedule across providers.</div>
+            </div>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
           <Button type="button" size="sm" data-testid="new-appointment" onClick={openNewModal}>
@@ -1770,7 +1921,9 @@ export function BigSchedule() {
                     }
                   >
                     <SelectTrigger className="appointment-input" data-testid="appointment-type">
-                      <SelectValue />
+                      <SelectValue placeholder="Select type">
+                        {meta?.types?.find((t) => t.id === formState.typeId)?.name}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {meta?.types?.map((type) => (
@@ -1791,7 +1944,9 @@ export function BigSchedule() {
                     }
                   >
                     <SelectTrigger className="appointment-input" data-testid="appointment-status">
-                      <SelectValue />
+                      <SelectValue placeholder="Select status">
+                        {meta?.statuses?.find((s) => s.id === formState.statusId)?.name}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {meta?.statuses?.map((status) => (
@@ -2063,190 +2218,6 @@ export function BigSchedule() {
         </aside>
 
         <div className="schedule-board" ref={scheduleBoardRef}>
-          {actionMenu && actionMenuSummary ? (
-            <div
-              ref={actionMenuRef}
-              className="schedule-action-menu"
-              role="menu"
-              data-testid="schedule-action-menu"
-              style={{ top: actionMenu.y, left: actionMenu.x }}
-            >
-              <div className="schedule-action-menu-title">{actionMenuSummary.title}</div>
-              <div className="schedule-action-menu-time">{actionMenuSummary.timeLabel}</div>
-              <div className="schedule-action-menu-divider" />
-              {actionMenuView === "main" ? (
-                <>
-                  {scheduleContextState?.isLoading ? (
-                    <div className="schedule-action-menu-item text-[11px] text-ink-soft" data-testid="schedule-in-clinic-loading">
-                      Loading in-clinic actions…
-                    </div>
-                  ) : null}
-                  {!scheduleContextState?.isLoading && scheduleContextState?.isToday && scheduleContextActions.length ? (
-                    <>
-                      {scheduleContextActions
-                        .filter((action) => action !== "In Progress" && action !== "Cancelled")
-                        .map((action) => (
-                        <Button
-                          key={action}
-                          type="button"
-                          variant="ghost"
-                          className="schedule-action-menu-item"
-                          role="menuitem"
-                          data-testid={`schedule-in-clinic-action-${toInClinicActionTestId(action)}`}
-                          disabled={isInClinicActionPending}
-                          onClick={() => {
-                            if (action === "Completed") {
-                              setActionMenuView("complete-6mo");
-                            } else {
-                              void runScheduleContextAction(actionMenu.id, action);
-                            }
-                          }}
-                        >
-                          {action === "Completed" ? "Complete & Schedule 6mo →" : action}
-                        </Button>
-                      ))}
-                      <div className="schedule-action-menu-divider" />
-                    </>
-                  ) : null}
-                  <div className="schedule-action-menu-divider" />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="schedule-action-menu-item"
-                    role="menuitem"
-                    onClick={() => {
-                      setActionMenu(null);
-                      openEditModal(actionMenu.id);
-                    }}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="schedule-action-menu-item"
-                    role="menuitem"
-                    onClick={() => setActionMenuView("status")}
-                  >
-                    Change Status →
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="schedule-action-menu-item"
-                    role="menuitem"
-                    onClick={() => {
-                      setPinnedAppointmentId((current) => (current === actionMenu.id ? null : actionMenu.id));
-                      setActionMenu(null);
-                    }}
-                  >
-                    {pinnedAppointmentId === actionMenu.id ? "Unpin for rescheduling" : "Pin for rescheduling"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="schedule-action-menu-item"
-                    role="menuitem"
-                    onClick={() => {
-                      setActionMenu(null);
-                      openPatientTab(actionMenu.id, "Journal");
-                    }}
-                  >
-                    Create a journal entry
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="schedule-action-menu-item"
-                    role="menuitem"
-                    onClick={() => {
-                      setActionMenu(null);
-                      openPatientTab(actionMenu.id, "Details");
-                    }}
-                  >
-                    Patient Details
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="schedule-action-menu-item"
-                    role="menuitem"
-                    data-testid="schedule-delete-appointment"
-                    onClick={() => {
-                      void deleteAppointment(actionMenu.id);
-                    }}
-                  >
-                    Delete appointment
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="schedule-action-menu-item"
-                    role="menuitem"
-                    onClick={() => setActionMenu(null)}
-                  >
-                    Close
-                  </Button>
-                </>
-              ) : actionMenuView === "complete-6mo" ? (
-                <>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="schedule-action-menu-item"
-                    role="menuitem"
-                    onClick={() => setActionMenuView("main")}
-                  >
-                    ← Back
-                  </Button>
-                  <div className="schedule-action-menu-divider" />
-                  {["HE", "C+C"].map((apptType) => (
-                    <Button
-                      key={apptType}
-                      type="button"
-                      variant="ghost"
-                      className="schedule-action-menu-item"
-                      role="menuitem"
-                      onClick={() => {
-                        void runScheduleContextAction(actionMenu.id, "Completed");
-                        setActionMenu(null);
-                        // TODO: open new appointment modal pre-filled with apptType in 6 months
-                      }}
-                    >
-                      {apptType}
-                    </Button>
-                  ))}
-                </>
-              ) : (
-                <>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="schedule-action-menu-item"
-                    role="menuitem"
-                    onClick={() => setActionMenuView("main")}
-                  >
-                    ← Back
-                  </Button>
-                  {orderedStatusOptions.map((status) => (
-                    <Button
-                      key={status.id}
-                      type="button"
-                      variant="ghost"
-                      className="schedule-action-menu-item"
-                      role="menuitem"
-                      onClick={() => {
-                        void updateAppointmentStatus(actionMenu.id, status.id, status.name);
-                        setActionMenu(null);
-                      }}
-                    >
-                      {status.name}
-                    </Button>
-                  ))}
-                </>
-              )}
-            </div>
-          ) : null}
           {viewType === "day" && dayGrid ? (
             <div className="schedule-day-scroll" style={{ height: `${dayGridHeight}px`, flex: "0 0 auto" }}>
               <div className="schedule-day-grid" data-testid="schedule-day-grid" style={dayGridStyles}>
@@ -2295,110 +2266,210 @@ export function BigSchedule() {
                             provider,
                           })
                         }
-                        onDoubleClick={() =>
+                        onClick={dockedAppointment ? () => placeDocked({ date: dayjs(viewDate).format("YYYY-MM-DD"), time: slot.format("HH:mm"), provider }) : undefined}
+                        onDoubleClick={!dockedAppointment ? () =>
                           handleCreate({
                             date: dayjs(viewDate).format("YYYY-MM-DD"),
                             time: slot.format("HH:mm"),
                             provider,
-                          })
+                          }) : undefined
                         }
                       />
                     );
                   })
                 )}
-                {dayGrid.dayEvents.map((event) => (
-                  <div
+                {dayGrid.dayEvents.map((event) => {
+                  const isDocked = dockedAppointment?.event.id === event.id;
+                  if (isDocked) {
+                    return (
+                      <div
+                        key={`event-${event.id}`}
+                        className={`schedule-day-event opacity-50 pointer-events-none border-[1.5px] border-dashed border-ink-soft rounded-md bg-[repeating-linear-gradient(-45deg,var(--surface-2),var(--surface-2)_4px,var(--surface-3)_4px,var(--surface-3)_8px)] ${event.durationMinutes <= 15 ? "is-compact" : event.durationMinutes <= 30 ? "is-short" : ""}`}
+                        style={{
+                          gridColumn: event.gridColumn,
+                          gridRow: `${event.gridRowStart} / ${event.gridRowEnd}`,
+                        }}
+                        title="Docked for rescheduling"
+                      >
+                        <div className="schedule-day-event-title">
+                          <span className="schedule-event-label">{event.title}</span>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
+                  <DropdownMenu
                     key={`event-${event.id}`}
-                    className={`schedule-day-event${
-                      event.id === pinnedAppointmentId ? " is-pinned" : ""
-                    } ${
-                      event.durationMinutes <= 15
-                        ? "is-compact"
-                        : event.durationMinutes <= 30
-                        ? "is-short"
-                        : ""
-                    }`}
-                    data-testid="schedule-event"
-                    data-appointment-id={event.id}
-                    data-date={event.start.format("YYYY-MM-DD")}
-                    data-time={event.start.format("HH:mm")}
-                    draggable
-                    onDragStart={(dragEvent) => handleDragStart(dragEvent, event.id)}
-                    onDragEnd={() => {
-                      window.setTimeout(() => {
-                        draggingRef.current = false;
-                      }, 0);
-                    }}
-                    onClick={(clickEvent) => {
-                      if (draggingRef.current) return;
-                      if (clickTimeoutRef.current) {
-                        window.clearTimeout(clickTimeoutRef.current);
-                        clickTimeoutRef.current = null;
-                      }
-                      const rect = (clickEvent.currentTarget as HTMLElement).getBoundingClientRect();
-                      clickTimeoutRef.current = window.setTimeout(() => {
-                        openActionMenu(event.id, rect);
-                        clickTimeoutRef.current = null;
-                      }, 220);
-                    }}
-                    onDoubleClick={() => {
-                      if (draggingRef.current) return;
-                      if (clickTimeoutRef.current) {
-                        window.clearTimeout(clickTimeoutRef.current);
-                        clickTimeoutRef.current = null;
-                      }
-                      setActionMenu(null);
-                      openPatientFromAppointment(event.id);
-                    }}
-                    onDragOver={(dragEvent) => dragEvent.preventDefault()}
-                    onDrop={(dragEvent) =>
-                      handleDrop(dragEvent, {
-                        date: event.start.format("YYYY-MM-DD"),
-                        time: event.start.format("HH:mm"),
-                        provider: event.providerName,
-                      })
-                    }
-                    style={{
-                      gridColumn: event.gridColumn,
-                      gridRow: `${event.gridRowStart} / ${event.gridRowEnd}`,
-                      background: event.color,
-                    }}
-                    title={`${event.title} (${event.timeLabel})`}
+                    open={openMenuId === event.id}
+                    onOpenChange={(open) => setOpenMenuId(open ? event.id : null)}
                   >
-                    <div className="schedule-day-event-title">
-                      {(() => { const { Icon, color } = getStatusIcon(event.statusName); return (
-                        <button
-                          type="button"
-                          className="schedule-status-dot"
-                          title={event.statusName ?? "Status"}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            setStatusPicker({ id: event.id, x: rect.left, y: rect.bottom + 6 });
+                    <DropdownMenuTrigger
+                      render={
+                        <div
+                          className={`schedule-day-event ${
+                            event.durationMinutes <= 15
+                              ? "is-compact"
+                              : event.durationMinutes <= 30
+                              ? "is-short"
+                              : ""
+                          }`}
+                          data-testid="schedule-event"
+                          data-appointment-id={event.id}
+                          data-date={event.start.format("YYYY-MM-DD")}
+                          data-time={event.start.format("HH:mm")}
+                          draggable
+                          onDragStart={(dragEvent) => handleDragStart(dragEvent, event.id)}
+                          onDragEnd={() => {
+                            window.setTimeout(() => {
+                              draggingRef.current = false;
+                            }, 0);
                           }}
-                        >
-                          <Icon size={10} style={{ color }} strokeWidth={2.5} />
-                        </button>
-                      ); })()}
-                      <span className="schedule-event-label">{event.title}</span>
-                    </div>
-                    <div className="schedule-day-event-time">{event.timeLabel}</div>
-                    <div
-                      className="schedule-event-resize-handle"
-                      data-testid="schedule-event-resize"
-                      draggable={false}
-                      onPointerDown={(pointerEvent) =>
-                        handleResizeStart(pointerEvent, {
-                          id: event.id,
-                          start: event.start,
-                          end: event.end,
-                          providerName: event.providerName,
-                          date: event.start.format("YYYY-MM-DD"),
-                        })
+                          onDoubleClick={(e) => {
+                            if (draggingRef.current) return;
+                            e.preventDefault();
+                            setOpenMenuId(null);
+                            openPatientFromAppointment(event.id);
+                          }}
+                          onDragOver={(dragEvent) => dragEvent.preventDefault()}
+                          onDrop={(dragEvent) =>
+                            handleDrop(dragEvent, {
+                              date: event.start.format("YYYY-MM-DD"),
+                              time: event.start.format("HH:mm"),
+                              provider: event.providerName,
+                            })
+                          }
+                          style={{
+                            gridColumn: event.gridColumn,
+                            gridRow: `${event.gridRowStart} / ${event.gridRowEnd}`,
+                            background: event.color,
+                          }}
+                          title={`${event.title} (${event.timeLabel})`}
+                        />
                       }
-                    />
-                  </div>
-                ))}
+                    >
+                      <div className="schedule-day-event-title">
+                        {(() => { const { Icon, color } = getStatusIcon(event.statusName); return (
+                          <button
+                            type="button"
+                            className="schedule-status-dot"
+                            title={event.statusName ?? "Status"}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setStatusPicker({ id: event.id, x: rect.left, y: rect.bottom + 6 });
+                            }}
+                          >
+                            <Icon size={10} style={{ color }} strokeWidth={2.5} />
+                          </button>
+                        ); })()}
+                        <span className="schedule-event-label">{event.title}</span>
+                      </div>
+                      <div className="schedule-day-event-time">{event.timeLabel}</div>
+                      <div
+                        className="schedule-event-resize-handle"
+                        data-testid="schedule-event-resize"
+                        draggable={false}
+                        onPointerDown={(pointerEvent) =>
+                          handleResizeStart(pointerEvent, {
+                            id: event.id,
+                            start: event.start,
+                            end: event.end,
+                            providerName: event.providerName,
+                            date: event.start.format("YYYY-MM-DD"),
+                          })
+                        }
+                      />
+                    </DropdownMenuTrigger>
+
+                    <DropdownMenuContent side="right" sideOffset={8} className="w-56">
+                      <DropdownMenuLabel className="font-semibold text-[13px]">{event.title}</DropdownMenuLabel>
+                      <div className="px-1.5 pb-1 text-[11px] text-muted-foreground">{event.timeLabel}</div>
+                      <DropdownMenuSeparator />
+
+                      {scheduleContextState?.isLoading ? (
+                        <DropdownMenuItem disabled>Loading actions…</DropdownMenuItem>
+                      ) : null}
+                      {!scheduleContextState?.isLoading && scheduleContextState?.isToday && scheduleContextActions.length ? (
+                        <>
+                          {scheduleContextActions
+                            .filter((action) => action !== "In Progress" && action !== "Cancelled")
+                            .map((action) =>
+                              action !== "Completed" ? (
+                                <DropdownMenuItem
+                                  key={action}
+                                  data-testid={`schedule-in-clinic-action-${toInClinicActionTestId(action)}`}
+                                  disabled={isInClinicActionPending}
+                                  onClick={() => void runScheduleContextAction(event.id, action)}
+                                >
+                                  {action}
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuSub key="complete-6mo">
+                                  <DropdownMenuSubTrigger
+                                    data-testid="schedule-in-clinic-action-completed"
+                                    disabled={isInClinicActionPending}
+                                  >
+                                    Complete &amp; Schedule 6mo
+                                  </DropdownMenuSubTrigger>
+                                  <DropdownMenuSubContent>
+                                    {(["HE", "C+C"] as const).map((apptType) => (
+                                      <DropdownMenuItem
+                                        key={apptType}
+                                        onClick={() => void scheduleFollowUp(event.id, apptType)}
+                                      >
+                                        {apptType}
+                                      </DropdownMenuItem>
+                                    ))}
+                                  </DropdownMenuSubContent>
+                                </DropdownMenuSub>
+                              )
+                            )}
+                          <DropdownMenuSeparator />
+                        </>
+                      ) : null}
+
+                      <DropdownMenuItem onClick={() => { setOpenMenuId(null); openEditModal(event.id); }}>
+                        Edit
+                      </DropdownMenuItem>
+
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>Change Status</DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent>
+                          {orderedStatusOptions.map((status) => (
+                            <DropdownMenuItem
+                              key={status.id}
+                              onClick={() => { void updateAppointmentStatus(event.id, status.id, status.name); setOpenMenuId(null); }}
+                            >
+                              {status.name}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+
+                      <DropdownMenuItem
+                        onClick={() => { dockAppointment(event.id); setOpenMenuId(null); }}
+                        disabled={dockedAppointment !== null}
+                      >
+                        {dockedAppointment?.event.id === event.id ? "Already docked" : "Reschedule"}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => { setOpenMenuId(null); openPatientTab(event.id, "Journal"); }}>
+                        Create a journal entry
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => { setOpenMenuId(null); openPatientTab(event.id, "Details"); }}>
+                        Patient Details
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        variant="destructive"
+                        data-testid="schedule-delete-appointment"
+                        onClick={() => void deleteAppointment(event.id)}
+                      >
+                        Delete appointment
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  );
+                })}
               </div>
             </div>
           ) : weekGrid ? (
@@ -2471,111 +2542,211 @@ export function BigSchedule() {
                               provider,
                             })
                           }
-                          onDoubleClick={() =>
+                          onClick={dockedAppointment ? () => placeDocked({ date: day.format("YYYY-MM-DD"), time: slot.format("HH:mm"), provider }) : undefined}
+                          onDoubleClick={!dockedAppointment ? () =>
                             handleCreate({
                               date: day.format("YYYY-MM-DD"),
                               time: slot.format("HH:mm"),
                               provider,
-                            })
+                            }) : undefined
                           }
                         />
                       );
                     })
                   )
                 )}
-                {weekGrid.weekEvents.map((event) => (
-                  <div
+                {weekGrid.weekEvents.map((event) => {
+                  const isDocked = dockedAppointment?.event.id === event.id;
+                  if (isDocked) {
+                    return (
+                      <div
+                        key={`event-${event.id}`}
+                        className={`schedule-week-event opacity-50 pointer-events-none border-[1.5px] border-dashed border-ink-soft rounded-md bg-[repeating-linear-gradient(-45deg,var(--surface-2),var(--surface-2)_4px,var(--surface-3)_4px,var(--surface-3)_8px)] ${event.durationMinutes <= 15 ? "is-compact" : event.durationMinutes <= 30 ? "is-short" : ""}`}
+                        style={{
+                          gridColumn: event.gridColumn,
+                          gridRow: `${event.gridRowStart} / ${event.gridRowEnd}`,
+                        }}
+                        title="Docked for rescheduling"
+                      >
+                        <div className="schedule-week-event-title">
+                          <span className="schedule-event-label">{event.title}</span>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
+                  <DropdownMenu
                     key={`event-${event.id}`}
-                    className={`schedule-week-event${
-                      event.id === pinnedAppointmentId ? " is-pinned" : ""
-                    } ${
-                      event.durationMinutes <= 15
-                        ? "is-compact"
-                        : event.durationMinutes <= 30
-                        ? "is-short"
-                        : ""
-                    }`}
-                    data-testid="schedule-event"
-                    data-appointment-id={event.id}
-                    data-date={event.start.format("YYYY-MM-DD")}
-                    data-time={event.start.format("HH:mm")}
-                    draggable
-                    onDragStart={(dragEvent) => handleDragStart(dragEvent, event.id)}
-                    onDragEnd={() => {
-                      window.setTimeout(() => {
-                        draggingRef.current = false;
-                      }, 0);
-                    }}
-                    onClick={(clickEvent) => {
-                      if (draggingRef.current) return;
-                      if (clickTimeoutRef.current) {
-                        window.clearTimeout(clickTimeoutRef.current);
-                        clickTimeoutRef.current = null;
-                      }
-                      const rect = (clickEvent.currentTarget as HTMLElement).getBoundingClientRect();
-                      clickTimeoutRef.current = window.setTimeout(() => {
-                        openActionMenu(event.id, rect);
-                        clickTimeoutRef.current = null;
-                      }, 220);
-                    }}
-                    onDoubleClick={() => {
-                      if (draggingRef.current) return;
-                      if (clickTimeoutRef.current) {
-                        window.clearTimeout(clickTimeoutRef.current);
-                        clickTimeoutRef.current = null;
-                      }
-                      setActionMenu(null);
-                      openPatientFromAppointment(event.id);
-                    }}
-                    onDragOver={(dragEvent) => dragEvent.preventDefault()}
-                    onDrop={(dragEvent) =>
-                      handleDrop(dragEvent, {
-                        date: event.start.format("YYYY-MM-DD"),
-                        time: event.start.format("HH:mm"),
-                        provider: event.providerName,
-                      })
-                    }
-                    style={{
-                      gridColumn: event.gridColumn,
-                      gridRow: `${event.gridRowStart} / ${event.gridRowEnd}`,
-                      background: event.color,
-                    }}
-                    title={`${event.title} (${event.timeLabel})`}
+                    open={openMenuId === event.id}
+                    onOpenChange={(open) => setOpenMenuId(open ? event.id : null)}
                   >
-                    <div className="schedule-week-event-title">
-                      {(() => { const { Icon, color } = getStatusIcon(event.statusName); return (
-                        <button
-                          type="button"
-                          className="schedule-status-dot"
-                          title={event.statusName ?? "Status"}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            setStatusPicker({ id: event.id, x: rect.left, y: rect.bottom + 6 });
+                    <DropdownMenuTrigger
+                      render={
+                        <div
+                          className={`schedule-week-event ${
+                            event.durationMinutes <= 15
+                              ? "is-compact"
+                              : event.durationMinutes <= 30
+                              ? "is-short"
+                              : ""
+                          }`}
+                          data-testid="schedule-event"
+                          data-appointment-id={event.id}
+                          data-date={event.start.format("YYYY-MM-DD")}
+                          data-time={event.start.format("HH:mm")}
+                          draggable
+                          onDragStart={(dragEvent) => handleDragStart(dragEvent, event.id)}
+                          onDragEnd={() => {
+                            window.setTimeout(() => {
+                              draggingRef.current = false;
+                            }, 0);
                           }}
-                        >
-                          <Icon size={10} style={{ color }} strokeWidth={2.5} />
-                        </button>
-                      ); })()}
-                      <span className="schedule-event-label">{event.title}</span>
-                    </div>
-                    <div className="schedule-week-event-time">{event.timeLabel}</div>
-                    <div
-                      className="schedule-event-resize-handle"
-                      data-testid="schedule-event-resize"
-                      draggable={false}
-                      onPointerDown={(pointerEvent) =>
-                        handleResizeStart(pointerEvent, {
-                          id: event.id,
-                          start: event.start,
-                          end: event.end,
-                          providerName: event.providerName,
-                          date: event.start.format("YYYY-MM-DD"),
-                        })
+                          onDoubleClick={(e) => {
+                            if (draggingRef.current) return;
+                            e.preventDefault();
+                            setOpenMenuId(null);
+                            openPatientFromAppointment(event.id);
+                          }}
+                          onDragOver={(dragEvent) => dragEvent.preventDefault()}
+                          onDrop={(dragEvent) =>
+                            handleDrop(dragEvent, {
+                              date: event.start.format("YYYY-MM-DD"),
+                              time: event.start.format("HH:mm"),
+                              provider: event.providerName,
+                            })
+                          }
+                          style={{
+                            gridColumn: event.gridColumn,
+                            gridRow: `${event.gridRowStart} / ${event.gridRowEnd}`,
+                            background: event.color,
+                          }}
+                          title={`${event.title} (${event.timeLabel})`}
+                        />
                       }
-                    />
-                  </div>
-                ))}
+                    >
+                      <div className="schedule-week-event-title">
+                        {(() => { const { Icon, color } = getStatusIcon(event.statusName); return (
+                          <button
+                            type="button"
+                            className="schedule-status-dot"
+                            title={event.statusName ?? "Status"}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setStatusPicker({ id: event.id, x: rect.left, y: rect.bottom + 6 });
+                            }}
+                          >
+                            <Icon size={10} style={{ color }} strokeWidth={2.5} />
+                          </button>
+                        ); })()}
+                        <span className="schedule-event-label">{event.title}</span>
+                      </div>
+                      <div className="schedule-week-event-time">{event.timeLabel}</div>
+                      <div
+                        className="schedule-event-resize-handle"
+                        data-testid="schedule-event-resize"
+                        draggable={false}
+                        onPointerDown={(pointerEvent) =>
+                          handleResizeStart(pointerEvent, {
+                            id: event.id,
+                            start: event.start,
+                            end: event.end,
+                            providerName: event.providerName,
+                            date: event.start.format("YYYY-MM-DD"),
+                          })
+                        }
+                      />
+                    </DropdownMenuTrigger>
+
+                    <DropdownMenuContent side="right" sideOffset={8} className="w-56">
+                      <DropdownMenuLabel className="font-semibold text-[13px]">{event.title}</DropdownMenuLabel>
+                      <div className="px-1.5 pb-1 text-[11px] text-muted-foreground">{event.timeLabel}</div>
+                      <DropdownMenuSeparator />
+
+                      {scheduleContextState?.isLoading ? (
+                        <DropdownMenuItem disabled>Loading actions…</DropdownMenuItem>
+                      ) : null}
+                      {!scheduleContextState?.isLoading && scheduleContextState?.isToday && scheduleContextActions.length ? (
+                        <>
+                          {scheduleContextActions
+                            .filter((action) => action !== "In Progress" && action !== "Cancelled")
+                            .map((action) =>
+                              action !== "Completed" ? (
+                                <DropdownMenuItem
+                                  key={action}
+                                  data-testid={`schedule-in-clinic-action-${toInClinicActionTestId(action)}`}
+                                  disabled={isInClinicActionPending}
+                                  onClick={() => void runScheduleContextAction(event.id, action)}
+                                >
+                                  {action}
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuSub key="complete-6mo">
+                                  <DropdownMenuSubTrigger
+                                    data-testid="schedule-in-clinic-action-completed"
+                                    disabled={isInClinicActionPending}
+                                  >
+                                    Complete &amp; Schedule 6mo
+                                  </DropdownMenuSubTrigger>
+                                  <DropdownMenuSubContent>
+                                    {(["HE", "C+C"] as const).map((apptType) => (
+                                      <DropdownMenuItem
+                                        key={apptType}
+                                        onClick={() => void scheduleFollowUp(event.id, apptType)}
+                                      >
+                                        {apptType}
+                                      </DropdownMenuItem>
+                                    ))}
+                                  </DropdownMenuSubContent>
+                                </DropdownMenuSub>
+                              )
+                            )}
+                          <DropdownMenuSeparator />
+                        </>
+                      ) : null}
+
+                      <DropdownMenuItem onClick={() => { setOpenMenuId(null); openEditModal(event.id); }}>
+                        Edit
+                      </DropdownMenuItem>
+
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>Change Status</DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent>
+                          {orderedStatusOptions.map((status) => (
+                            <DropdownMenuItem
+                              key={status.id}
+                              onClick={() => { void updateAppointmentStatus(event.id, status.id, status.name); setOpenMenuId(null); }}
+                            >
+                              {status.name}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+
+                      <DropdownMenuItem
+                        onClick={() => { dockAppointment(event.id); setOpenMenuId(null); }}
+                        disabled={dockedAppointment !== null}
+                      >
+                        {dockedAppointment?.event.id === event.id ? "Already docked" : "Reschedule"}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => { setOpenMenuId(null); openPatientTab(event.id, "Journal"); }}>
+                        Create a journal entry
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => { setOpenMenuId(null); openPatientTab(event.id, "Details"); }}>
+                        Patient Details
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        variant="destructive"
+                        data-testid="schedule-delete-appointment"
+                        onClick={() => void deleteAppointment(event.id)}
+                      >
+                        Delete appointment
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  );
+                })}
               </div>
             </div>
           ) : (

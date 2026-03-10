@@ -747,11 +747,7 @@ a {
   text-overflow: ellipsis;
 }
 
-.schedule-day-event.is-pinned,
-.schedule-week-event.is-pinned {
-  outline: 2px solid rgba(15, 59, 75, 0.7);
-  box-shadow: 0 0 0 2px rgba(15, 59, 75, 0.08);
-}
+
 
 .schedule-event-resize-handle {
   position: absolute;
@@ -1118,56 +1114,6 @@ a {
   color: var(--ink-soft);
   font-size: 10px;
   margin-top: 4px;
-}
-
-.schedule-action-menu {
-  position: absolute;
-  z-index: 70;
-  width: 260px;
-  max-height: min(72vh, 540px);
-  overflow: auto;
-  border-radius: 14px;
-  border: 1px solid rgba(31, 149, 184, 0.25);
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 18px 40px rgba(24, 20, 50, 0.18);
-  padding: 10px;
-  display: grid;
-  gap: 6px;
-  color: var(--ink-strong);
-}
-
-.schedule-action-menu-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ink-strong);
-}
-
-.schedule-action-menu-time {
-  font-size: 11px;
-  color: var(--ink-soft);
-}
-
-.schedule-action-menu-divider {
-  height: 1px;
-  background: rgba(38, 34, 96, 0.08);
-  margin: 2px 0;
-}
-
-.schedule-action-menu-item {
-  width: 100%;
-  text-align: left;
-  border-radius: 10px;
-  border: 1px solid transparent;
-  padding: 8px 10px;
-  font-size: 12px;
-  color: var(--ink-strong);
-  background: transparent;
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-
-.schedule-action-menu-item:hover {
-  background: rgba(31, 149, 184, 0.12);
-  border-color: rgba(31, 149, 184, 0.25);
 }
 
 .schedule-action-history {
