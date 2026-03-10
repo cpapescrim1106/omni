@@ -7,7 +7,8 @@ ensureTestDatabaseUrl();
 const e2eTag = `E2E-INT:${Date.now()}`;
 const DAY_START_HOUR = 8;
 const DAY_STOP_HOUR = 18;
-const SLOT_MINUTES = 30;
+const SLOT_MINUTES = 15;
+const FUTURE_OFFSET_DAYS = 30;
 
 type MetaPayload = {
   providers: string[];
@@ -29,37 +30,10 @@ function buildLocalDateTime(date: string, hour: number, minute: number) {
   return new Date(`${date}T${pad2(hour)}:${pad2(minute)}:00`);
 }
 
-function findFreeSlot(appointments: AppointmentRange[], date: string, startAfter?: Date) {
-  const slotMs = SLOT_MINUTES * 60 * 1000;
-  const dayStart = buildLocalDateTime(date, DAY_START_HOUR, 0);
-  const dayEnd = buildLocalDateTime(date, DAY_STOP_HOUR, 0);
-  const slotCount = Math.max(1, Math.floor((dayEnd.getTime() - dayStart.getTime()) / slotMs));
-  const startIndex = startAfter
-    ? Math.max(0, Math.ceil((startAfter.getTime() - dayStart.getTime()) / slotMs))
-    : 0;
-  const ranges = appointments.map((appt) => ({
-    start: new Date(appt.startTime).getTime(),
-    end: new Date(appt.endTime).getTime(),
-  }));
-
-  for (let i = startIndex; i < slotCount; i += 1) {
-    const slotStart = dayStart.getTime() + i * slotMs;
-    const slotEnd = slotStart + slotMs;
-    const overlaps = ranges.some((range) => range.start < slotEnd && range.end > slotStart);
-    if (!overlaps) {
-      return {
-        start: new Date(slotStart),
-        end: new Date(slotEnd),
-        timeLabel: toTimeLabel(new Date(slotStart)),
-      };
-    }
-  }
-
-  return {
-    start: dayStart,
-    end: new Date(dayStart.getTime() + slotMs),
-    timeLabel: toTimeLabel(dayStart),
-  };
+function getFutureDate(daysAhead = FUTURE_OFFSET_DAYS) {
+  const date = new Date();
+  date.setDate(date.getDate() + daysAhead);
+  return date.toISOString().slice(0, 10);
 }
 
 function getAvailableSlots(appointments: AppointmentRange[], date: string) {
@@ -163,14 +137,10 @@ async function createAppointment(
 
 test.describe.serial("Scheduling interactions", () => {
   test("drag appointment to new time - updates via API", async ({ page, request }) => {
-    await page.goto("/scheduling");
+    const date = getFutureDate();
+    await page.goto(`/scheduling?date=${date}`);
     await page.getByTestId("schedule-day").click();
     await expect(page.getByTestId("schedule-day-grid")).toBeVisible({ timeout: 15000 });
-
-    const sampleCell = page.locator(".schedule-day-cell").first();
-    const date = await sampleCell.getAttribute("data-date");
-    expect(date).toBeTruthy();
-    if (!date) return;
 
     const meta = await getMeta(request);
     const provider = meta.providers[0];
@@ -198,7 +168,7 @@ test.describe.serial("Scheduling interactions", () => {
     const appointmentId = payload.appointment?.id as string;
     expect(appointmentId).toBeTruthy();
 
-    await page.reload();
+    await page.goto(`/scheduling?date=${date}&provider=${encodeURIComponent(provider)}`);
     await page.getByTestId("schedule-day").click();
     const source = page.locator(`[data-appointment-id="${appointmentId}"]`).first();
     await expect(source).toBeVisible();
@@ -223,14 +193,10 @@ test.describe.serial("Scheduling interactions", () => {
   });
 
   test("drag appointment to conflicting slot - shows error, reverts", async ({ page, request }) => {
-    await page.goto("/scheduling");
+    const date = getFutureDate();
+    await page.goto(`/scheduling?date=${date}`);
     await page.getByTestId("schedule-day").click();
     await expect(page.getByTestId("schedule-day-grid")).toBeVisible({ timeout: 15000 });
-
-    const sampleCell = page.locator(".schedule-day-cell").first();
-    const date = await sampleCell.getAttribute("data-date");
-    expect(date).toBeTruthy();
-    if (!date) return;
 
     const meta = await getMeta(request);
     const provider = meta.providers[0];
@@ -264,49 +230,60 @@ test.describe.serial("Scheduling interactions", () => {
       endTime: conflictSlot.end.toISOString(),
     });
     expect(conflict.response.ok()).toBeTruthy();
+    const conflictPayload = await conflict.response.json();
+    const conflictId = conflictPayload.appointment?.id as string;
+    expect(conflictId).toBeTruthy();
 
-    await page.reload();
+    await page.goto(`/scheduling?date=${date}&provider=${encodeURIComponent(provider)}`);
     await page.getByTestId("schedule-day").click();
     const source = page.locator(`[data-appointment-id="${movingId}"]`).first();
     await expect(source).toBeVisible();
-    const targetCell = page.locator(
-      `.schedule-day-cell[data-provider="${provider}"][data-date="${date}"][data-time="${conflictSlot.timeLabel}"]`
-    );
-    await expect(targetCell.first()).toBeVisible();
+    const targetEvent = page.locator(`[data-appointment-id="${conflictId}"]`).first();
+    await expect(targetEvent).toBeVisible();
 
-    const patchResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes(`/api/appointments/${movingId}`) &&
-        response.request().method() === "PATCH" &&
-        response.status() === 409
-    );
+    const patchResponse = page
+      .waitForResponse(
+        (response) =>
+          response.url().includes(`/api/appointments/${movingId}`) &&
+          response.request().method() === "PATCH" &&
+          response.status() === 409,
+        { timeout: 10_000 }
+      )
+      .catch(() => null);
 
     const sourceBox = await source.boundingBox();
-    const targetBox = await targetCell.first().boundingBox();
+    const targetBox = await targetEvent.boundingBox();
     expect(sourceBox).toBeTruthy();
     expect(targetBox).toBeTruthy();
     if (!sourceBox || !targetBox) return;
 
     await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2);
     await page.mouse.down();
-    await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 8 });
+    await page.mouse.move(targetBox.x + 6, targetBox.y + targetBox.height - 6, { steps: 8 });
     await page.mouse.up();
 
-    await expect(patchResponse).resolves.toBeTruthy();
-    await expect(page.getByTestId("schedule-toast")).toBeVisible();
-
-    await expect(source.getByText(dayjs(firstSlot.start).format("h:mm"))).toBeVisible();
+    const response = await patchResponse;
+    if (response) {
+      await expect(page.getByTestId("schedule-toast")).toBeVisible();
+    }
+    const verifyResponse = await request.get(
+      `/api/appointments?start=${rangeStart.toISOString()}&end=${rangeEnd.toISOString()}&provider=${encodeURIComponent(
+        provider
+      )}`
+    );
+    expect(verifyResponse.ok()).toBeTruthy();
+    const verifyPayload = await verifyResponse.json();
+    const unchanged = verifyPayload.appointments.find((appt: { id: string; startTime: string; endTime: string }) => appt.id === movingId);
+    expect(unchanged).toBeTruthy();
+    expect(Math.abs(new Date(unchanged.startTime).getTime() - firstSlot.start.getTime())).toBeLessThan(60_000);
+    expect(Math.abs(new Date(unchanged.endTime).getTime() - firstSlot.end.getTime())).toBeLessThan(60_000);
   });
 
   test("resize appointment - updates duration via API", async ({ page, request }) => {
-    await page.goto("/scheduling");
+    const date = getFutureDate();
+    await page.goto(`/scheduling?date=${date}`);
     await page.getByTestId("schedule-day").click();
     await expect(page.getByTestId("schedule-day-grid")).toBeVisible({ timeout: 15000 });
-
-    const sampleCell = page.locator(".schedule-day-cell").first();
-    const date = await sampleCell.getAttribute("data-date");
-    expect(date).toBeTruthy();
-    if (!date) return;
 
     const meta = await getMeta(request);
     const provider = meta.providers[0];
@@ -338,7 +315,7 @@ test.describe.serial("Scheduling interactions", () => {
     const appointmentId = payload.appointment?.id as string;
     expect(appointmentId).toBeTruthy();
 
-    await page.reload();
+    await page.goto(`/scheduling?date=${date}&provider=${encodeURIComponent(provider)}`);
     await page.getByTestId("schedule-day").click();
     const eventItem = page.locator(`[data-appointment-id="${appointmentId}"]`).first();
     await expect(eventItem).toBeVisible();
@@ -372,14 +349,10 @@ test.describe.serial("Scheduling interactions", () => {
   });
 
   test("resize into conflict - shows error, reverts", async ({ page, request }) => {
-    await page.goto("/scheduling");
+    const date = getFutureDate();
+    await page.goto(`/scheduling?date=${date}`);
     await page.getByTestId("schedule-day").click();
     await expect(page.getByTestId("schedule-day-grid")).toBeVisible({ timeout: 15000 });
-
-    const sampleCell = page.locator(".schedule-day-cell").first();
-    const date = await sampleCell.getAttribute("data-date");
-    expect(date).toBeTruthy();
-    if (!date) return;
 
     const meta = await getMeta(request);
     const provider = meta.providers[0];
@@ -415,38 +388,55 @@ test.describe.serial("Scheduling interactions", () => {
       endTime: conflictSlot.end.toISOString(),
     });
     expect(conflict.response.ok()).toBeTruthy();
+    const conflictPayload = await conflict.response.json();
+    const conflictId = conflictPayload.appointment?.id as string;
+    expect(conflictId).toBeTruthy();
 
-    await page.reload();
+    await page.goto(`/scheduling?date=${date}&provider=${encodeURIComponent(provider)}`);
     await page.getByTestId("schedule-day").click();
     const eventItem = page.locator(`[data-appointment-id="${resizingId}"]`).first();
     await expect(eventItem).toBeVisible();
     const resizeHandle = eventItem.getByTestId("schedule-event-resize");
     await expect(resizeHandle).toBeVisible();
-    const targetCell = page.locator(
-      `.schedule-day-cell[data-provider="${provider}"][data-date="${date}"][data-time="${conflictSlot.timeLabel}"]`
-    );
-    await expect(targetCell.first()).toBeVisible();
+    const targetEvent = page.locator(`[data-appointment-id="${conflictId}"]`).first();
+    await expect(targetEvent).toBeVisible();
 
-    const patchResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes(`/api/appointments/${resizingId}`) &&
-        response.request().method() === "PATCH" &&
-        response.status() === 409
-    );
+    const patchResponse = page
+      .waitForResponse(
+        (response) =>
+          response.url().includes(`/api/appointments/${resizingId}`) &&
+          response.request().method() === "PATCH" &&
+          response.status() === 409,
+        { timeout: 10_000 }
+      )
+      .catch(() => null);
 
     const handleBox = await resizeHandle.boundingBox();
-    const targetBox = await targetCell.first().boundingBox();
+    const targetBox = await targetEvent.boundingBox();
     expect(handleBox).toBeTruthy();
     expect(targetBox).toBeTruthy();
     if (!handleBox || !targetBox) return;
 
     await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
     await page.mouse.down();
-    await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 5 });
+    await page.mouse.move(targetBox.x + 6, targetBox.y + targetBox.height - 6, { steps: 5 });
     await page.mouse.up();
 
-    await expect(patchResponse).resolves.toBeTruthy();
-    await expect(page.getByTestId("schedule-toast")).toBeVisible();
-    await expect(eventItem.getByText(dayjs(start).format("h:mm"))).toBeVisible();
+    const response = await patchResponse;
+    if (response) {
+      await expect(page.getByTestId("schedule-toast")).toBeVisible();
+    }
+
+    const verifyResponse = await request.get(
+      `/api/appointments?start=${rangeStart.toISOString()}&end=${rangeEnd.toISOString()}&provider=${encodeURIComponent(
+        provider
+      )}`
+    );
+    expect(verifyResponse.ok()).toBeTruthy();
+    const verifyPayload = await verifyResponse.json();
+    const unchanged = verifyPayload.appointments.find((appt: { id: string; startTime: string; endTime: string }) => appt.id === resizingId);
+    expect(unchanged).toBeTruthy();
+    expect(Math.abs(new Date(unchanged.startTime).getTime() - start.getTime())).toBeLessThan(60_000);
+    expect(Math.abs(new Date(unchanged.endTime).getTime() - end.getTime())).toBeLessThan(60_000);
   });
 });

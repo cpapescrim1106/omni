@@ -1,0 +1,5 @@
+First steps
+Importing templates
+Exporting templates to Mandrill
+Switch to the custom templates
+Set up webhooks so Blueprint can monitor mail status

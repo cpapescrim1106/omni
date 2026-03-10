@@ -1,0 +1,4 @@
+Right-clicking on the schedule
+Using the Appointment toolbar button
+Using the Orders toolbar button
+Using the Recalls toolbar button

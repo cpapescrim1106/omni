@@ -1,0 +1,5 @@
+Viewing the list of repairs
+Creating new repair types
+Creating new repair reasons
+Changing repair prices
+Removing repair prices

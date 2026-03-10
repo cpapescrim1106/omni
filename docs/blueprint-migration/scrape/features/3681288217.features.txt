@@ -1,0 +1,5 @@
+How do I enable Interactive SMS?
+Use clinic number
+Choose a new number
+Change or remove number
+Group with parent location

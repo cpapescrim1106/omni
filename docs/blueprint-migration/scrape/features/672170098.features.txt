@@ -1,0 +1,8 @@
+Refresh Method 1: Patient summary tab
+Launch Method 2: Receive payment or deposit
+Launch Method 3: Issuing a refund
+Unapplied CareCredit refunds
+Unapplied CareCredit Refund - Use Method 1
+Unapplied CareCredit Refund - Use Method 2
+Additional information
+Tracking CareCredit Fees

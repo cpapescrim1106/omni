@@ -1,0 +1,4 @@
+Viewing the list of journal entry types
+Creating new journal entry types
+Edit a journal entry type
+Deleting a journal entry type

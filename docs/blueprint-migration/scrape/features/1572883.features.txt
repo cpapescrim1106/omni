@@ -1,0 +1,6 @@
+Viewing the list of roles
+Creating new roles
+Editing role privileges
+Editing role reports
+Editing role names
+Deactivating roles

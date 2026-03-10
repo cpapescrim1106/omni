@@ -1,0 +1,8 @@
+Overview
+Creating manufacturers
+Deactivating manufacturers
+Editing a manufacturer's details
+Account numbers
+Editing account numbers
+Adding account numbers
+Deleting account numbers

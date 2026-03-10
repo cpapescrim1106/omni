@@ -1,7 +1,7 @@
 import { after, before, beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import { PrismaClient } from "@prisma/client";
-import { POST as createRecallRule, PATCH as updateRecallRule } from "../../src/app/api/recall-rules/route";
+import { POST as createRecallRule } from "../../src/app/api/recall-rules/route";
 import { GET as getPatientRecalls } from "../../src/app/api/patients/[id]/recalls/route";
 import { GET as getRecalls } from "../../src/app/api/recalls/route";
 import { PATCH as updateRecall } from "../../src/app/api/recalls/[id]/route";

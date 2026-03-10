@@ -1,0 +1,13 @@
+Overview
+Initial setup
+Processing managed care patients and orders
+Order
+Receive
+Deliver
+Reporting
+Tracking plan expiration dates
+Duration of time
+Specified number of visits
+Marketing search for patients with expiring service plans
+Tagging existing hearing aids as managed care units
+Marketing search for patients with managed care hearing aids

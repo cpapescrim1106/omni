@@ -1,0 +1,16 @@
+Overview
+Sending email address and phone number
+Email address
+Phone number
+Setting up videoconferencing platforms
+Adding a new telehealth platform
+Editing a telehealth platform's details
+Deactivating and reactivating telehealth platforms
+Setting provider-specific URLs
+Adding provider-specific URLs
+Editing provider-specific settings
+Deleting provider-specific settings
+Telehealth appointment invitation emails
+Appointment invitation: used when a telehealth event is created by a user, and when a telehealth event booked online is verified
+Last-minute invitation: used when a telehealth event's videoconference instructions are resent, when a user initiates a videoconference from a non-telehealth event, and when a user initiates a videoconference from the Patient menu
+Telehealth appointment invitation SMS messages

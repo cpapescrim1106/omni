@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
 const SEQUENCE_TIMEOUT_MS = 800;
 const PATIENT_SEARCH_FOCUS_KEY = "accuhear:patient-search-focus";
@@ -21,6 +22,7 @@ export function GlobalShortcuts() {
 
   const shortcuts = [
     { keys: ["P", "P"], label: "Patient search" },
+    { keys: ["P", "N"], label: "New patient" },
     { keys: ["P", "S"], label: "Scheduling" },
     { keys: ["P", "M"], label: "Marketing" },
     { keys: ["P", "R"], label: "Recalls" },
@@ -81,6 +83,17 @@ export function GlobalShortcuts() {
           lastKeyRef.current = null;
           if (pathname !== "/scheduling") {
             router.push("/scheduling");
+          }
+          return;
+        }
+      }
+
+      if (key === "n") {
+        if (last?.key === "p" && withinSequence) {
+          event.preventDefault();
+          lastKeyRef.current = null;
+          if (pathname !== "/patients/new") {
+            router.push("/patients/new");
           }
           return;
         }
@@ -147,16 +160,17 @@ export function GlobalShortcuts() {
                 <div className="section-title text-xs text-brand-ink">Keyboard shortcuts</div>
                 <div className="text-sm text-ink-muted">Press ? then ? to open this menu.</div>
               </div>
-              <button
+              <Button
                 type="button"
-                className="tab-pill bg-surface-2"
+                variant="secondary"
+                size="sm"
                 onClick={() => {
                   setIsShortcutMenuOpen(false);
                   lastKeyRef.current = null;
                 }}
               >
                 Close
-              </button>
+              </Button>
             </div>
             <div className="shortcut-modal-list">
               {shortcuts.map((shortcut) => (

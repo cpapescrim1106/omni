@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Omni UI Variant 03</title>
+  <style>
+    :root {
+      --bg: #08111a;
+      --shell: #0c1823;
+      --panel: #101f2d;
+      --panel-2: #0d1a26;
+      --line: #203246;
+      --line-2: #2b435d;
+      --text: #e2edf8;
+      --muted: #8ea4b7;
+      --soft: #6f8799;
+      --accent: #24b3c7;
+      --accent-2: #c2f07a;
+      --warn: #f7a34d;
+      --danger: #ff7f73;
+      --nav: #07121b;
+      --radius: 16px;
+      --shadow: 0 16px 34px rgba(0, 0, 0, 0.35);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top right, rgba(36,179,199,.1), transparent 24%),
+        radial-gradient(circle at bottom left, rgba(194,240,122,.08), transparent 26%),
+        #08111a;
+      color: var(--text);
+      font: 12.5px/1.4 "Segoe UI", "Helvetica Neue", sans-serif;
+    }
+    a { color: inherit; text-decoration: none; }
+    .app { min-height: 100vh; display: grid; grid-template-columns: 220px minmax(0,1fr); gap: 12px; padding: 12px; }
+    .sidebar, .topbar, .hero, .panel { border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow); }
+    .sidebar {
+      background: linear-gradient(180deg, #08111a 0%, #07101a 100%);
+      padding: 16px 12px; display:flex; flex-direction:column; gap: 14px;
+    }
+    .brand { display:flex; align-items:center; gap:10px; }
+    .mark { width: 40px; height: 40px; border-radius: 14px; background: linear-gradient(135deg, #1dbfd0, #183853); display:grid; place-items:center; font-weight:800; }
+    .caps, th { font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--soft); }
+    .nav { display:grid; gap: 4px; }
+    .nav a { padding: 9px 11px; border-radius: 12px; display:flex; justify-content:space-between; align-items:center; }
+    .nav a.active, .nav a:hover { background: #0f1c29; border:1px solid var(--line-2); }
+    .sidebox { margin-top:auto; padding: 12px; border-radius: 14px; background:#0b1722; border:1px solid var(--line); }
+    .main { display:grid; gap: 10px; min-width: 0; }
+    .topbar, .hero, .panel { background: rgba(12,24,35,.92); }
+    .topbar {
+      display:grid; grid-template-columns: minmax(0,1fr) auto auto;
+      gap: 8px; align-items:center; padding: 10px;
+    }
+    .search, .control, textarea {
+      width:100%; border:1px solid var(--line-2); background:#081520; color:var(--text);
+      border-radius: 11px; padding: 9px 10px; font: inherit;
+    }
+    .btn, .chip, .tab {
+      border:1px solid var(--line-2); background:#0a1520; color:var(--text);
+      border-radius:999px; padding:7px 10px; font: inherit; font-weight:700;
+    }
+    .btn.primary { background: var(--accent); color:#032830; border-color: var(--accent); }
+    .chip.good { color:#09291f; background: var(--accent-2); border-color: var(--accent-2); }
+    .chip.warn { color:#301400; background: var(--warn); border-color: var(--warn); }
+    .hero { padding: 10px; }
+    .hero-grid { display:grid; grid-template-columns: minmax(0,1.25fr) minmax(360px,.95fr); gap: 10px; }
+    .patient { display:grid; grid-template-columns: 52px minmax(0,1fr); gap: 12px; }
+    .avatar { width:52px; height:52px; border-radius: 16px; background:#143246; color:#61d4df; display:grid; place-items:center; font-size:18px; font-weight:800; }
+    .title { font-size: 22px; font-weight:800; line-height: 1.05; }
+    .sub { color: var(--muted); }
+    .toolbar { display:flex; flex-wrap:wrap; gap: 8px; margin-top: 8px; }
+    .hero-side { display:grid; gap: 8px; grid-template-columns: repeat(4, minmax(0,1fr)); }
+    .metric { border:1px solid var(--line); border-radius: 12px; background:#0a1520; padding: 9px; }
+    .metric strong { display:block; font-size:15px; margin-top:4px; }
+    .workspace { display:grid; grid-template-columns: minmax(0,1.7fr) minmax(300px,.8fr); gap: 10px; }
+    .stack { display:grid; gap: 10px; min-width: 0; }
+    .panel { padding: 10px; }
+    .head { display:flex; justify-content:space-between; gap:8px; align-items:center; margin-bottom: 8px; }
+    .head strong { font-size: 15px; }
+    .console-row {
+      display:grid; grid-template-columns: 130px minmax(0,1fr) auto; gap: 10px;
+      align-items:center; padding: 8px 0; border-top:1px solid #172838;
+    }
+    .console-row:first-of-type { border-top:0; }
+    .form-grid { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; }
+    label { display:block; margin-bottom:4px; color: var(--muted); font-weight:700; }
+    textarea { min-height: 78px; resize: vertical; }
+    table { width:100%; border-collapse: collapse; }
+    th, td { text-align:left; padding: 7px 5px; border-top:1px solid #172838; vertical-align: top; }
+    .ledger td { white-space: nowrap; }
+    .feed { display:grid; gap:8px; }
+    .feed-item { padding-top:8px; border-top:1px solid #172838; }
+    .feed-item:first-child { border-top:0; padding-top:0; }
+    .split { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
+    @media (max-width: 1180px) {
+      .hero-grid, .workspace, .topbar { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    }
+    @media (max-width: 860px) {
+      .app { grid-template-columns: 1fr; }
+      .hero-side, .split { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="mark">O</div>
+        <div><div style="font-weight:800">Omni</div><div class="caps">Ops console</div></div>
+      </div>
+      <nav class="nav">
+        <a class="active" href="#">Patients <span>124</span></a>
+        <a href="#">Scheduling <span>18</span></a>
+        <a href="#">Orders <span>9</span></a>
+        <a href="#">Messages <span>14</span></a>
+        <a href="#">Recalls <span>32</span></a>
+        <a href="#">Journal <span>7</span></a>
+        <a href="#">Sales <span>5</span></a>
+        <a href="#">Documents</a>
+        <a href="#">Settings</a>
+      </nav>
+      <div class="sidebox">
+        <div class="caps">Queue pressure</div>
+        <div style="font-size:22px; font-weight:800; margin-top:2px">Moderate</div>
+        <div class="sub">Two fittings behind target. One insurance callback due by 3 PM.</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <input class="search" value="Command search: patient, serial, claim, note, payment" aria-label="Search" />
+        <div style="display:flex; gap:8px; flex-wrap:wrap">
+          <button class="btn">Ctrl K shortcuts</button>
+          <button class="btn">Room 4</button>
+        </div>
+        <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap">
+          <button class="btn">Queue view</button>
+          <button class="btn primary">Close visit</button>
+        </div>
+      </div>
+
+      <section class="hero">
+        <div class="hero-grid">
+          <div class="patient">
+            <div class="avatar">EP</div>
+            <div>
+              <div class="caps">Patient / active room</div>
+              <div class="title">Eleanor Pena</div>
+              <div class="sub">MRN 004821 · 06/17/1954 · Spring Hill East · Dr. Maya Singh · Medicare Advantage PPO</div>
+              <div class="toolbar">
+                <span class="chip good">In room 4</span>
+                <span class="chip">Right receiver swap</span>
+                <span class="chip warn">$148 due today</span>
+                <span class="chip">Recall target Apr 5</span>
+              </div>
+              <div class="toolbar">
+                <button class="btn primary">Check device log</button>
+                <button class="btn">Open invoice</button>
+                <button class="btn">Text patient</button>
+                <button class="btn">Print forms</button>
+              </div>
+            </div>
+          </div>
+          <div class="hero-side">
+            <div class="metric"><div class="caps">Wear time</div><strong>9.4 hr</strong></div>
+            <div class="metric"><div class="caps">Balance</div><strong>$148</strong></div>
+            <div class="metric"><div class="caps">Payer holds</div><strong>1</strong></div>
+            <div class="metric"><div class="caps">Open msgs</div><strong>3</strong></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="workspace">
+        <div class="stack">
+          <section class="panel">
+            <div class="head">
+              <div><div class="caps">Command strip</div><strong>Operator-critical next steps</strong></div>
+              <div style="display:flex; gap:6px"><span class="tab">Summary</span><span class="tab">Devices</span><span class="tab">Claims</span><span class="tab">Log</span></div>
+            </div>
+            <div class="console-row"><div class="caps">Action 01</div><div><strong>Confirm right-side receiver stock</strong><div class="sub">Cabinet B2 shows 2-85 in silver grey. Verify before fitting starts.</div></div><span class="chip">room prep</span></div>
+            <div class="console-row"><div class="caps">Action 02</div><div><strong>Collect earmold balance</strong><div class="sub">Invoice 44818 remains patient-responsible. Post payment or add hardship note.</div></div><span class="chip warn">billing</span></div>
+            <div class="console-row"><div class="caps">Action 03</div><div><strong>Schedule 30-day recall</strong><div class="sub">Use Apr 5 / 10:30 AM preferred slot if patient accepts.</div></div><span class="chip">follow-up</span></div>
+          </section>
+
+          <section class="panel">
+            <div class="head">
+              <div><div class="caps">Structured encounter</div><strong>High-speed charting grid</strong></div>
+              <button class="btn">Save draft</button>
+            </div>
+            <div class="form-grid">
+              <div><label>Visit</label><select class="control"><option>Follow-up fitting</option></select></div>
+              <div><label>Provider</label><select class="control"><option>Dr. Maya Singh</option></select></div>
+              <div><label>Priority</label><select class="control"><option>Comfort / retention</option></select></div>
+              <div><label>Recall</label><select class="control"><option>30 days</option></select></div>
+              <div><label>Left channel</label><input class="control" value="No changes" /></div>
+              <div><label>Right channel</label><input class="control" value="2-85 receiver installed" /></div>
+              <div><label>Otoscopy</label><input class="control" value="Clear bilateral" /></div>
+              <div><label>Teach-back</label><input class="control" value="App volume + charger" /></div>
+            </div>
+            <div style="margin-top:8px"><label>Clinical notes</label><textarea>Speech-in-noise program moved to manual quick access. Right HF sharpness reduced by 1 dB. Patient demonstrated receiver insertion with mirror coaching and repeated cleaning steps accurately.</textarea></div>
+          </section>
+
+          <section class="panel">
+            <div class="head">
+              <div><div class="caps">Active order ledger</div><strong>Fulfillment and warranty state</strong></div>
+              <button class="btn">PO-28741</button>
+            </div>
+            <table class="ledger">
+              <thead><tr><th>Item</th><th>Status</th><th>Serial</th><th>Warranty</th><th>Finance</th></tr></thead>
+              <tbody>
+                <tr><td>Intent 2 miniRITE R / right</td><td><span class="chip good">Received</span></td><td>1AB92384</td><td>01/19/2029</td><td>Deposit posted</td></tr>
+                <tr><td>Intent 2 miniRITE R / left</td><td><span class="chip good">Delivered</span></td><td>1AB92377</td><td>01/19/2029</td><td>Claim pending</td></tr>
+                <tr><td>Earmold remake</td><td><span class="chip warn">Manufacturer review</span></td><td>RM-8821</td><td>Remake window</td><td>Included</td></tr>
+              </tbody>
+            </table>
+          </section>
+        </div>
+
+        <div class="stack">
+          <section class="panel">
+            <div class="head">
+              <div><div class="caps">Mini dashboards</div><strong>Fast scan KPIs</strong></div>
+            </div>
+            <div class="split">
+              <div class="metric"><div class="caps">No-show risk</div><strong>Low</strong></div>
+              <div class="metric"><div class="caps">Claim age</div><strong>11 days</strong></div>
+              <div class="metric"><div class="caps">Last audiogram</div><strong>Dec 18</strong></div>
+              <div class="metric"><div class="caps">Inbound calls</div><strong>1 today</strong></div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="head">
+              <div><div class="caps">Event log</div><strong>Recent timeline</strong></div>
+              <button class="btn">Full journal</button>
+            </div>
+            <div class="feed">
+              <div class="feed-item"><strong>08:52</strong><div class="sub">Patient arrival confirmed by phone. Requested text summary after visit.</div></div>
+              <div class="feed-item"><strong>Mar 7</strong><div class="sub">Claim packet updated with signed delivery receipt and programming sheet.</div></div>
+              <div class="feed-item"><strong>Mar 6</strong><div class="sub">Insurance auth correction still pending from secondary payer.</div></div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="head">
+              <div><div class="caps">Closeout surface</div><strong>Patient communication</strong></div>
+            </div>
+            <div><label>Contact preference</label><select class="control"><option>Text then call</option></select></div>
+            <div style="margin-top:8px"><label>After-visit message</label><textarea>Bring charger and connected phone to next visit. Replace wax filters weekly. Call earlier if right aid loosens again after one week of wear.</textarea></div>
+            <div class="toolbar">
+              <button class="btn">Send text</button>
+              <button class="btn">Print AVS</button>
+              <button class="btn primary">Finalize</button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+<!-- Variant Selector -->
+<div id="variant-selector" style="position:fixed;bottom:16px;right:16px;z-index:99999;font-family:'Space Grotesk',system-ui,sans-serif;">
+  <button id="vs-toggle" style="width:40px;height:40px;border-radius:12px;border:1px solid rgba(38,34,96,0.12);background:rgba(255,255,255,0.95);backdrop-filter:blur(8px);box-shadow:0 2px 12px rgba(0,0,0,0.1);cursor:pointer;font-size:14px;font-weight:600;color:#262260;display:flex;align-items:center;justify-content:center;transition:all 0.2s;" title="Switch variant">⟐</button>
+  <div id="vs-panel" style="display:none;position:absolute;bottom:48px;right:0;background:rgba(255,255,255,0.97);backdrop-filter:blur(12px);border:1px solid rgba(38,34,96,0.1);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.12);padding:8px;min-width:220px;">
+    <div style="padding:4px 10px 8px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:#9a95ad;">Variant Selector</div>
+    <div id="vs-links"></div>
+    <div style="border-top:1px solid rgba(38,34,96,0.06);margin-top:4px;padding-top:4px;">
+      <a href="README.html" style="display:block;padding:6px 10px;font-size:12px;color:#6c687d;text-decoration:none;border-radius:8px;transition:background 0.15s;" onmouseover="this.style.background='rgba(31,149,184,0.06)'" onmouseout="this.style.background='transparent'">📋 Comparison Notes</a>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var currentVariant = 3;
+  var variants = [
+    {n:1, label:'Dense Clinical Shell'},
+    {n:2, label:'Compact Warm Workspace'},
+    {n:3, label:'Tabbed Record Panels'},
+    {n:4, label:'Split-View Dashboard'},
+    {n:5, label:'Dark Dense Console'},
+    {n:6, label:'Command-Bar Workspace'},
+    {n:7, label:'Split-Pane Console'},
+    {n:8, label:'Clinical Ops Board'},
+    {n:9, label:'Data-Grid Workspace'},
+    {n:10,label:'Ultra-Dense Expert'}
+  ];
+  var linksEl = document.getElementById('vs-links');
+  variants.forEach(function(v){
+    var isCurrent = v.n === currentVariant;
+    var a = document.createElement('a');
+    a.href = 'variant-' + String(v.n).padStart(2,'0') + '.html';
+    a.style.cssText = 'display:flex;align-items:center;gap:8px;padding:5px 10px;font-size:12px;text-decoration:none;border-radius:8px;transition:background 0.15s;color:' + (isCurrent ? '#1f95b8' : '#2f2c3f') + ';font-weight:' + (isCurrent ? '600' : '400') + ';background:' + (isCurrent ? 'rgba(31,149,184,0.08)' : 'transparent');
+    a.innerHTML = '<span style="width:22px;height:22px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;background:' + (isCurrent ? 'rgba(31,149,184,0.15)' : 'rgba(38,34,96,0.06)') + ';color:' + (isCurrent ? '#1f95b8' : '#6c687d') + '">' + String(v.n).padStart(2,'0') + '</span>' + v.label;
+    if(!isCurrent){
+      a.onmouseover = function(){ this.style.background='rgba(31,149,184,0.06)'; };
+      a.onmouseout = function(){ this.style.background='transparent'; };
+    }
+    linksEl.appendChild(a);
+  });
+  var toggle = document.getElementById('vs-toggle');
+  var panel = document.getElementById('vs-panel');
+  toggle.textContent = String(currentVariant).padStart(2,'0');
+  toggle.addEventListener('click', function(){
+    var open = panel.style.display !== 'none';
+    panel.style.display = open ? 'none' : 'block';
+    toggle.style.background = open ? 'rgba(255,255,255,0.95)' : 'rgba(31,149,184,0.1)';
+    toggle.style.borderColor = open ? 'rgba(38,34,96,0.12)' : 'rgba(31,149,184,0.3)';
+    toggle.style.color = open ? '#262260' : '#1f95b8';
+  });
+  document.addEventListener('click', function(e){
+    if(!document.getElementById('variant-selector').contains(e.target)){
+      panel.style.display = 'none';
+      toggle.style.background = 'rgba(255,255,255,0.95)';
+      toggle.style.borderColor = 'rgba(38,34,96,0.12)';
+      toggle.style.color = '#262260';
+    }
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape'){ panel.style.display = 'none'; }
+    if((e.key === '.' || e.key === '>') && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA'){
+      var next = currentVariant < 10 ? currentVariant + 1 : 1;
+      window.location.href = 'variant-' + String(next).padStart(2,'0') + '.html';
+    }
+    if((e.key === ',' || e.key === '<') && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA'){
+      var prev = currentVariant > 1 ? currentVariant - 1 : 10;
+      window.location.href = 'variant-' + String(prev).padStart(2,'0') + '.html';
+    }
+  });
+})();
+</script>
+</body>
+</html>

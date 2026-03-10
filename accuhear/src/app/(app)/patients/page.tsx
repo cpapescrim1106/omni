@@ -1,4 +1,6 @@
 import { PatientSearch } from "@/components/patient-search";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 const pinBoard = [
   {
@@ -31,8 +33,8 @@ export default function PatientsPage() {
             <div key={item.name} className="rounded-2xl bg-white/80 p-4 shadow-[0_10px_20px_rgba(24,20,50,0.08)]">
               <div className="text-sm font-semibold text-ink-strong">{item.name}</div>
               <div className="text-xs text-ink-muted">{item.note}</div>
-              <div className="mt-2 text-[11px] uppercase tracking-[0.2em] text-brand-ink">
-                {item.status}
+              <div className="mt-2">
+                <Badge variant={item.status === "Needs action" ? "warning" : "blue"}>{item.status}</Badge>
               </div>
             </div>
           ))}
@@ -49,9 +51,9 @@ export default function PatientsPage() {
               <div className="section-title text-xs text-brand-ink">Recent Activity</div>
               <div className="text-sm text-ink-muted">Latest updates across patient records.</div>
             </div>
-            <button className="rounded-full border border-transparent bg-brand-orange/10 px-4 py-2 text-xs font-semibold text-brand-ink">
+            <Button variant="secondary" size="sm">
               View all
-            </button>
+            </Button>
           </div>
           <div className="mt-4 grid gap-3">
             {[

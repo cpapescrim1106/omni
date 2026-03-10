@@ -1,0 +1,7 @@
+Overview of the patient browser
+Opening a patient's file
+Viewing patients at other locations
+Viewing inactive or deceased patients
+Viewing QuickAdds
+Viewing patients with upcoming appointments
+Viewing patients flagged as Cash sales only

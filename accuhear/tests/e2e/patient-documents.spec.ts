@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import dayjs from "dayjs";
 import type { PrismaClient } from "@prisma/client";
 import { ensureTestDatabaseUrl } from "../helpers/test-database";
+import { ensurePatientSearchSchema } from "../../src/lib/patient-search";
 
 ensureTestDatabaseUrl();
 
@@ -50,6 +51,7 @@ test.describe.serial("Patient documents", () => {
   test.beforeAll(async () => {
     const { PrismaClient } = await import("@prisma/client");
     prisma = new PrismaClient();
+    await ensurePatientSearchSchema();
   });
 
   test.afterAll(async () => {
@@ -72,24 +74,16 @@ test.describe.serial("Patient documents", () => {
     const hipaaRow = page.getByTestId("documents-row").filter({ hasText: `HIPAA Consent ${e2eTag}` });
     await expect(hipaaRow).toBeVisible();
     await expect(hipaaRow).toContainText("Consent");
-    await expect(hipaaRow).toContainText(dayjs(uploadedAt).format("MMM D, YYYY"));
+    await expect(hipaaRow).toContainText(dayjs(uploadedAt).format("MM/DD/YYYY"));
   });
 
-  test("upload modal opens and validates required fields", async ({ page }) => {
+  test("scan actions are available", async ({ page }) => {
     const patient = await createPatient("Upload");
     createdPatients.push(patient.id);
 
     await page.goto(`/patients/${patient.id}?tab=Documents`);
-    await page.getByTestId("documents-upload").click();
-
-    const modal = page.getByTestId("documents-upload-modal");
-    await expect(modal).toBeVisible();
-    await expect(page.getByTestId("documents-upload-title")).toBeVisible();
-    await expect(page.getByTestId("documents-upload-category")).toBeVisible();
-    await expect(page.getByTestId("documents-upload-file")).toBeVisible();
-
-    await page.getByTestId("documents-upload-submit").click();
-    await expect(page.getByTestId("documents-upload-error")).toBeVisible();
+    await expect(page.getByTestId("documents-scan-id")).toBeVisible();
+    await expect(page.getByTestId("documents-scan-insurance")).toBeVisible();
   });
 
   test("row click opens preview stub", async ({ page }) => {
@@ -128,7 +122,7 @@ test.describe.serial("Patient documents", () => {
     ]);
 
     await page.goto(`/patients/${patient.id}?tab=Documents`);
-    await page.getByTestId("documents-filter-category").selectOption("Insurance");
+    await page.getByTestId("documents-filter-category-insurance").click();
 
     await expect(page.getByTestId("documents-row")).toHaveCount(2);
     const rows = page.getByTestId("documents-row");

@@ -1,0 +1,10 @@
+Viewing the list of text snippets
+Creating new text snippets categories
+Creating new text snippet strings
+Adding text snippet string from patient journal tab
+Editing text snippet categories
+Editing text snippet string
+Editing text snippet string from patient journal tab
+Deleting text snippet categories
+Deleting text snippet string
+Delete text snippet string from patient journal tab

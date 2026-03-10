@@ -1,0 +1,5 @@
+Overview
+Setting a patient's insurer/3rd party payer
+Scanning insurance/3rd party payer cards
+Editing patient insurers/3rd party payers
+Deleting patient insurers/3rd party payers

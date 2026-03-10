@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omni UI Variants — Exploration Sets 1 & 2</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Open+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --brand-ink: #262260;
+    --brand-blue: #1f95b8;
+    --brand-orange: #dd6f26;
+    --surface-0: #f8f5f0;
+    --surface-1: #f3efe8;
+    --surface-2: #ece6dd;
+    --surface-3: #e6dfd4;
+    --ink-strong: #1b1a27;
+    --ink: #2f2c3f;
+    --ink-muted: #6c687d;
+    --ink-soft: #9a95ad;
+    --success: #1e9b6c;
+    --warning: #c87a2f;
+    --danger: #c94646;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Open Sans', sans-serif;
+    background: var(--surface-0);
+    color: var(--ink);
+    line-height: 1.6;
+    padding: 32px 48px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  h1, h2, h3 { font-family: 'Space Grotesk', sans-serif; color: var(--ink-strong); }
+  h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+  .subtitle { font-size: 14px; color: var(--ink-muted); margin-bottom: 32px; }
+  h2 { font-size: 18px; font-weight: 600; margin: 32px 0 12px; border-bottom: 2px solid var(--surface-3); padding-bottom: 8px; }
+  h3 { font-size: 15px; font-weight: 600; margin: 20px 0 8px; color: var(--brand-ink); }
+
+  p { margin-bottom: 12px; font-size: 14px; }
+
+  .variant-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 20px 0;
+  }
+
+  .variant-card {
+    background: white;
+    border: 1px solid rgba(38, 34, 96, 0.08);
+    border-radius: 16px;
+    padding: 20px;
+    transition: box-shadow 0.2s;
+  }
+  .variant-card:hover { box-shadow: 0 4px 20px rgba(38, 34, 96, 0.08); }
+
+  .variant-card .number {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--brand-blue);
+    margin-bottom: 4px;
+  }
+  .variant-card .name {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ink-strong);
+    margin-bottom: 8px;
+  }
+  .variant-card .desc { font-size: 13px; color: var(--ink-muted); line-height: 1.5; }
+  .variant-card a {
+    display: inline-block;
+    margin-top: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--brand-blue);
+    text-decoration: none;
+    padding: 4px 12px;
+    border: 1px solid rgba(31, 149, 184, 0.25);
+    border-radius: 999px;
+    transition: all 0.15s;
+  }
+  .variant-card a:hover { background: rgba(31, 149, 184, 0.08); }
+
+  .tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 2px 8px;
+    border-radius: 999px;
+    margin-right: 4px;
+    margin-bottom: 4px;
+  }
+  .tag.density { background: rgba(31, 149, 184, 0.12); color: var(--brand-blue); }
+  .tag.workflow { background: rgba(30, 155, 108, 0.12); color: var(--success); }
+  .tag.component { background: rgba(221, 111, 38, 0.12); color: var(--brand-orange); }
+  .tag.layout { background: rgba(38, 34, 96, 0.10); color: var(--brand-ink); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin: 16px 0;
+  }
+  th {
+    text-align: left;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-soft);
+    padding: 8px 12px;
+    border-bottom: 2px solid var(--surface-3);
+  }
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(38, 34, 96, 0.06);
+    vertical-align: top;
+  }
+  tr:hover td { background: rgba(31, 149, 184, 0.03); }
+
+  .strength { color: var(--success); font-weight: 600; }
+  .concern { color: var(--warning); font-weight: 600; }
+
+  .verdict {
+    background: white;
+    border: 1px solid rgba(38, 34, 96, 0.08);
+    border-left: 3px solid var(--brand-blue);
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px 0;
+  }
+  .verdict p { margin-bottom: 8px; }
+
+  .set-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+
+  ul { margin: 8px 0 12px 20px; font-size: 13px; }
+  li { margin-bottom: 4px; }
+
+  .divider { border: none; border-top: 1px solid var(--surface-3); margin: 32px 0; }
+</style>
+</head>
+<body>
+
+<h1>Omni UI Variant Exploration</h1>
+<p class="subtitle">Comparative analysis of 10 UI system directions for the Omni clinical workspace &mdash; March 2026</p>
+
+<!-- ════════════════════════════════════════ SET 2 ════════════════════════════════════════ -->
+
+<div class="set-label">Exploration Set 2 &mdash; Variants 06&ndash;10</div>
+<h2>Operational Patterns &amp; Component Strategies</h2>
+<p>This second set deliberately explores <strong>advanced operational patterns</strong>: command-bar workflows, split-pane layouts, board views, data-grid-first surfaces, and ultra-dense expert panels. Each variant tests a different hypothesis about how clinical staff interact with dense operational data.</p>
+
+<div class="variant-grid">
+
+  <div class="variant-card">
+    <div class="number">Variant 06</div>
+    <div class="name">Command-Bar Workspace</div>
+    <div>
+      <span class="tag workflow">Workflow</span>
+      <span class="tag component">Command Palette</span>
+    </div>
+    <p class="desc">Cmd+K-first navigation with a persistent command input as the primary interaction mode. Collapsible icon-only left nav (48px &rarr; 180px on hover). Segmented control tabs. 60/40 split between patient record and context panel. Keyboard shortcut hints throughout. Audiogram canvas rendering.</p>
+    <p class="desc"><strong>Tests:</strong> Can keyboard-driven navigation reduce clicks and accelerate repeated daily tasks for power users?</p>
+    <a href="variant-06.html">View Variant 06 &rarr;</a>
+  </div>
+
+  <div class="variant-card">
+    <div class="number">Variant 07</div>
+    <div class="name">Dense Split-Pane Operator Console</div>
+    <div>
+      <span class="tag layout">Tri-Pane</span>
+      <span class="tag density">Density</span>
+    </div>
+    <p class="desc">Email-client-style tri-pane layout: 280px patient list + flex detail + 300px inspector. Stacked utility toolbars with context-specific action rows. List-detail selection model. 52px patient cards in the list pane. Activity timeline in inspector. 14 patients visible in list.</p>
+    <p class="desc"><strong>Tests:</strong> Can simultaneous list + detail + context views eliminate the need to navigate back and forth between patient records?</p>
+    <a href="variant-07.html">View Variant 07 &rarr;</a>
+  </div>
+
+  <div class="variant-card">
+    <div class="number">Variant 08</div>
+    <div class="name">High-Legibility Clinical Operations Board</div>
+    <div>
+      <span class="tag workflow">Kanban</span>
+      <span class="tag component">Drawer</span>
+    </div>
+    <p class="desc">Kanban-style operations board with 4 columns: Waiting &rarr; In Progress &rarr; Pending Action &rarr; Completed. Color-coded urgency borders. Inline action buttons on Pending cards. Right drawer (390px) with full patient context on card click. Stats bar showing daily KPIs. Designed for wall-monitor or desk use.</p>
+    <p class="desc"><strong>Tests:</strong> Can a board view give clinic managers real-time operational awareness of daily patient flow?</p>
+    <a href="variant-08.html">View Variant 08 &rarr;</a>
+  </div>
+
+  <div class="variant-card">
+    <div class="number">Variant 09</div>
+    <div class="name">Compact Data-Grid-First Workspace</div>
+    <div>
+      <span class="tag density">Grid</span>
+      <span class="tag component">Bulk Actions</span>
+    </div>
+    <p class="desc">Full-width spreadsheet-style data grid as the primary interface. 20 patient rows visible, 13 columns, 34px row height. Filter pill chains, column sorting, density toggle. Inline row expansion for detail cards. Bulk action bar on multi-select. Frozen columns on horizontal scroll. Pagination controls.</p>
+    <p class="desc"><strong>Tests:</strong> Can a spreadsheet-density grid serve as the primary workspace for staff who manage large patient populations?</p>
+    <a href="variant-09.html">View Variant 09 &rarr;</a>
+  </div>
+
+  <div class="variant-card" style="grid-column: 1 / -1;">
+    <div class="number">Variant 10</div>
+    <div class="name">Ultra-Dense Expert Mode with Layered Utility Surfaces</div>
+    <div>
+      <span class="tag density">Max Density</span>
+      <span class="tag layout">4-Panel</span>
+      <span class="tag component">Accordion</span>
+      <span class="tag workflow">Keyboard</span>
+    </div>
+    <p class="desc">Bloomberg Terminal-inspired 4-panel grid layout (50/50 &times; 55/45). Top-left: patient data table with sub-views. Top-right: collapsible accordion context panel with 6 sections including canvas audiogram. Bottom-left: filterable activity feed (18 entries). Bottom-right: quick action grid + KPI strip + compressed schedule timeline with live "now" marker. Panel resize handles. Keyboard shortcuts overlay via ? key. 200+ data points visible without scrolling.</p>
+    <p class="desc"><strong>Tests:</strong> Can an ultra-dense multi-panel layout serve expert users who need maximum information visibility and minimal context-switching?</p>
+    <a href="variant-10.html">View Variant 10 &rarr;</a>
+  </div>
+
+</div>
+
+<!-- ════════════════════════════════════════ COMPARISON ════════════════════════════════════════ -->
+
+<h2>Comparative Analysis</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th style="width:60px">Variant</th>
+      <th style="width:180px">Primary Pattern</th>
+      <th>Problem It Solves</th>
+      <th>Strongest Component Ideas</th>
+      <th style="width:100px">Verdict</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>06</strong></td>
+      <td>Command-bar + segmented tabs</td>
+      <td>Too many clicks to navigate between patients, actions, and views. Mouse travel overhead.</td>
+      <td>Persistent command input, keyboard shortcut hints inline, icon-only expanding nav, segmented controls replacing tabs</td>
+      <td><span class="strength">Strong</span></td>
+    </tr>
+    <tr>
+      <td><strong>07</strong></td>
+      <td>Tri-pane list-detail-inspector</td>
+      <td>Context switching between patient list and individual records. Losing context when drilling in.</td>
+      <td>Stacked utility toolbars, inspector panel, compact patient list cards, context-aware action bars</td>
+      <td><span class="strength">Strong</span></td>
+    </tr>
+    <tr>
+      <td><strong>08</strong></td>
+      <td>Kanban operations board</td>
+      <td>No real-time visibility into daily clinic flow. Managers can't see bottlenecks at a glance.</td>
+      <td>Status-colored card borders, inline action buttons on pending cards, stats bar, slide-in drawer for detail</td>
+      <td><span class="strength">Strong</span></td>
+    </tr>
+    <tr>
+      <td><strong>09</strong></td>
+      <td>Spreadsheet-grade data grid</td>
+      <td>Can't scan large patient populations efficiently. Batch operations require too many steps.</td>
+      <td>Filter pill chains, inline row expansion, bulk action bar, density toggle, frozen columns</td>
+      <td><span class="concern">Situational</span></td>
+    </tr>
+    <tr>
+      <td><strong>10</strong></td>
+      <td>4-panel dense terminal</td>
+      <td>Expert users need maximum simultaneous information. Every navigation step costs time.</td>
+      <td>4-panel grid, accordion context sections, compressed timeline, activity feed, quick action grid, keyboard overlay</td>
+      <td><span class="concern">Ambitious</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>What Each Variant Is Testing</h2>
+
+<h3>Variant 06 &mdash; Command-Bar Workspace</h3>
+<p><strong>Hypothesis:</strong> A command-palette-first interaction model can dramatically reduce navigation overhead for experienced users who perform the same 10&ndash;15 actions hundreds of times per week.</p>
+<ul>
+  <li><span class="strength">Strength:</span> The always-visible command bar + keyboard shortcuts could be the single biggest efficiency gain across all variants</li>
+  <li><span class="strength">Strength:</span> Icon-only expanding nav saves horizontal space while remaining discoverable</li>
+  <li><span class="concern">Risk:</span> Requires user adoption of keyboard-first habits; less discoverable for new staff</li>
+</ul>
+
+<h3>Variant 07 &mdash; Dense Split-Pane Console</h3>
+<p><strong>Hypothesis:</strong> Showing list, detail, and context simultaneously eliminates the most common navigation pattern (list &rarr; detail &rarr; back to list) that wastes time in clinical workflows.</p>
+<ul>
+  <li><span class="strength">Strength:</span> The tri-pane model is proven in email/IDE contexts and maps well to patient list workflows</li>
+  <li><span class="strength">Strength:</span> Stacked utility toolbars put context-specific actions exactly where they're needed</li>
+  <li><span class="concern">Risk:</span> Three panes may feel cramped on screens below 1400px</li>
+</ul>
+
+<h3>Variant 08 &mdash; Clinical Operations Board</h3>
+<p><strong>Hypothesis:</strong> A Kanban-style board view gives clinic managers real-time operational visibility that traditional list/detail views cannot provide.</p>
+<ul>
+  <li><span class="strength">Strength:</span> Uniquely solves the "clinic flow awareness" problem that no other variant addresses</li>
+  <li><span class="strength">Strength:</span> Could serve as a wall-mounted display in reception or provider areas</li>
+  <li><span class="strength">Strength:</span> Inline actions on Pending cards reduce clicks for the most common follow-up actions</li>
+  <li><span class="concern">Risk:</span> Most useful as an additional view mode, not a replacement for record-focused work</li>
+</ul>
+
+<h3>Variant 09 &mdash; Data-Grid Workspace</h3>
+<p><strong>Hypothesis:</strong> Staff who manage large patient populations (recalls, marketing, billing) work most efficiently in a spreadsheet-like interface with batch operations.</p>
+<ul>
+  <li><span class="strength">Strength:</span> Filter pill chains and bulk actions are genuinely useful for population management tasks</li>
+  <li><span class="strength">Strength:</span> Highest raw data density per pixel of any variant</li>
+  <li><span class="concern">Risk:</span> Feels more like a reporting tool than a clinical workspace; may not suit appointment-driven daily workflows</li>
+</ul>
+
+<h3>Variant 10 &mdash; Ultra-Dense Expert Mode</h3>
+<p><strong>Hypothesis:</strong> Expert users who spend 8+ hours daily in the system benefit from maximum simultaneous information display with minimal navigation.</p>
+<ul>
+  <li><span class="strength">Strength:</span> The activity feed + schedule timeline in the bottom panels solve real awareness needs</li>
+  <li><span class="strength">Strength:</span> Accordion context panel packs massive information into a manageable surface</li>
+  <li><span class="strength">Strength:</span> Keyboard shortcuts overlay shows the system is designed for mastery</li>
+  <li><span class="concern">Risk:</span> Learning curve is steep; 4 simultaneous panels may overwhelm even experienced users</li>
+  <li><span class="concern">Risk:</span> Individual panels are necessarily smaller, reducing usability of each one</li>
+</ul>
+
+<hr class="divider">
+
+<h2>Cross-Set Recommendations</h2>
+
+<div class="verdict">
+  <h3>Strongest Individual Variants (Set 2)</h3>
+  <p><strong>Variant 07</strong> (Tri-Pane) and <strong>Variant 08</strong> (Operations Board) are the strongest standalone directions. V07 solves the core daily workflow problem (list &rarr; detail navigation) with a proven pattern. V08 solves a unique problem (clinic flow visibility) that no other variant addresses.</p>
+</div>
+
+<div class="verdict">
+  <h3>Best Component Ideas to Extract</h3>
+  <ul>
+    <li><strong>Command bar from V06</strong> &mdash; should be added to ANY chosen direction as a Cmd+K overlay</li>
+    <li><strong>Filter pill chains from V09</strong> &mdash; superior to dropdown-heavy filter UIs for complex queries</li>
+    <li><strong>Stacked utility toolbars from V07</strong> &mdash; context-specific action rows eliminate toolbar clutter</li>
+    <li><strong>Stats bar from V08</strong> &mdash; daily KPIs in a single compact row is universally useful</li>
+    <li><strong>Accordion context panel from V10</strong> &mdash; packs dense contextual info without overwhelming</li>
+    <li><strong>Bulk action bar from V09</strong> &mdash; essential for any list/grid view handling batch operations</li>
+    <li><strong>Inline card actions from V08</strong> &mdash; reduces clicks by putting common actions directly on data items</li>
+  </ul>
+</div>
+
+<div class="verdict">
+  <h3>Recommended Synthesis</h3>
+  <p>The strongest production direction would combine:</p>
+  <ul>
+    <li><strong>V07&rsquo;s tri-pane layout</strong> as the default workspace for patient-focused daily work</li>
+    <li><strong>V06&rsquo;s command bar</strong> as a global overlay (Cmd+K) available in every view</li>
+    <li><strong>V08&rsquo;s board view</strong> as an alternate view mode for operations/scheduling contexts</li>
+    <li><strong>V09&rsquo;s filter pills + bulk actions</strong> for list/grid views and population management</li>
+    <li><strong>V10&rsquo;s activity feed + compressed timeline</strong> as optional bottom panels</li>
+  </ul>
+  <p>This composite approach gives different user roles their optimal workspace while maintaining the unified Omni shell and design language.</p>
+</div>
+
+<hr class="divider">
+
+<p style="font-size: 12px; color: var(--ink-soft); text-align: center; margin-top: 24px;">
+  Omni UI Exploration &mdash; Set 2 generated March 9, 2026
+</p>
+
+</body>
+</html>

@@ -1,0 +1,15 @@
+Overview
+User privilege
+Automatic journal entries
+Creating an online forms request in connection with an appointment
+For appointments booked online, forms may send with minimal Blueprint OMS user involvement
+If the appointment is created by the online booking system for someone with an existing patient file
+If the appointment is created by the online booking system for someone without an existing patient file
+If the appointment has associated forms and is being created by a Blueprint OMS user
+Any existing appointment on the schedule
+Creating an online forms request from the Patient drop-down menu
+Creating an online forms request from the online forms module
+What the recipient of an online forms request email sees
+If the request was sent in connection with an existing patient/QuickAdd without a primary alternate contact
+If the request was sent in connection with an existing patient/QuickAdd with a primary alternate contact
+If the request was not sent in connection with an existing patient/QuickAdd

@@ -1,0 +1,14 @@
+Overview
+Viewing campaigns
+Creating new manual campaigns
+Editing manual campaign names
+Editing manual campaign criteria
+Selecting the output format
+Send email
+Print
+Exporting manual campaigns to Excel Exporting campaigns to Excel
+Cloning manual campaigns
+Marking manual campaigns as sent
+For manual campaigns that include physical correspondence
+For email-only manual campaigns
+Deleting manual campaigns

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 const quickLinks = [
   { label: "New Patient", href: "/patients/new" },
@@ -10,19 +10,7 @@ const quickLinks = [
 ];
 
 export function Topbar() {
-  const router = useRouter();
   const pathname = usePathname();
-
-  function handleNewAppointment() {
-    const opener = (window as unknown as { __openAppointmentModal?: () => void }).__openAppointmentModal;
-    if (typeof opener === "function") {
-      opener();
-      return;
-    }
-    if (pathname !== "/scheduling") {
-      router.push("/scheduling?new=1");
-    }
-  }
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 rounded-[22px] bg-white/70 px-6 py-4 shadow-[0_18px_32px_rgba(24,20,50,0.08)]">

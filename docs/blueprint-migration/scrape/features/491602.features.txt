@@ -1,0 +1,12 @@
+Overview
+QuickBooks
+Manually creating a new patient file
+Checkboxes
+Selecting the patient's Healthcare providers. family physician
+Selecting the patient's assigned location
+Setting preferred language
+Marking patients cash sales only
+Saving new patient information Saving new patient information
+Updating patient information
+CANADA ONLY
+Marking patients inactive or deceased Marking patients inactive or deceased

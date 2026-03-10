@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omni — Variant 09: Compact Data-Grid-First Workspace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --brand-ink: #262260;
+    --brand-blue: #1f95b8;
+    --brand-orange: #dd6f26;
+    --surface-0: #f8f5f0;
+    --surface-1: #f3efe8;
+    --surface-2: #ece6dd;
+    --surface-3: #e6dfd4;
+    --surface-4: #dfd6c8;
+    --ink-strong: #1b1a27;
+    --ink: #2f2c3f;
+    --ink-muted: #6c687d;
+    --ink-soft: #9a95ad;
+    --success: #1e9b6c;
+    --warning: #c87a2f;
+    --danger: #c94646;
+    --white: #ffffff;
+    --row-hover: rgba(243, 239, 232, 0.8);
+    --row-selected: rgba(31, 149, 184, 0.08);
+    --brand-blue-light: rgba(31, 149, 184, 0.12);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    font-family: 'Open Sans', sans-serif;
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--surface-0);
+  }
+
+  .app {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* ─── Left Nav Rail ─── */
+  .nav-rail {
+    width: 48px;
+    min-width: 48px;
+    background: var(--brand-ink);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 0;
+    gap: 2px;
+    z-index: 100;
+  }
+
+  .nav-logo {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: var(--brand-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--white);
+  }
+
+  .nav-item {
+    width: 40px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    cursor: pointer;
+    position: relative;
+    color: rgba(255,255,255,0.5);
+    transition: all 0.15s ease;
+  }
+
+  .nav-item:hover {
+    color: rgba(255,255,255,0.85);
+    background: rgba(255,255,255,0.08);
+  }
+
+  .nav-item.active {
+    color: var(--white);
+    background: var(--brand-blue-light);
+    border-left: 3px solid var(--brand-blue);
+    border-radius: 0 10px 10px 0;
+    margin-left: -4px;
+    padding-left: 4px;
+  }
+
+  .nav-item svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+  }
+
+  .nav-item .tooltip {
+    position: absolute;
+    left: 52px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--ink-strong);
+    color: var(--white);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    z-index: 200;
+  }
+
+  .nav-item:hover .tooltip { opacity: 1; }
+
+  .nav-spacer { flex: 1; }
+
+  /* ─── Main Content ─── */
+  .main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  /* ─── Top Bar ─── */
+  .top-bar {
+    height: 38px;
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    background: var(--white);
+    border-bottom: 1px solid var(--surface-2);
+  }
+
+  .top-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .view-selector {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--ink-strong);
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 8px;
+    transition: background 0.12s;
+  }
+
+  .view-selector:hover { background: var(--surface-1); }
+
+  .view-selector svg {
+    width: 12px;
+    height: 12px;
+    fill: var(--ink-muted);
+  }
+
+  .view-divider {
+    width: 1px;
+    height: 20px;
+    background: var(--surface-3);
+    margin: 0 4px;
+  }
+
+  .saved-views {
+    display: flex;
+    gap: 2px;
+  }
+
+  .saved-view {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-muted);
+    padding: 4px 10px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all 0.12s;
+    white-space: nowrap;
+  }
+
+  .saved-view:hover { background: var(--surface-1); color: var(--ink); }
+  .saved-view.active { background: var(--brand-blue-light); color: var(--brand-blue); font-weight: 600; }
+
+  .top-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .tb-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-muted);
+    padding: 4px 10px;
+    border-radius: 8px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+
+  .tb-btn:hover { background: var(--surface-1); color: var(--ink); }
+
+  .tb-btn svg {
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
+  }
+
+  .btn-new-patient {
+    background: var(--brand-blue);
+    color: var(--white);
+    font-weight: 600;
+    border-radius: 999px;
+    padding: 5px 14px;
+    font-size: 12px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: background 0.15s;
+  }
+
+  .btn-new-patient:hover { background: #1a8aab; }
+
+  .user-avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    background: var(--brand-orange);
+    color: var(--white);
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  /* ─── Filter Bar ─── */
+  .filter-bar {
+    height: 32px;
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    background: var(--surface-0);
+    border-bottom: 1px solid var(--surface-2);
+  }
+
+  .filter-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .filter-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: var(--white);
+    border: 1px solid var(--surface-3);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ink);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color 0.12s;
+  }
+
+  .filter-pill:hover { border-color: var(--brand-blue); }
+
+  .filter-pill .label { color: var(--ink-muted); }
+
+  .filter-pill .remove {
+    width: 14px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    font-size: 10px;
+    color: var(--ink-soft);
+    margin-left: 2px;
+    transition: all 0.12s;
+  }
+
+  .filter-pill .remove:hover { background: var(--danger); color: var(--white); }
+
+  .add-filter-btn {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: none;
+    border: 1px dashed var(--surface-3);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+
+  .add-filter-btn:hover { border-color: var(--brand-blue); color: var(--brand-blue); }
+
+  .filter-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 11px;
+    color: var(--ink-muted);
+    white-space: nowrap;
+  }
+
+  .sort-indicator { font-weight: 500; }
+  .record-count { font-weight: 600; color: var(--ink); }
+
+  /* ─── Quick Stats ─── */
+  .quick-stats {
+    height: 24px;
+    min-height: 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 16px;
+    background: var(--white);
+    border-bottom: 1px solid var(--surface-2);
+    font-size: 11px;
+  }
+
+  .stat-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--ink-muted);
+  }
+
+  .stat-item .stat-value {
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .stat-item .stat-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+  }
+
+  /* ─── Grid Container ─── */
+  .grid-wrapper {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+    background: var(--white);
+  }
+
+  .data-grid {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    min-width: 1200px;
+  }
+
+  /* Column widths */
+  .col-select { width: 36px; }
+  .col-name { width: 170px; }
+  .col-dob { width: 90px; }
+  .col-age { width: 44px; }
+  .col-phone { width: 110px; }
+  .col-insurance { width: 120px; }
+  .col-provider { width: 110px; }
+  .col-last-visit { width: 90px; }
+  .col-next-appt { width: 100px; }
+  .col-status { width: 82px; }
+  .col-hearing-aid { width: 130px; }
+  .col-balance { width: 72px; }
+  .col-actions { width: 100px; }
+
+  /* ─── Table Head ─── */
+  .data-grid thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .data-grid thead th {
+    height: 30px;
+    padding: 0 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-muted);
+    text-align: left;
+    background: var(--surface-1);
+    border-bottom: 1px solid var(--surface-3);
+    user-select: none;
+    white-space: nowrap;
+    cursor: pointer;
+    position: relative;
+  }
+
+  .data-grid thead th:hover { color: var(--ink); }
+
+  .data-grid thead th .th-inner {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .data-grid thead th .sort-icon {
+    font-size: 10px;
+    opacity: 0.4;
+  }
+
+  .data-grid thead th.sorted .sort-icon { opacity: 1; color: var(--brand-blue); }
+
+  .data-grid thead th .filter-icon {
+    width: 10px;
+    height: 10px;
+    opacity: 0;
+    transition: opacity 0.12s;
+    fill: var(--ink-muted);
+    margin-left: auto;
+  }
+
+  .data-grid thead th:hover .filter-icon { opacity: 0.6; }
+
+  /* Frozen columns */
+  .data-grid th.frozen,
+  .data-grid td.frozen {
+    position: sticky;
+    z-index: 5;
+    background: inherit;
+  }
+
+  .data-grid th.frozen-0,
+  .data-grid td.frozen-0 {
+    left: 0;
+  }
+
+  .data-grid th.frozen-1,
+  .data-grid td.frozen-1 {
+    left: 36px;
+    box-shadow: 2px 0 4px rgba(0,0,0,0.04);
+  }
+
+  .data-grid thead th.frozen { background: var(--surface-1); }
+
+  /* ─── Table Body ─── */
+  .data-grid tbody tr {
+    cursor: pointer;
+    transition: background 0.08s;
+  }
+
+  .data-grid tbody tr:nth-child(even) { background: var(--white); }
+  .data-grid tbody tr:nth-child(odd) { background: var(--surface-0); }
+  .data-grid tbody tr:hover { background: var(--row-hover) !important; }
+  .data-grid tbody tr.selected { background: var(--row-selected) !important; }
+  .data-grid tbody tr.expanded { background: var(--row-selected) !important; }
+
+  .data-grid tbody td {
+    height: 34px;
+    padding: 0 8px;
+    font-size: 12px;
+    color: var(--ink);
+    border-bottom: 1px solid var(--surface-2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+  }
+
+  .data-grid tbody td.frozen { border-bottom: 1px solid var(--surface-2); }
+
+  /* ─── Cell Styles ─── */
+  .cell-checkbox {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .cell-checkbox input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--brand-blue);
+    cursor: pointer;
+  }
+
+  .cell-name {
+    font-weight: 600;
+    color: var(--ink-strong);
+  }
+
+  .cell-name:hover { color: var(--brand-blue); }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+  }
+
+  .status-active .status-dot { background: var(--success); }
+  .status-active { color: var(--success); }
+  .status-inactive .status-dot { background: var(--ink-soft); }
+  .status-inactive { color: var(--ink-soft); }
+  .status-pending .status-dot { background: var(--warning); }
+  .status-pending { color: var(--warning); }
+
+  .insurance-cell {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .ins-verified {
+    color: var(--success);
+    font-size: 13px;
+  }
+
+  .ins-expired {
+    color: var(--warning);
+    font-size: 13px;
+  }
+
+  .balance-overdue {
+    color: var(--danger);
+    font-weight: 600;
+  }
+
+  .balance-clear {
+    color: var(--ink-muted);
+  }
+
+  .hearing-aid-cell {
+    font-size: 11px;
+    color: var(--ink-muted);
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ─── Row Actions ─── */
+  .row-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity 0.12s;
+  }
+
+  .data-grid tbody tr:hover .row-actions { opacity: 1; }
+
+  .row-action-btn {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: none;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--ink-muted);
+    transition: all 0.12s;
+  }
+
+  .row-action-btn:hover {
+    background: var(--brand-blue-light);
+    color: var(--brand-blue);
+  }
+
+  .row-action-btn svg {
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
+  }
+
+  /* ─── Row Expansion ─── */
+  .expansion-row td {
+    padding: 0 !important;
+    height: auto !important;
+    border-bottom: 2px solid var(--brand-blue) !important;
+    background: var(--surface-0) !important;
+  }
+
+  .expansion-content {
+    display: flex;
+    gap: 24px;
+    padding: 12px 16px 12px 44px;
+    max-height: 200px;
+  }
+
+  .expansion-col {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .expansion-col h4 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+
+  .expansion-field {
+    display: flex;
+    gap: 8px;
+    font-size: 12px;
+    line-height: 1.7;
+  }
+
+  .expansion-field .ef-label {
+    color: var(--ink-muted);
+    min-width: 70px;
+    font-weight: 500;
+  }
+
+  .expansion-field .ef-value {
+    color: var(--ink);
+  }
+
+  .expansion-visits {
+    font-size: 12px;
+    line-height: 1.8;
+  }
+
+  .expansion-visits .visit-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--ink-muted);
+  }
+
+  .expansion-visits .visit-date { font-weight: 500; color: var(--ink); min-width: 72px; }
+
+  .expansion-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .exp-action-btn {
+    padding: 4px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--surface-3);
+    background: var(--white);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.12s;
+  }
+
+  .exp-action-btn:hover { border-color: var(--brand-blue); color: var(--brand-blue); }
+
+  .exp-close-btn {
+    position: absolute;
+    right: 12px;
+    top: 10px;
+    width: 22px;
+    height: 22px;
+    border: none;
+    background: var(--surface-2);
+    border-radius: 999px;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink-muted);
+    transition: all 0.12s;
+  }
+
+  .exp-close-btn:hover { background: var(--danger); color: var(--white); }
+
+  .expansion-inner { position: relative; }
+
+  /* ─── Bulk Actions Bar ─── */
+  .bulk-bar {
+    height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 16px;
+    background: var(--brand-ink);
+    color: var(--white);
+    font-size: 12px;
+    position: fixed;
+    bottom: 20px;
+    left: 64px;
+    right: 16px;
+    border-radius: 12px;
+    z-index: 50;
+    box-shadow: 0 8px 24px rgba(38, 34, 96, 0.3);
+    transform: translateY(60px);
+    opacity: 0;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+  }
+
+  .bulk-bar.visible {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .bulk-count {
+    font-weight: 700;
+    margin-right: 4px;
+    padding-right: 12px;
+    border-right: 1px solid rgba(255,255,255,0.2);
+  }
+
+  .bulk-actions {
+    display: flex;
+    gap: 4px;
+  }
+
+  .bulk-btn {
+    padding: 4px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: none;
+    color: var(--white);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+
+  .bulk-btn:hover { background: rgba(255,255,255,0.15); }
+
+  .bulk-clear {
+    margin-left: auto;
+    padding: 4px 12px;
+    border: none;
+    background: none;
+    color: rgba(255,255,255,0.6);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .bulk-clear:hover { color: var(--white); }
+
+  /* ─── Pagination ─── */
+  .pagination-bar {
+    height: 30px;
+    min-height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    background: var(--white);
+    border-top: 1px solid var(--surface-2);
+    font-size: 11px;
+    color: var(--ink-muted);
+  }
+
+  .pagination-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .page-size-select {
+    border: 1px solid var(--surface-3);
+    border-radius: 6px;
+    padding: 1px 4px;
+    font-size: 11px;
+    color: var(--ink);
+    background: var(--white);
+    cursor: pointer;
+  }
+
+  .pagination-right {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .page-btn {
+    width: 24px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--surface-3);
+    border-radius: 6px;
+    background: var(--white);
+    font-size: 11px;
+    color: var(--ink-muted);
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+
+  .page-btn:hover { border-color: var(--brand-blue); color: var(--brand-blue); }
+  .page-btn.active { background: var(--brand-blue); color: var(--white); border-color: var(--brand-blue); }
+  .page-btn.disabled { opacity: 0.3; pointer-events: none; }
+
+  /* ─── Bottom Status ─── */
+  .status-bar {
+    height: 20px;
+    min-height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    background: var(--surface-1);
+    border-top: 1px solid var(--surface-2);
+    font-size: 10px;
+    color: var(--ink-soft);
+  }
+
+  .status-bar-left, .status-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  /* ─── Scrollbar ─── */
+  .grid-wrapper::-webkit-scrollbar { width: 8px; height: 8px; }
+  .grid-wrapper::-webkit-scrollbar-track { background: var(--surface-1); }
+  .grid-wrapper::-webkit-scrollbar-thumb { background: var(--surface-4); border-radius: 999px; }
+  .grid-wrapper::-webkit-scrollbar-thumb:hover { background: var(--ink-soft); }
+
+  /* Density compact override */
+  .density-compact .data-grid tbody td { height: 28px; font-size: 11px; }
+  .density-compact .data-grid thead th { height: 26px; font-size: 10px; }
+
+  /* Hidden utility */
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- ─── Left Nav Rail ─── -->
+  <nav class="nav-rail">
+    <div class="nav-logo">O</div>
+    <div class="nav-item active" data-nav="patients">
+      <svg viewBox="0 0 24 24"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
+      <span class="tooltip">Patients</span>
+    </div>
+    <div class="nav-item" data-nav="scheduling">
+      <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM9 10H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z"/></svg>
+      <span class="tooltip">Scheduling</span>
+    </div>
+    <div class="nav-item" data-nav="orders">
+      <svg viewBox="0 0 24 24"><path d="M18 6h-2c0-2.2-1.8-4-4-4S8 3.8 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h2v2h2V8h4v2h2V8h2v12z"/></svg>
+      <span class="tooltip">Orders</span>
+    </div>
+    <div class="nav-item" data-nav="marketing">
+      <svg viewBox="0 0 24 24"><path d="M18 11v2h4v-2h-4zm-2 6.61c.96.71 2.21 1.65 3.2 2.39.49-.67 1-1.36 1.49-2.03-1-.74-2.24-1.68-3.2-2.39-.49.67-1 1.35-1.49 2.03zM20.49 5.01L19 3.01c-1 .74-2.24 1.68-3.2 2.39.49.67 1 1.35 1.49 2.03 1-.74 2.24-1.68 3.2-2.42zM6 10H2v4h4l5 5V5L6 10z"/></svg>
+      <span class="tooltip">Marketing</span>
+    </div>
+    <div class="nav-item" data-nav="recalls">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+      <span class="tooltip">Recalls</span>
+    </div>
+    <div class="nav-item" data-nav="messages">
+      <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
+      <span class="tooltip">Messages</span>
+    </div>
+    <div class="nav-item" data-nav="journal">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>
+      <span class="tooltip">Journal</span>
+    </div>
+    <div class="nav-item" data-nav="sales">
+      <svg viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1H6.5c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.88-4.4z"/></svg>
+      <span class="tooltip">Sales</span>
+    </div>
+    <div class="nav-item" data-nav="documents">
+      <svg viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+      <span class="tooltip">Documents</span>
+    </div>
+    <div class="nav-spacer"></div>
+    <div class="nav-item" data-nav="settings">
+      <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+      <span class="tooltip">Settings</span>
+    </div>
+  </nav>
+
+  <!-- ─── Main Content ─── -->
+  <div class="main-content">
+    <!-- Top Bar -->
+    <div class="top-bar">
+      <div class="top-bar-left">
+        <div class="view-selector">
+          All Patients
+          <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z" fill="currentColor"/></svg>
+        </div>
+        <div class="view-divider"></div>
+        <div class="saved-views">
+          <div class="saved-view">Recent</div>
+          <div class="saved-view active">Today's Appointments</div>
+          <div class="saved-view">Needs Follow-up</div>
+          <div class="saved-view">Active Orders</div>
+        </div>
+      </div>
+      <div class="top-bar-right">
+        <button class="tb-btn">
+          <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+          Columns
+        </button>
+        <button class="tb-btn" id="densityToggle">
+          <svg viewBox="0 0 24 24"><path d="M3 15h18v-2H3v2zm0 4h18v-2H3v2zm0-8h18V9H3v2zm0-6v2h18V5H3z"/></svg>
+          Compact
+        </button>
+        <button class="tb-btn">
+          <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+          Export
+        </button>
+        <button class="btn-new-patient">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+          New Patient
+        </button>
+        <div class="user-avatar">CW</div>
+      </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+      <div class="filter-bar-left">
+        <div class="filter-pill"><span class="label">Status</span> = Active <span class="remove">&times;</span></div>
+        <div class="filter-pill"><span class="label">Provider</span> = Any <span class="remove">&times;</span></div>
+        <div class="filter-pill"><span class="label">Insurance</span> = Verified <span class="remove">&times;</span></div>
+        <div class="filter-pill"><span class="label">Last Visit</span> &gt; 30 days ago <span class="remove">&times;</span></div>
+        <button class="add-filter-btn">+ Add Filter</button>
+      </div>
+      <div class="filter-bar-right">
+        <span class="sort-indicator">Sorted by Last Visit &darr;</span>
+        <span class="record-count">247 patients</span>
+      </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="quick-stats">
+      <div class="stat-item"><span class="stat-dot" style="background:var(--success)"></span> Active: <span class="stat-value">198</span></div>
+      <div class="stat-item"><span class="stat-dot" style="background:var(--ink-soft)"></span> Inactive: <span class="stat-value">32</span></div>
+      <div class="stat-item"><span class="stat-dot" style="background:var(--warning)"></span> Needs Follow-up: <span class="stat-value">17</span></div>
+      <div class="stat-item"><span class="stat-dot" style="background:var(--brand-blue)"></span> Today's Appointments: <span class="stat-value">24</span></div>
+    </div>
+
+    <!-- Data Grid -->
+    <div class="grid-wrapper" id="gridWrapper">
+      <table class="data-grid" id="dataGrid">
+        <colgroup>
+          <col class="col-select">
+          <col class="col-name">
+          <col class="col-dob">
+          <col class="col-age">
+          <col class="col-phone">
+          <col class="col-insurance">
+          <col class="col-provider">
+          <col class="col-last-visit">
+          <col class="col-next-appt">
+          <col class="col-status">
+          <col class="col-hearing-aid">
+          <col class="col-balance">
+          <col class="col-actions">
+        </colgroup>
+        <thead>
+          <tr>
+            <th class="frozen frozen-0"><div class="cell-checkbox"><input type="checkbox" id="selectAll"></div></th>
+            <th class="frozen frozen-1"><div class="th-inner">Name <span class="sort-icon">&#8597;</span></div></th>
+            <th><div class="th-inner">DOB <span class="sort-icon">&#8597;</span></div></th>
+            <th><div class="th-inner">Age <span class="sort-icon">&#8597;</span></div></th>
+            <th><div class="th-inner">Phone <span class="sort-icon">&#8597;</span></div></th>
+            <th><div class="th-inner">Insurance <span class="sort-icon">&#8597;</span></div></th>
+            <th><div class="th-inner">Provider <span class="sort-icon">&#8597;</span></div></th>
+            <th class="sorted"><div class="th-inner">Last Visit <span class="sort-icon">&darr;</span></div></th>
+            <th><div class="th-inner">Next Appt <span class="sort-icon">&#8597;</span></div></th>
+            <th><div class="th-inner">Status <span class="sort-icon">&#8597;</span></div></th>
+            <th><div class="th-inner">Hearing Aid <span class="sort-icon">&#8597;</span></div></th>
+            <th><div class="th-inner">Balance <span class="sort-icon">&#8597;</span></div></th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination-bar">
+      <div class="pagination-left">
+        Showing <strong>1–50</strong> of <strong>247</strong>
+        &nbsp;|&nbsp; Rows per page
+        <select class="page-size-select">
+          <option>25</option>
+          <option selected>50</option>
+          <option>100</option>
+        </select>
+      </div>
+      <div class="pagination-right">
+        <button class="page-btn disabled">&lsaquo;</button>
+        <button class="page-btn active">1</button>
+        <button class="page-btn">2</button>
+        <button class="page-btn">3</button>
+        <button class="page-btn">4</button>
+        <button class="page-btn">5</button>
+        <button class="page-btn">&rsaquo;</button>
+      </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <div class="status-bar-left">
+        <span>AccuHear Audiology — Downtown Clinic</span>
+        <span>|</span>
+        <span>Dr. Sarah Mitchell</span>
+      </div>
+      <div class="status-bar-right">
+        <span>Last sync: 2 min ago</span>
+        <span style="width:6px;height:6px;border-radius:999px;background:var(--success);display:inline-block"></span>
+        <span>Connected</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk Actions Bar -->
+<div class="bulk-bar" id="bulkBar">
+  <span class="bulk-count"><span id="bulkCount">0</span> selected</span>
+  <div class="bulk-actions">
+    <button class="bulk-btn">Send Message</button>
+    <button class="bulk-btn">Schedule</button>
+    <button class="bulk-btn">Export</button>
+    <button class="bulk-btn">Assign Provider</button>
+    <button class="bulk-btn">Change Status</button>
+  </div>
+  <button class="bulk-clear" id="bulkClear">Clear selection</button>
+</div>
+
+<script>
+const patients = [
+  { name: "Margaret Thompson", dob: "04/12/1948", age: 77, phone: "(512) 555-0142", insurance: "Medicare", insStatus: "verified", provider: "Dr. Mitchell", lastVisit: "03/07/2026", nextAppt: "03/14/2026", status: "active", aid: "Oticon Real 1 miniRITE", balance: 0 },
+  { name: "Robert Chen", dob: "11/03/1955", age: 70, phone: "(512) 555-0198", insurance: "Aetna PPO", insStatus: "verified", provider: "Dr. Mitchell", lastVisit: "03/05/2026", nextAppt: "—", status: "active", aid: "Phonak Audéo L-90", balance: 245.00 },
+  { name: "Dorothy Williams", dob: "07/22/1940", age: 85, phone: "(512) 555-0267", insurance: "Medicare Adv", insStatus: "verified", provider: "Dr. Patel", lastVisit: "03/02/2026", nextAppt: "03/16/2026", status: "active", aid: "ReSound Nexia 9", balance: 0 },
+  { name: "James Kowalski", dob: "02/18/1952", age: 74, phone: "(512) 555-0334", insurance: "BCBS", insStatus: "expired", provider: "Dr. Mitchell", lastVisit: "02/28/2026", nextAppt: "03/12/2026", status: "active", aid: "Starkey Genesis AI 24", balance: 1250.00 },
+  { name: "Helen Park", dob: "09/05/1945", age: 80, phone: "(512) 555-0401", insurance: "UHC", insStatus: "verified", provider: "Dr. Patel", lastVisit: "02/25/2026", nextAppt: "—", status: "pending", aid: "—", balance: 0 },
+  { name: "William O'Brien", dob: "12/30/1958", age: 67, phone: "(512) 555-0478", insurance: "Cigna", insStatus: "verified", provider: "Dr. Mitchell", lastVisit: "02/20/2026", nextAppt: "03/20/2026", status: "active", aid: "Widex Moment Sheer 440", balance: 0 },
+  { name: "Patricia Gutierrez", dob: "03/14/1950", age: 75, phone: "(512) 555-0545", insurance: "Medicare", insStatus: "verified", provider: "Dr. Nguyen", lastVisit: "02/18/2026", nextAppt: "03/18/2026", status: "active", aid: "Phonak Audéo L-70", balance: 89.50 },
+  { name: "Richard Davis", dob: "06/27/1943", age: 82, phone: "(512) 555-0612", insurance: "Tricare", insStatus: "verified", provider: "Dr. Patel", lastVisit: "02/15/2026", nextAppt: "—", status: "active", aid: "Oticon Real 2 miniRITE", balance: 0 },
+  { name: "Barbara Johansson", dob: "01/09/1947", age: 79, phone: "(512) 555-0689", insurance: "Aetna PPO", insStatus: "verified", provider: "Dr. Mitchell", lastVisit: "02/10/2026", nextAppt: "03/10/2026", status: "active", aid: "ReSound Nexia 7", balance: 475.00 },
+  { name: "Thomas Nakamura", dob: "08/16/1960", age: 65, phone: "(512) 555-0756", insurance: "BCBS", insStatus: "verified", provider: "Dr. Nguyen", lastVisit: "02/05/2026", nextAppt: "—", status: "active", aid: "Signia AX 7", balance: 0 },
+  { name: "Mary Sullivan", dob: "05/03/1938", age: 87, phone: "(512) 555-0823", insurance: "Medicare", insStatus: "verified", provider: "Dr. Patel", lastVisit: "01/30/2026", nextAppt: "03/15/2026", status: "active", aid: "Starkey Genesis AI 20", balance: 0 },
+  { name: "George Petrov", dob: "10/21/1953", age: 72, phone: "(512) 555-0890", insurance: "UHC", insStatus: "expired", provider: "Dr. Mitchell", lastVisit: "01/25/2026", nextAppt: "—", status: "inactive", aid: "Phonak Naída P-90", balance: 1890.00 },
+  { name: "Elizabeth Carter", dob: "04/07/1956", age: 69, phone: "(512) 555-0967", insurance: "Cigna", insStatus: "verified", provider: "Dr. Nguyen", lastVisit: "01/20/2026", nextAppt: "03/22/2026", status: "active", aid: "Oticon Real 1 miniRITE", balance: 0 },
+  { name: "Charles Washington", dob: "07/29/1941", age: 84, phone: "(512) 555-1034", insurance: "Medicare Adv", insStatus: "verified", provider: "Dr. Patel", lastVisit: "01/15/2026", nextAppt: "—", status: "active", aid: "Widex Moment Sheer 330", balance: 125.00 },
+  { name: "Linda Yamamoto", dob: "11/12/1949", age: 76, phone: "(512) 555-1101", insurance: "BCBS", insStatus: "verified", provider: "Dr. Mitchell", lastVisit: "01/10/2026", nextAppt: "03/24/2026", status: "active", aid: "ReSound Nexia 9", balance: 0 },
+  { name: "Frank Moretti", dob: "02/04/1962", age: 64, phone: "(512) 555-1178", insurance: "Aetna PPO", insStatus: "verified", provider: "Dr. Nguyen", lastVisit: "01/05/2026", nextAppt: "—", status: "pending", aid: "—", balance: 0 },
+  { name: "Nancy Blackwood", dob: "09/18/1944", age: 81, phone: "(512) 555-1245", insurance: "Medicare", insStatus: "verified", provider: "Dr. Patel", lastVisit: "12/28/2025", nextAppt: "03/11/2026", status: "active", aid: "Phonak Audéo L-50", balance: 0 },
+  { name: "Donald Reeves", dob: "06/01/1957", age: 68, phone: "(512) 555-1312", insurance: "Tricare", insStatus: "verified", provider: "Dr. Mitchell", lastVisit: "12/20/2025", nextAppt: "—", status: "inactive", aid: "Starkey Genesis AI 16", balance: 340.00 },
+  { name: "Sandra Kowalczyk", dob: "12/14/1951", age: 74, phone: "(512) 555-1389", insurance: "UHC", insStatus: "verified", provider: "Dr. Nguyen", lastVisit: "12/15/2025", nextAppt: "03/28/2026", status: "active", aid: "Oticon Real 2 miniRITE", balance: 0 },
+  { name: "Arthur Finch", dob: "03/26/1946", age: 79, phone: "(512) 555-1456", insurance: "Medicare", insStatus: "verified", provider: "Dr. Patel", lastVisit: "12/10/2025", nextAppt: "—", status: "active", aid: "Signia AX 5", balance: 0 }
+];
+
+const expansionData = {
+  email: ["mthompson@email.com","rchen@email.com","dwilliams@email.com","jkowalski@email.com","hpark@email.com","wobrien@email.com","pgutierrez@email.com","rdavis@email.com","bjohansson@email.com","tnakamura@email.com","msullivan@email.com","gpetrov@email.com","ecarter@email.com","cwashington@email.com","lyamamoto@email.com","fmoretti@email.com","nblackwood@email.com","dreeves@email.com","skowalczyk@email.com","afinch@email.com"],
+  address: ["1204 Oak Hill Dr, Austin TX","890 Elm St, Round Rock TX","2311 Maple Ave, Austin TX","456 Pine Rd, Cedar Park TX","778 River Ln, Austin TX","1090 Summit Dr, Pflugerville TX","3421 Sunset Blvd, Austin TX","567 Lakeview Ct, Lakeway TX","1823 Birch St, Austin TX","4502 Canyon Rd, Round Rock TX","912 Willow Way, Georgetown TX","2100 Cedar Ln, Austin TX","3356 Hilltop Dr, Austin TX","701 Valley View, Leander TX","1455 Crescent St, Austin TX","2890 Park Ave, Cedar Park TX","561 Garden Rd, Austin TX","1738 Ridge Dr, Round Rock TX","4010 Meadow Ln, Austin TX","823 Stone Creek, Pflugerville TX"],
+  visits: [
+    ["03/07/2026 — Routine follow-up","02/01/2026 — Hearing aid adjustment","12/10/2025 — Annual audiogram"],
+    ["03/05/2026 — Fitting appointment","01/15/2026 — Audiogram","11/20/2025 — Initial consultation"],
+    ["03/02/2026 — Battery replacement","01/22/2026 — Routine check","10/15/2025 — Hearing evaluation"],
+    ["02/28/2026 — Device repair","01/10/2026 — Follow-up","11/05/2025 — Fitting"],
+    ["02/25/2026 — Initial consultation","—","—"],
+    ["02/20/2026 — Annual audiogram","12/15/2025 — Routine check","09/20/2025 — Adjustment"],
+    ["02/18/2026 — Follow-up","01/05/2026 — Adjustment","10/28/2025 — Fitting"],
+    ["02/15/2026 — Battery check","12/01/2025 — Routine","08/15/2025 — Annual"],
+    ["02/10/2026 — Audiogram","11/30/2025 — Follow-up","09/10/2025 — Fitting"],
+    ["02/05/2026 — Follow-up","12/20/2025 — Annual audiogram","10/01/2025 — Consultation"],
+    ["01/30/2026 — Adjustment","11/15/2025 — Routine","08/20/2025 — Fitting"],
+    ["01/25/2026 — Repair inquiry","10/10/2025 — Follow-up","07/15/2025 — Annual"],
+    ["01/20/2026 — Routine check","11/01/2025 — Audiogram","08/05/2025 — Fitting"],
+    ["01/15/2026 — Battery replacement","10/20/2025 — Follow-up","07/25/2025 — Annual"],
+    ["01/10/2026 — Adjustment","10/05/2025 — Routine","07/10/2025 — Fitting"],
+    ["01/05/2026 — Initial consultation","—","—"],
+    ["12/28/2025 — Routine check","10/15/2025 — Adjustment","07/20/2025 — Fitting"],
+    ["12/20/2025 — Follow-up","09/25/2025 — Routine","06/10/2025 — Annual"],
+    ["12/15/2025 — Audiogram","09/10/2025 — Fitting","06/01/2025 — Consultation"],
+    ["12/10/2025 — Routine check","09/01/2025 — Adjustment","05/15/2025 — Annual"]
+  ]
+};
+
+const tbody = document.getElementById('tableBody');
+let expandedRow = null;
+let selectedRows = new Set();
+
+function renderTable() {
+  tbody.innerHTML = '';
+  patients.forEach((p, i) => {
+    const tr = document.createElement('tr');
+    tr.dataset.index = i;
+    tr.innerHTML = `
+      <td class="frozen frozen-0"><div class="cell-checkbox"><input type="checkbox" class="row-cb" data-idx="${i}"></div></td>
+      <td class="frozen frozen-1"><span class="cell-name">${p.name}</span></td>
+      <td>${p.dob}</td>
+      <td>${p.age}</td>
+      <td>${p.phone}</td>
+      <td><div class="insurance-cell"><span class="${p.insStatus === 'verified' ? 'ins-verified' : 'ins-expired'}">${p.insStatus === 'verified' ? '&#10003;' : '&#9888;'}</span> ${p.insurance}</div></td>
+      <td>${p.provider}</td>
+      <td>${p.lastVisit}</td>
+      <td>${p.nextAppt}</td>
+      <td><span class="status-badge status-${p.status}"><span class="status-dot"></span>${p.status.charAt(0).toUpperCase() + p.status.slice(1)}</span></td>
+      <td><span class="hearing-aid-cell" title="${p.aid}">${p.aid}</span></td>
+      <td><span class="${p.balance > 0 ? 'balance-overdue' : 'balance-clear'}">${p.balance > 0 ? '$' + p.balance.toFixed(2) : '—'}</span></td>
+      <td>
+        <div class="row-actions">
+          <button class="row-action-btn" title="View"><svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg></button>
+          <button class="row-action-btn" title="Edit"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
+          <button class="row-action-btn" title="Schedule"><svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg></button>
+          <button class="row-action-btn" title="Quick Note"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg></button>
+        </div>
+      </td>
+    `;
+
+    if (selectedRows.has(i)) {
+      tr.classList.add('selected');
+      tr.querySelector('.row-cb').checked = true;
+    }
+
+    tr.addEventListener('click', (e) => {
+      if (e.target.closest('.row-cb') || e.target.closest('.row-action-btn')) return;
+      toggleExpansion(i);
+    });
+
+    tbody.appendChild(tr);
+
+    if (expandedRow === i) {
+      appendExpansion(i);
+    }
+  });
+}
+
+function toggleExpansion(idx) {
+  if (expandedRow === idx) {
+    expandedRow = null;
+  } else {
+    expandedRow = idx;
+  }
+  renderTable();
+}
+
+function appendExpansion(idx) {
+  const p = patients[idx];
+  const parentRow = tbody.querySelector(`tr[data-index="${idx}"]`);
+  if (!parentRow) return;
+  parentRow.classList.add('expanded');
+
+  const expTr = document.createElement('tr');
+  expTr.className = 'expansion-row';
+  expTr.innerHTML = `
+    <td colspan="13">
+      <div class="expansion-inner">
+        <button class="exp-close-btn" onclick="event.stopPropagation(); expandedRow=null; renderTable();">&times;</button>
+        <div class="expansion-content">
+          <div class="expansion-col">
+            <h4>Demographics &amp; Contact</h4>
+            <div class="expansion-field"><span class="ef-label">Email</span><span class="ef-value">${expansionData.email[idx]}</span></div>
+            <div class="expansion-field"><span class="ef-label">Phone</span><span class="ef-value">${p.phone}</span></div>
+            <div class="expansion-field"><span class="ef-label">Address</span><span class="ef-value">${expansionData.address[idx]}</span></div>
+            <div class="expansion-field"><span class="ef-label">DOB</span><span class="ef-value">${p.dob} (Age ${p.age})</span></div>
+            <div class="expansion-field"><span class="ef-label">Insurance</span><span class="ef-value">${p.insurance} — ${p.insStatus === 'verified' ? 'Verified' : 'Expired'}</span></div>
+          </div>
+          <div class="expansion-col">
+            <h4>Recent Visits</h4>
+            <div class="expansion-visits">
+              ${expansionData.visits[idx].filter(v => v !== '—').map(v => {
+                const parts = v.split(' — ');
+                return `<div class="visit-item"><span class="visit-date">${parts[0]}</span><span>${parts[1] || ''}</span></div>`;
+              }).join('')}
+            </div>
+          </div>
+          <div class="expansion-col">
+            <h4>Quick Actions</h4>
+            <div class="expansion-actions">
+              <button class="exp-action-btn" onclick="event.stopPropagation()">Schedule</button>
+              <button class="exp-action-btn" onclick="event.stopPropagation()">Order</button>
+              <button class="exp-action-btn" onclick="event.stopPropagation()">Note</button>
+              <button class="exp-action-btn" onclick="event.stopPropagation()">Documents</button>
+            </div>
+            ${p.aid !== '—' ? `<div style="margin-top:12px"><h4>Current Device</h4><div style="font-size:12px;color:var(--ink);margin-top:2px">${p.aid}</div></div>` : ''}
+            ${p.balance > 0 ? `<div style="margin-top:8px"><h4>Balance</h4><div style="font-size:12px;color:var(--danger);font-weight:600;margin-top:2px">$${p.balance.toFixed(2)} outstanding</div></div>` : ''}
+          </div>
+        </div>
+      </div>
+    </td>
+  `;
+  parentRow.after(expTr);
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('bulkBar');
+  const count = selectedRows.size;
+  document.getElementById('bulkCount').textContent = count;
+  bar.classList.toggle('visible', count > 0);
+}
+
+// Checkbox handling
+document.addEventListener('change', (e) => {
+  if (e.target.id === 'selectAll') {
+    const checked = e.target.checked;
+    if (checked) {
+      patients.forEach((_, i) => selectedRows.add(i));
+    } else {
+      selectedRows.clear();
+    }
+    renderTable();
+    updateBulkBar();
+  } else if (e.target.classList.contains('row-cb')) {
+    const idx = parseInt(e.target.dataset.idx);
+    if (e.target.checked) {
+      selectedRows.add(idx);
+    } else {
+      selectedRows.delete(idx);
+    }
+    e.target.closest('tr').classList.toggle('selected', e.target.checked);
+    updateBulkBar();
+  }
+});
+
+document.getElementById('bulkClear').addEventListener('click', () => {
+  selectedRows.clear();
+  document.getElementById('selectAll').checked = false;
+  renderTable();
+  updateBulkBar();
+});
+
+// Density toggle
+let isCompact = false;
+document.getElementById('densityToggle').addEventListener('click', function() {
+  isCompact = !isCompact;
+  document.getElementById('gridWrapper').classList.toggle('density-compact', isCompact);
+  this.querySelector('svg').nextSibling.textContent = isCompact ? ' Normal' : ' Compact';
+});
+
+// Keyboard navigation
+document.addEventListener('keydown', (e) => {
+  if (expandedRow !== null && e.key === 'Escape') {
+    expandedRow = null;
+    renderTable();
+  }
+  const rows = Array.from(tbody.querySelectorAll('tr:not(.expansion-row)'));
+  if (!rows.length) return;
+  const focusedIdx = rows.findIndex(r => r.classList.contains('expanded'));
+
+  if (e.key === 'ArrowDown' && focusedIdx < rows.length - 1) {
+    const nextIdx = parseInt(rows[Math.min(focusedIdx + 1, rows.length - 1)].dataset.index);
+    if (nextIdx !== undefined) toggleExpansion(nextIdx);
+  }
+  if (e.key === 'ArrowUp' && focusedIdx > 0) {
+    const prevIdx = parseInt(rows[Math.max(focusedIdx - 1, 0)].dataset.index);
+    if (prevIdx !== undefined) toggleExpansion(prevIdx);
+  }
+});
+
+renderTable();
+</script>
+
+<!-- Variant Selector -->
+<div id="variant-selector" style="position:fixed;bottom:16px;right:16px;z-index:99999;font-family:'Space Grotesk',system-ui,sans-serif;">
+  <button id="vs-toggle" style="width:40px;height:40px;border-radius:12px;border:1px solid rgba(38,34,96,0.12);background:rgba(255,255,255,0.95);backdrop-filter:blur(8px);box-shadow:0 2px 12px rgba(0,0,0,0.1);cursor:pointer;font-size:14px;font-weight:600;color:#262260;display:flex;align-items:center;justify-content:center;transition:all 0.2s;" title="Switch variant">⟐</button>
+  <div id="vs-panel" style="display:none;position:absolute;bottom:48px;right:0;background:rgba(255,255,255,0.97);backdrop-filter:blur(12px);border:1px solid rgba(38,34,96,0.1);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.12);padding:8px;min-width:220px;">
+    <div style="padding:4px 10px 8px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:#9a95ad;">Variant Selector</div>
+    <div id="vs-links"></div>
+    <div style="border-top:1px solid rgba(38,34,96,0.06);margin-top:4px;padding-top:4px;">
+      <a href="README.html" style="display:block;padding:6px 10px;font-size:12px;color:#6c687d;text-decoration:none;border-radius:8px;transition:background 0.15s;" onmouseover="this.style.background='rgba(31,149,184,0.06)'" onmouseout="this.style.background='transparent'">📋 Comparison Notes</a>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var currentVariant = 9;
+  var variants = [
+    {n:1, label:'Dense Clinical Shell'},
+    {n:2, label:'Compact Warm Workspace'},
+    {n:3, label:'Tabbed Record Panels'},
+    {n:4, label:'Split-View Dashboard'},
+    {n:5, label:'Dark Dense Console'},
+    {n:6, label:'Command-Bar Workspace'},
+    {n:7, label:'Split-Pane Console'},
+    {n:8, label:'Clinical Ops Board'},
+    {n:9, label:'Data-Grid Workspace'},
+    {n:10,label:'Ultra-Dense Expert'}
+  ];
+  var linksEl = document.getElementById('vs-links');
+  variants.forEach(function(v){
+    var isCurrent = v.n === currentVariant;
+    var a = document.createElement('a');
+    a.href = 'variant-' + String(v.n).padStart(2,'0') + '.html';
+    a.style.cssText = 'display:flex;align-items:center;gap:8px;padding:5px 10px;font-size:12px;text-decoration:none;border-radius:8px;transition:background 0.15s;color:' + (isCurrent ? '#1f95b8' : '#2f2c3f') + ';font-weight:' + (isCurrent ? '600' : '400') + ';background:' + (isCurrent ? 'rgba(31,149,184,0.08)' : 'transparent');
+    a.innerHTML = '<span style="width:22px;height:22px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;background:' + (isCurrent ? 'rgba(31,149,184,0.15)' : 'rgba(38,34,96,0.06)') + ';color:' + (isCurrent ? '#1f95b8' : '#6c687d') + '">' + String(v.n).padStart(2,'0') + '</span>' + v.label;
+    if(!isCurrent){
+      a.onmouseover = function(){ this.style.background='rgba(31,149,184,0.06)'; };
+      a.onmouseout = function(){ this.style.background='transparent'; };
+    }
+    linksEl.appendChild(a);
+  });
+  var toggle = document.getElementById('vs-toggle');
+  var panel = document.getElementById('vs-panel');
+  toggle.textContent = String(currentVariant).padStart(2,'0');
+  toggle.addEventListener('click', function(){
+    var open = panel.style.display !== 'none';
+    panel.style.display = open ? 'none' : 'block';
+    toggle.style.background = open ? 'rgba(255,255,255,0.95)' : 'rgba(31,149,184,0.1)';
+    toggle.style.borderColor = open ? 'rgba(38,34,96,0.12)' : 'rgba(31,149,184,0.3)';
+    toggle.style.color = open ? '#262260' : '#1f95b8';
+  });
+  document.addEventListener('click', function(e){
+    if(!document.getElementById('variant-selector').contains(e.target)){
+      panel.style.display = 'none';
+      toggle.style.background = 'rgba(255,255,255,0.95)';
+      toggle.style.borderColor = 'rgba(38,34,96,0.12)';
+      toggle.style.color = '#262260';
+    }
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape'){ panel.style.display = 'none'; }
+    if((e.key === '.' || e.key === '>') && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA'){
+      var next = currentVariant < 10 ? currentVariant + 1 : 1;
+      window.location.href = 'variant-' + String(next).padStart(2,'0') + '.html';
+    }
+    if((e.key === ',' || e.key === '<') && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA'){
+      var prev = currentVariant > 1 ? currentVariant - 1 : 10;
+      window.location.href = 'variant-' + String(prev).padStart(2,'0') + '.html';
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,26 @@
+Financial
+Net revenue
+Gross profit
+Net HA revenue
+Net HA cost
+Order backlog
+Unit sales
+Gross units fit
+Net units fit
+Returned units
+Exchanged units
+Return rate
+Exchange rate
+ASP
+Sales conversion
+Opportunity conversions (funnel)
+Opportunity closing rate
+Binaural rate
+Patients
+Active patients
+New patients
+New patients (past 12 months)
+Other
+No show rate
+Order backlog details
+Guest attendance rate

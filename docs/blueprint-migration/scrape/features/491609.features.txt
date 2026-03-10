@@ -1,0 +1,9 @@
+Editing appointment details
+Reschedule
+Changing appointment status Changing appointment status
+Cancelling appointments
+Marking appointments No show
+Editing appointment date and time
+Editing appointment duration
+Editing repeating appointments Editing repeating appointments
+Changing repeat patterns

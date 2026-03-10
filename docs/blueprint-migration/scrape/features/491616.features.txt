@@ -1,0 +1,18 @@
+Overview
+Selecting a patient
+Next Appointment (if applicable)
+Setting the location
+Setting the calendar
+Setting the description
+Setting the referral sourceSetting the referral source
+Setting the event type
+Selecting appointment analysis information
+Designating the event as a telehealth appointment
+Contact details
+Setting notes
+Setting date, time, and duration Setting date, time, and duration
+Setting the appointment for all day
+Creating repeating appointments Creating repeating appointments
+Reserving resources
+Setting appointment status
+Saving the appointment

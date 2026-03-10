@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const MIN_FREQUENCY_HZ = 125;
 const MAX_FREQUENCY_HZ = 8000;
@@ -100,26 +103,29 @@ export function PatientAudiology({ patientId }: { patientId: string }) {
   );
 
   return (
-    <section className="card p-6" data-testid="audiology-panel">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+    <section className="card px-4 pt-0 pb-4" data-testid="audiology-panel">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <div className="section-title text-xs text-brand-ink">Audiology</div>
+          <div className="section-title">Audiology</div>
           <div className="text-sm text-ink-muted">Review audiograms and diagnostic data.</div>
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        {TABS.map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            className="tab-pill"
-            data-active={activeTab === tab}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab}
-          </button>
-        ))}
+      <div className="mt-4">
+        <div className="seg-tabs-inner">
+          {TABS.map((tab) => (
+            <Button
+              key={tab}
+              type="button"
+              variant="ghost"
+              size="micro"
+              className={cn("seg-tab", activeTab === tab && "active")}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab}
+            </Button>
+          ))}
+        </div>
       </div>
 
       {loading ? (
@@ -132,16 +138,18 @@ export function PatientAudiology({ patientId }: { patientId: string }) {
         </div>
       ) : (
         <div className="mt-6 grid gap-6 lg:grid-cols-[0.9fr_1.6fr]">
-          <div className="rounded-2xl border border-surface-2 bg-white/80 p-4">
+          <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] overflow-hidden p-4">
             <div className="text-xs font-semibold text-ink-muted">Audiological history</div>
             <div className="mt-3 grid gap-2">
               {audiograms.length === 0 ? (
-                <div className="text-xs text-ink-muted">No audiograms recorded yet.</div>
+                <div className="text-xs text-ink-muted" data-testid="audiology-empty">No audiograms recorded yet.</div>
               ) : (
                 audiograms.map((audiogram) => (
                   <div
                     key={audiogram.id}
-                    className="rounded-xl border border-surface-2 bg-white px-3 py-2 text-xs"
+                    data-testid="audiology-audiogram"
+                    data-ear={audiogram.ear}
+                    className="rounded-[8px] border border-[var(--surface-3)] bg-white px-3 py-2 text-xs"
                   >
                     {dayjs(audiogram.createdAt).format("MM/DD/YYYY")} - {EAR_LABEL[audiogram.ear]} ear
                   </div>
@@ -149,17 +157,17 @@ export function PatientAudiology({ patientId }: { patientId: string }) {
               )}
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
-              <button type="button" className="tab-pill bg-surface-2 text-xs">Hide documents</button>
-              <button type="button" className="tab-pill bg-surface-2 text-xs">Hide journal entries</button>
+              <Button type="button" variant="secondary" size="sm">Hide documents</Button>
+              <Button type="button" variant="secondary" size="sm">Hide journal entries</Button>
             </div>
           </div>
 
           <div className="grid gap-4">
-            <div className="rounded-2xl border border-surface-2 bg-white/80 p-4">
+            <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] overflow-hidden p-4">
               <div className="grid gap-3 sm:grid-cols-2 text-xs text-ink-muted">
                 <div>
                   <div className="font-semibold text-ink-strong">Provider</div>
-                  <div>Pape, Chris</div>
+                  <div>Chris Pape</div>
                 </div>
                 <div>
                   <div className="font-semibold text-ink-strong">Test method</div>
@@ -175,17 +183,17 @@ export function PatientAudiology({ patientId }: { patientId: string }) {
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-2 text-xs">
-                <div className="rounded-full bg-brand-orange/10 px-3 py-1 text-brand-ink">Right: Mild</div>
-                <div className="rounded-full bg-brand-orange/10 px-3 py-1 text-brand-ink">Sensorineural</div>
-                <div className="rounded-full bg-brand-orange/10 px-3 py-1 text-brand-ink">Sloping</div>
-                <div className="rounded-full bg-brand-blue/10 px-3 py-1 text-brand-ink">Left: Moderately severe</div>
-                <div className="rounded-full bg-brand-blue/10 px-3 py-1 text-brand-ink">Sensorineural</div>
-                <div className="rounded-full bg-brand-blue/10 px-3 py-1 text-brand-ink">Sloping</div>
+                <Badge variant="orange">Right: Mild</Badge>
+                <Badge variant="orange">Sensorineural</Badge>
+                <Badge variant="orange">Sloping</Badge>
+                <Badge variant="blue">Left: Moderately severe</Badge>
+                <Badge variant="blue">Sensorineural</Badge>
+                <Badge variant="blue">Sloping</Badge>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-surface-2 bg-white/80 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-ink-muted">
+            <div className="rounded-[12px] bg-[var(--surface-1)] p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-ink-muted" style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "12px", fontWeight: 600 }}>
                 <span>Frequency (Hz) vs dB HL</span>
                 <div className="flex items-center gap-3">
                   <span className="flex items-center gap-2">
@@ -198,7 +206,7 @@ export function PatientAudiology({ patientId }: { patientId: string }) {
                   </span>
                 </div>
               </div>
-              <div className="mt-4 overflow-hidden rounded-2xl border border-surface-2 bg-white">
+              <div className="mt-4 rounded-[8px] border border-[var(--surface-3)] bg-white" style={{ overflow: "hidden" }}>
                 <svg
                   viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
                   className="h-64 w-full"
@@ -240,7 +248,7 @@ export function PatientAudiology({ patientId }: { patientId: string }) {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-surface-2 bg-white/80 p-4">
+            <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] overflow-hidden p-4">
               <div className="text-xs font-semibold text-ink-muted">Diagnostic codes</div>
               <div className="mt-2 rounded-xl border border-dashed border-surface-3 bg-white/70 px-3 py-4 text-xs text-ink-muted">
                 Diagnostic codes will appear here.
@@ -248,11 +256,11 @@ export function PatientAudiology({ patientId }: { patientId: string }) {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <button type="button" className="tab-pill bg-surface-2 text-xs">Create new</button>
-              <button type="button" className="tab-pill bg-surface-2 text-xs">Edit</button>
-              <button type="button" className="tab-pill bg-surface-2 text-xs">Delete</button>
-              <button type="button" className="tab-pill bg-surface-2 text-xs">Refresh</button>
-              <button type="button" className="tab-pill bg-surface-2 text-xs">Reports</button>
+              <Button type="button" variant="secondary" size="sm" data-testid="audiology-add">Create new</Button>
+              <Button type="button" variant="secondary" size="sm">Edit</Button>
+              <Button type="button" variant="secondary" size="sm">Delete</Button>
+              <Button type="button" variant="secondary" size="sm">Refresh</Button>
+              <Button type="button" variant="secondary" size="sm">Reports</Button>
             </div>
           </div>
         </div>

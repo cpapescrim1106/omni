@@ -1,0 +1,5 @@
+Viewing all inventory items
+Filtering the inventory screen
+Editing details of stock hearing aids and items
+Returning stock hearing aids and items
+Transferring inventory from one location to another

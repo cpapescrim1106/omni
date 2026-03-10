@@ -1,0 +1,6 @@
+Overview
+Setting up tablets
+Step 1: Create the tablet in Blueprint OMS.
+Step 2: Send the tablet its tablet URL and keep the URL accessible on the tablet.
+How forms requests appear on tablets
+Signing regular forms on tablets

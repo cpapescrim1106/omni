@@ -1,0 +1,5 @@
+Option 1. No inventory posting to QB.
+Transaction sequence:
+Option 2 and 3. Light inventory posting to QB.
+Option 4 and 5. Full inventory posting and tracking to QB.
+The inventory posting will take place when the manufacturer bill is entered in Blueprint OMS. Just receiving inventory, without entering the manufacturer bill, will not result in any inventory transactions being posted to QB. Optional for patient orders.

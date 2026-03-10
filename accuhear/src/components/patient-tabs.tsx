@@ -4,6 +4,10 @@ import type { ReactNode } from "react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { XIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type PatientTab = {
   id: string;
@@ -134,6 +138,26 @@ export function usePatientTabs() {
   return context;
 }
 
+function getInitials(label: string): string {
+  const parts = label.trim().split(/\s+/);
+  if (parts.length === 1) return (parts[0] ?? "").slice(0, 2).toUpperCase();
+  return ((parts[0]?.[0] ?? "") + (parts[parts.length - 1]?.[0] ?? "")).toUpperCase();
+}
+
+const AVATAR_GRADIENTS = [
+  "linear-gradient(135deg, #1f95b8, #262260)",
+  "linear-gradient(135deg, #262260, #1f95b8)",
+  "linear-gradient(135deg, #dd6f26, #262260)",
+  "linear-gradient(135deg, #1e9b6c, #1f95b8)",
+  "linear-gradient(135deg, #c87a2f, #dd6f26)",
+];
+
+function avatarGradient(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) | 0;
+  return AVATAR_GRADIENTS[Math.abs(hash) % AVATAR_GRADIENTS.length] ?? AVATAR_GRADIENTS[0]!;
+}
+
 export function PatientTabsBar({
   variant = "bar",
 }: {
@@ -149,9 +173,10 @@ export function PatientTabsBar({
     if (activeId) markActive(activeId);
   }, [activeId, markActive]);
 
-  if (!tabs.length) return null;
-
-  const mostRecentTabs = [...tabs].sort((a, b) => b.lastViewedAt - a.lastViewedAt);
+  const mostRecentTabs = useMemo(
+    () => [...tabs].sort((a, b) => b.lastViewedAt - a.lastViewedAt),
+    [tabs]
+  );
 
   function pickNextId(closingId: string) {
     const remaining = mostRecentTabs.filter((tab) => tab.id !== closingId);
@@ -168,43 +193,91 @@ export function PatientTabsBar({
     }
   }
 
+  if (isRail) {
+    return (
+      <div className="patient-rail">
+        <div className="patient-rail-header">Open Patients</div>
+        {tabs.map((tab) => {
+          const statusLabel = getStatusLabel(tab.status);
+          const isActiveTab = tab.id === activeId;
+          return (
+            <div key={tab.id} className={`patient-tab${isActiveTab ? " active" : ""}`}>
+              <Link href={`/patients/${tab.id}`} className="patient-tab-link">
+                <div
+                  className="patient-tab-avatar"
+                  style={{ background: avatarGradient(tab.id) }}
+                >
+                  {getInitials(tab.label)}
+                </div>
+                <div className="patient-tab-info">
+                  <div className="patient-tab-name">{tab.label}</div>
+                  {statusLabel ? (
+                    <div className="patient-tab-sub">{statusLabel}</div>
+                  ) : null}
+                </div>
+              </Link>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => handleClose(tab.id)}
+                      aria-label={`Close ${tab.label}`}
+                      className="patient-tab-close h-4 w-4"
+                    />
+                  }
+                >
+                  <XIcon size={14} />
+                </TooltipTrigger>
+                <TooltipContent>Close</TooltipContent>
+              </Tooltip>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (!tabs.length) return null;
+
   return (
-    <div
-      className={
-        isRail
-          ? "patient-tabs-rail"
-          : "flex flex-wrap items-center gap-3 rounded-[22px] bg-white/70 px-5 py-3 shadow-[0_12px_26px_rgba(24,20,50,0.08)]"
-      }
-    >
-      <div className={isRail ? "patient-tabs-rail-title" : "text-xs text-ink-muted"}>Open patients</div>
-      <div className={isRail ? "patient-tabs-rail-list" : "flex flex-wrap items-center gap-2"}>
+    <div className="flex flex-wrap items-center gap-3 rounded-[22px] bg-white/70 px-5 py-3 shadow-[0_12px_26px_rgba(24,20,50,0.08)]">
+      <div className="text-xs text-ink-muted">Open patients</div>
+      <div className="flex flex-wrap items-center gap-2">
         {tabs.map((tab) => {
           const statusLabel = getStatusLabel(tab.status);
           const isActive = tab.id === activeId;
           return (
-            <div key={tab.id} className={isRail ? "patient-tabs-rail-row" : "flex items-center gap-1"}>
+            <div key={tab.id} className="flex items-center gap-1">
               <Link
                 href={`/patients/${tab.id}`}
-                className={`tab-pill flex items-center gap-2${isRail ? " patient-tabs-rail-pill" : ""}`}
+                className="tab-pill flex items-center gap-2"
                 data-active={isActive}
               >
                 <span className="max-w-[200px] truncate">{tab.label}</span>
                 {statusLabel ? (
-                  <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[10px] text-ink-muted">
-                    {statusLabel}
-                  </span>
+                  <Badge variant="neutral">{statusLabel}</Badge>
                 ) : null}
               </Link>
-              <button
-                type="button"
-                onClick={() => handleClose(tab.id)}
-                aria-label={`Close ${tab.label}`}
-                className={`rounded-full border border-transparent px-2 py-1 text-xs text-ink-soft transition hover:border-surface-3 hover:text-ink-strong${
-                  isRail ? " patient-tabs-rail-close" : ""
-                }`}
-              >
-                x
-              </button>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => handleClose(tab.id)}
+                      aria-label={`Close ${tab.label}`}
+                      className="h-6 w-6 text-ink-soft hover:border-surface-3 hover:text-ink-strong"
+                    />
+                  }
+                >
+                  <XIcon size={14} />
+                </TooltipTrigger>
+                <TooltipContent>Close</TooltipContent>
+              </Tooltip>
             </div>
           );
         })}

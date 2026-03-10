@@ -1,0 +1,3 @@
+Viewing the list of event types
+Creating a new event type
+Editing or deactivating an event type

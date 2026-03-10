@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import dayjs from "dayjs";
 import { MessageResponseBar } from "@/components/message-response-bar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type Message = {
   id: string;
@@ -29,11 +33,11 @@ const STATUS_LABELS: Record<Message["status"], string> = {
 };
 
 const STATUS_STYLES: Record<Message["status"], string> = {
-  queued: "bg-surface-2 text-ink-muted",
-  sent: "bg-brand-blue/10 text-brand-ink",
-  delivered: "bg-success/10 text-success",
-  failed: "bg-danger/10 text-danger",
-  received: "bg-brand-orange/10 text-brand-ink",
+  queued: "neutral",
+  sent: "blue",
+  delivered: "success",
+  failed: "danger",
+  received: "orange",
 };
 
 const FOLDERS = [
@@ -203,44 +207,45 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
   );
 
   return (
-    <section className="card flex min-h-0 flex-col p-6" style={{ height: "75vh" }}>
-      <div className="flex flex-wrap items-center justify-between gap-4">
+    <section className="card flex min-h-0 flex-col px-4 pt-0 pb-4" style={{ height: "75vh" }}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <div className="section-title text-xs text-brand-ink">Messaging</div>
+          <div className="section-title">Messaging</div>
           <div className="text-sm text-ink-muted">Patient conversations across channels.</div>
         </div>
       </div>
 
       <div className="mt-6 grid min-h-0 flex-1 gap-6 lg:grid-cols-[220px_1.6fr_0.9fr]">
-        <div className="rounded-2xl border border-surface-2 bg-white/80 p-4">
+        <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] overflow-hidden p-4">
           <div className="text-xs font-semibold text-ink-muted">Quick find</div>
           <div className="mt-2 flex items-center gap-2">
-            <input
+            <Input
               type="search"
-              className="w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-xs"
+              className="w-full text-xs"
               placeholder="Search"
             />
           </div>
           <div className="mt-3 text-xs text-ink-muted">Location</div>
-          <select className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-xs">
-            <option>&lt;All&gt;</option>
-          </select>
+          <Select defaultValue="all">
+            <SelectTrigger className="mt-1 w-full bg-white text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">&lt;All&gt;</SelectItem>
+            </SelectContent>
+          </Select>
           <div className="mt-4 grid gap-2">
             {FOLDERS.map((folder) => (
-              <div key={folder.label} className="rounded-xl bg-white px-3 py-2 text-xs text-ink-muted shadow-sm">
+              <div key={folder.label} className="rounded-xl bg-white px-3 py-2 text-xs text-ink-muted">
                 {folder.label}
               </div>
             ))}
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-surface-2 bg-white/80">
+        <div className="flex min-h-0 flex-col overflow-hidden rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)]">
           {loadError ? (
             <div className="px-4 py-4 text-sm text-danger">{loadError}</div>
-          ) : totalMessages === 0 ? (
-            <div className="px-4 py-6 text-sm text-ink-muted" data-testid="messaging-empty">
-              No messages yet.
-            </div>
           ) : (
             <>
               <div
@@ -254,60 +259,72 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
                   stickToBottomRef.current = distanceToBottom < 24;
                 }}
               >
-                {threads.map((thread) => (
-                  <div key={thread.id} data-testid="messaging-thread" data-channel={thread.channel}>
-                    <div className="flex items-center justify-between border-b border-surface-2 px-4 py-3">
-                      <div className="text-sm font-semibold text-ink-strong">{thread.channel.toUpperCase()} thread</div>
-                      <span className="badge bg-surface-2 text-ink-muted">{thread.status}</span>
-                    </div>
-                    <div className="grid gap-4 px-4 py-4">
-                      {thread.messages.map((message) => {
-                        const isOutbound = message.direction === "outbound";
-                        const isFailed = message.status === "failed";
-                        const failureDetails = isFailed ? formatSendFailure(message.errorMessage) : null;
-                        return (
-                          <div
-                            key={message.id}
-                            data-testid="messaging-message"
-                            data-direction={message.direction}
-                            data-status={message.status}
-                            className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}
-                          >
-                            <div className="max-w-[80%]">
-                              <div
-                                className={`rounded-2xl px-4 py-3 text-sm shadow-sm ${
-                                  isFailed
-                                    ? "border border-danger/30 bg-danger/10 text-danger"
-                                    : isOutbound
-                                      ? "bg-brand-blue/10 text-ink-strong"
-                                      : "bg-white text-ink-strong"
-                                }`}
-                              >
-                                {message.body}
-                              </div>
-                              <div
-                                className={`mt-2 flex flex-wrap items-center gap-2 text-xs text-ink-muted ${
-                                  isOutbound ? "justify-end" : "justify-start"
-                                }`}
-                              >
-                                <span>{isOutbound ? "Outbound" : "Inbound"}</span>
-                                <span>·</span>
-                                <span>{dayjs(message.sentAt).format("MMM D, YYYY h:mm A")}</span>
-                                <span>·</span>
-                                <span className={`badge ${STATUS_STYLES[message.status]}`}>{STATUS_LABELS[message.status]}</span>
-                              </div>
-                              {isFailed ? (
-                                <div className="mt-2 text-xs text-danger">
-                                  Failed to send{failureDetails ? `: ${failureDetails}` : "."}
-                                </div>
-                              ) : null}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                {totalMessages === 0 ? (
+                  <div className="px-4 py-6 text-sm text-ink-muted" data-testid="messaging-empty">
+                    No messages yet.
                   </div>
-                ))}
+                ) : (
+                  threads.map((thread) => (
+                    <div key={thread.id} data-testid="messaging-thread" data-channel={thread.channel}>
+                      <div className="flex items-center justify-between border-b border-surface-2 px-4 py-3">
+                        <div className="text-sm font-semibold text-ink-strong">{thread.channel.toUpperCase()} thread</div>
+                        <Badge variant="neutral">{thread.status}</Badge>
+                      </div>
+                      <div className="grid gap-4 px-4 py-4">
+                        {thread.messages.map((message) => {
+                          const isOutbound = message.direction === "outbound";
+                          const isFailed = message.status === "failed";
+                          const failureDetails = isFailed ? formatSendFailure(message.errorMessage) : null;
+                          return (
+                            <div
+                              key={message.id}
+                              data-testid="messaging-message"
+                              data-direction={message.direction}
+                              data-status={message.status}
+                              className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}
+                            >
+                              <div className="max-w-[80%]">
+                                <div
+                                  className={`rounded-[12px] px-3 py-2 text-[12px] ${
+                                    isFailed
+                                      ? "border border-danger/30 bg-danger/10 text-danger"
+                                      : isOutbound
+                                        ? "bg-[var(--brand-blue)] text-white"
+                                        : "bg-[var(--surface-2)] text-[var(--ink)]"
+                                  }`}
+                                >
+                                  {message.body}
+                                </div>
+                                <div
+                                  data-testid="messaging-message-meta"
+                                  className={`mt-2 flex flex-wrap items-center gap-2 text-[10px] text-[var(--ink-soft)] ${
+                                    isOutbound ? "justify-end" : "justify-start"
+                                  }`}
+                                >
+                                  <span>{isOutbound ? "Outbound" : "Inbound"}</span>
+                                  <span>·</span>
+                                  <span>{dayjs(message.sentAt).format("MMM D, YYYY h:mm A")}</span>
+                                  <span>·</span>
+                                  <Badge
+                                    data-testid="messaging-message-status"
+                                    variant={STATUS_STYLES[message.status] as "neutral" | "blue" | "success" | "danger" | "orange"}
+                                  >
+                                    {STATUS_LABELS[message.status]}
+                                  </Badge>
+                                </div>
+                                {isFailed ? (
+                                  <div className="mt-2 text-xs text-danger">
+                                    Failed to send{failureDetails ? `: ${failureDetails}` : "."}
+                                  </div>
+                                ) : null}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))
+                )}
                 <div ref={bottomRef} />
               </div>
 
@@ -325,25 +342,29 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
                 placeholder="Write a message..."
                 sendLabel={sending ? "Sending..." : "Send"}
                 hint="Enter to send · Shift+Enter for a new line"
+                textareaTestId="messaging-compose-body"
+                sendButtonTestId="messaging-compose-submit"
               />
             </>
           )}
         </div>
 
-        <div className="rounded-2xl border border-surface-2 bg-white/80 p-4">
+        <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] overflow-hidden p-4">
           <div className="text-xs font-semibold text-ink-muted">Text snippets</div>
           <div className="mt-3 grid gap-2">
-            {SNIPPETS.map((snippet) => (
-              <button
+              {SNIPPETS.map((snippet) => (
+              <Button
                 key={snippet}
                 type="button"
-                className="rounded-xl bg-white px-3 py-2 text-left text-xs text-ink-muted shadow-sm transition hover:bg-surface-1"
+                variant="secondary"
+                size="sm"
+                className="justify-start rounded-xl bg-white px-3 py-2 text-left text-xs font-normal text-ink-muted"
                 onClick={() => {
                   setMessageBody((current) => (current.trim().length ? `${current.trimEnd()} ${snippet}` : snippet));
                 }}
               >
                 {snippet}
-              </button>
+              </Button>
             ))}
           </div>
         </div>

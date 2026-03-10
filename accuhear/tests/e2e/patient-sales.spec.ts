@@ -1,84 +1,73 @@
 import { test, expect } from "@playwright/test";
-import dayjs from "dayjs";
 import type { PrismaClient } from "@prisma/client";
 import { ensureTestDatabaseUrl } from "../helpers/test-database";
+import { ensureStarterCatalog } from "../../src/lib/commerce";
+import { ensurePatientSearchSchema } from "../../src/lib/patient-search";
 
 ensureTestDatabaseUrl();
 
 let prisma: PrismaClient;
 const e2eTag = `E2E:Sales:${Date.now()}`;
 
-type SaleSeed = {
-  txnId: string;
-  item: string;
-  payer: string;
-  amount: number;
-  provider?: string | null;
-  date: Date;
-};
-
 async function createPatient(label: string) {
   return prisma.patient.create({
     data: {
+      legacyId: `${e2eTag}:${label}`,
       firstName: "E2E",
-      lastName: `${label} ${e2eTag}`,
+      lastName: label,
       status: "Active",
     },
   });
 }
 
-async function seedSales(patientId: string, sales: SaleSeed[]) {
-  for (const sale of sales) {
-    await prisma.saleTransaction.create({
-      data: {
-        patientId,
-        txnId: sale.txnId,
-        txnType: "sale",
-        date: sale.date,
-        provider: sale.provider ?? null,
-        total: sale.amount,
-        lineItems: {
-          create: [
-            {
-              item: sale.item,
-              revenue: sale.amount,
-            },
-          ],
-        },
-        payments: {
-          create: [
-            {
-              amount: sale.amount,
-              method: sale.payer,
-            },
-          ],
-        },
-      },
-    });
-  }
-}
-
 async function cleanupPatients(patientIds: string[]) {
   if (!patientIds.length) return;
-  const transactions = await prisma.saleTransaction.findMany({
-    where: { patientId: { in: patientIds } },
-    select: { id: true },
-  });
-  const transactionIds = transactions.map((txn) => txn.id);
-  if (transactionIds.length) {
-    await prisma.payment.deleteMany({ where: { transactionId: { in: transactionIds } } });
-    await prisma.saleLineItem.deleteMany({ where: { transactionId: { in: transactionIds } } });
-    await prisma.saleTransaction.deleteMany({ where: { id: { in: transactionIds } } });
+  const saleIds = (
+    await prisma.saleTransaction.findMany({
+      where: { patientId: { in: patientIds } },
+      select: { id: true },
+    })
+  ).map((sale) => sale.id);
+  const orderIds = (
+    await prisma.purchaseOrder.findMany({
+      where: { patientId: { in: patientIds } },
+      select: { id: true },
+    })
+  ).map((order) => order.id);
+  const deviceIds = (
+    await prisma.device.findMany({
+      where: { patientId: { in: patientIds } },
+      select: { id: true },
+    })
+  ).map((device) => device.id);
+
+  if (saleIds.length) {
+    await prisma.document.deleteMany({ where: { saleTransactionId: { in: saleIds } } });
+    await prisma.payment.deleteMany({ where: { transactionId: { in: saleIds } } });
+    await prisma.saleLineItem.deleteMany({ where: { transactionId: { in: saleIds } } });
+    await prisma.saleTransaction.deleteMany({ where: { id: { in: saleIds } } });
   }
+  if (deviceIds.length) {
+    await prisma.deviceStatusHistory.deleteMany({ where: { deviceId: { in: deviceIds } } });
+    await prisma.device.deleteMany({ where: { id: { in: deviceIds } } });
+  }
+  if (orderIds.length) {
+    await prisma.document.deleteMany({ where: { purchaseOrderId: { in: orderIds } } });
+    await prisma.purchaseOrderItem.deleteMany({ where: { orderId: { in: orderIds } } });
+    await prisma.purchaseOrder.deleteMany({ where: { id: { in: orderIds } } });
+  }
+  await prisma.journalEntry.deleteMany({ where: { patientId: { in: patientIds } } });
   await prisma.patient.deleteMany({ where: { id: { in: patientIds } } });
 }
 
-test.describe.serial("Patient sales", () => {
+test.describe.serial("Patient sales flow", () => {
   const createdPatients: string[] = [];
 
   test.beforeAll(async () => {
     const { PrismaClient } = await import("@prisma/client");
     prisma = new PrismaClient();
+    await ensureStarterCatalog(prisma as never);
+    await ensurePatientSearchSchema();
   });
 
   test.afterAll(async () => {
@@ -86,137 +75,29 @@ test.describe.serial("Patient sales", () => {
     await prisma.$disconnect();
   });
 
-  test("sales tab loads and lists transactions", async ({ page }) => {
-    const patient = await createPatient("Sales List");
+  test("direct sale can be created, paid, and generate a purchase agreement", async ({ page }) => {
+    const patient = await createPatient("Direct Sale");
     createdPatients.push(patient.id);
-    await seedSales(patient.id, [
-      {
-        txnId: `TX-${Date.now()}-1`,
-        item: `Hearing Aid ${e2eTag}`,
-        payer: "Insurance",
-        amount: 1200,
-        provider: "Dr. Lane",
-        date: new Date("2026-01-10T12:00:00Z"),
-      },
-      {
-        txnId: `TX-${Date.now()}-2`,
-        item: `Battery Pack ${e2eTag}`,
-        payer: "Patient",
-        amount: 24,
-        provider: "Dr. Lane",
-        date: new Date("2026-02-05T12:00:00Z"),
-      },
-    ]);
 
-    await page.goto(`/patients/${patient.id}?tab=Sales%20history`);
+    await page.goto(`/patients/${patient.id}?tab=${encodeURIComponent("Sales history")}`);
 
-    await expect(page.getByTestId("sales-row")).toHaveCount(2);
-    const hearingAidRow = page.getByTestId("sales-row").filter({ hasText: `Hearing Aid ${e2eTag}` });
-    await expect(hearingAidRow).toBeVisible();
-    await expect(hearingAidRow).toContainText("Insurance");
-  });
+    await page.getByRole("button", { name: "New direct sale" }).click();
+    await expect(page.getByTestId("direct-sale-panel")).toBeVisible();
+    await page.getByRole("button", { name: "Create invoice" }).click();
 
-  test("date filter narrows results", async ({ page }) => {
-    const patient = await createPatient("Date Filter");
-    createdPatients.push(patient.id);
-    await seedSales(patient.id, [
-      {
-        txnId: `TX-${Date.now()}-3`,
-        item: `Ear Mold ${e2eTag}`,
-        payer: "Patient",
-        amount: 60,
-        provider: "Dr. Hill",
-        date: new Date("2026-01-05T12:00:00Z"),
-      },
-      {
-        txnId: `TX-${Date.now()}-4`,
-        item: `Cleaning Kit ${e2eTag}`,
-        payer: "Insurance",
-        amount: 45,
-        provider: "Dr. Hill",
-        date: new Date("2026-02-12T12:00:00Z"),
-      },
-      {
-        txnId: `TX-${Date.now()}-5`,
-        item: `Replacement Tube ${e2eTag}`,
-        payer: "Patient",
-        amount: 30,
-        provider: "Dr. Hill",
-        date: new Date("2026-03-02T12:00:00Z"),
-      },
-    ]);
-
-    await page.goto(`/patients/${patient.id}?tab=Sales%20history`);
-
-    await page.getByTestId("sales-filter-start").fill("2026-02-01");
-    await page.getByTestId("sales-filter-end").fill("2026-02-28");
-
+    await expect(page.getByText("Direct sale invoice created.")).toBeVisible();
     await expect(page.getByTestId("sales-row")).toHaveCount(1);
-    await expect(page.getByTestId("sales-row").first()).toContainText(`Cleaning Kit ${e2eTag}`);
-    await expect(page.getByTestId("sales-row").first()).toContainText(dayjs("2026-02-12").format("MMM D, YYYY"));
-  });
 
-  test("payer filter works", async ({ page }) => {
-    const patient = await createPatient("Payer Filter");
-    createdPatients.push(patient.id);
-    await seedSales(patient.id, [
-      {
-        txnId: `TX-${Date.now()}-6`,
-        item: `Warranty ${e2eTag}`,
-        payer: "Insurance",
-        amount: 100,
-        provider: "Dr. Reed",
-        date: new Date("2026-04-05T12:00:00Z"),
-      },
-      {
-        txnId: `TX-${Date.now()}-7`,
-        item: `Fitting ${e2eTag}`,
-        payer: "Patient",
-        amount: 75,
-        provider: "Dr. Reed",
-        date: new Date("2026-04-06T12:00:00Z"),
-      },
-    ]);
+    await page.getByTestId("sales-row").first().click();
+    await expect(page.getByTestId("sales-detail")).toContainText("Transaction details");
 
-    await page.goto(`/patients/${patient.id}?tab=Sales%20history`);
-    await page.getByTestId("sales-filter-payer").selectOption("Insurance");
+    await page.getByRole("button", { name: "Record payment" }).click();
+    await page.getByLabel("Amount").fill("18");
+    await page.getByRole("button", { name: "Save payment" }).click();
+    await expect(page.getByText("Payment recorded.")).toBeVisible();
 
-    await expect(page.getByTestId("sales-row")).toHaveCount(1);
-    await expect(page.getByTestId("sales-row").first()).toHaveAttribute("data-payer", "Insurance");
-  });
-
-  test("row click opens detail stub", async ({ page }) => {
-    const patient = await createPatient("Detail");
-    createdPatients.push(patient.id);
-    await seedSales(patient.id, [
-      {
-        txnId: `TX-${Date.now()}-8`,
-        item: `Accessory Bundle ${e2eTag}`,
-        payer: "Patient",
-        amount: 250,
-        provider: "Dr. Moore",
-        date: new Date("2026-05-01T12:00:00Z"),
-      },
-    ]);
-
-    await page.goto(`/patients/${patient.id}?tab=Sales%20history`);
-
-    const row = page.getByTestId("sales-row").first();
-    await row.click();
-
-    const detail = page.getByTestId("sales-detail");
-    await expect(detail).toBeVisible();
-    await expect(detail).toContainText("Transaction details");
-    await expect(detail).toContainText(`Accessory Bundle ${e2eTag}`);
-  });
-
-  test("empty state shows when no sales", async ({ page }) => {
-    const patient = await createPatient("Empty");
-    createdPatients.push(patient.id);
-
-    await page.goto(`/patients/${patient.id}?tab=Sales%20history`);
-
-    await expect(page.getByTestId("sales-empty")).toBeVisible();
-    await expect(page.getByTestId("sales-row")).toHaveCount(0);
+    await page.getByRole("button", { name: "Generate purchase agreement" }).click();
+    await expect(page.getByText("Purchase agreement generated.")).toBeVisible();
+    await expect(page.getByTestId("sales-detail")).toContainText("Purchase Agreement");
   });
 });

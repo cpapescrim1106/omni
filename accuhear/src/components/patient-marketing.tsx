@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+
 const CONTACT_HISTORY = [
   { date: "01/17/2026", description: "Hearing aid 3 years old" },
   { date: "11/16/2025", description: "Warranty expiration message #5 - 60 days" },
@@ -35,17 +37,17 @@ const RECALLS = [
 
 export function PatientMarketing() {
   return (
-    <section className="card p-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+    <section className="card px-4 pt-0 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <div className="section-title text-xs text-brand-ink">Marketing</div>
+          <div className="section-title">Marketing</div>
           <div className="text-sm text-ink-muted">Communication preferences and outreach history.</div>
         </div>
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_1.3fr]">
         <div className="grid gap-6">
-          <div className="rounded-2xl border border-surface-2 bg-white/80 p-4">
+          <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] p-4">
             <div className="text-xs font-semibold text-ink-muted">Communication preferences</div>
             <div className="mt-3 grid gap-2 text-xs text-ink-muted">
               <label className="flex items-center gap-2">
@@ -55,72 +57,72 @@ export function PatientMarketing() {
                 <input type="checkbox" /> Do not request online review
               </label>
             </div>
-            <button type="button" className="tab-pill mt-3 w-fit bg-surface-2 text-xs">
+            <Button type="button" variant="secondary" size="sm" className="mt-3 w-fit">
               Update
-            </button>
+            </Button>
           </div>
 
-          <div className="rounded-2xl border border-surface-2 bg-white/80 p-4">
+          <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] p-4">
             <div className="text-xs font-semibold text-ink-muted">Referrer</div>
-            <div className="mt-3 overflow-hidden rounded-xl border border-surface-2">
-              <div className="grid grid-cols-[120px_1fr_140px] gap-3 bg-surface-1/60 px-3 py-2 text-[11px] uppercase tracking-[0.2em] text-ink-soft">
+            <div className="mt-3 overflow-hidden rounded-[18px] border border-[rgba(38,34,96,0.08)]">
+              <div className="grid grid-cols-[120px_1fr_140px] bg-[var(--surface-1)] px-3 py-[6px] text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft">
                 <span>Date</span>
                 <span>Referral source</span>
                 <span>User</span>
               </div>
-              {REFERRER_HISTORY.map((row) => (
-                <div key={`${row.date}-${row.source}`} className="grid grid-cols-[120px_1fr_140px] gap-3 border-t border-surface-2 px-3 py-3 text-xs">
+              {REFERRER_HISTORY.map((row, i) => (
+                <div key={`${row.date}-${row.source}`} className={`grid grid-cols-[120px_1fr_140px] px-3 py-[7px] border-t border-[var(--surface-1)] text-[12px] hover:bg-[rgba(31,149,184,0.04)]${i % 2 === 1 ? " bg-[rgba(243,239,232,0.4)]" : ""}`}>
                   <span className="text-ink-muted">{row.date}</span>
                   <span className="font-semibold text-ink-strong">{row.source}</span>
                   <span className="text-ink-muted">{row.user}</span>
                 </div>
               ))}
             </div>
-            <button type="button" className="tab-pill mt-3 w-fit bg-surface-2 text-xs">
+            <Button type="button" variant="secondary" size="sm" className="mt-3 w-fit">
               Show complete history
-            </button>
+            </Button>
           </div>
 
-          <div className="rounded-2xl border border-surface-2 bg-white/80 p-4">
+          <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] p-4">
             <div className="text-xs font-semibold text-ink-muted">Grouping</div>
             <div className="mt-3 grid gap-2 text-xs text-ink-muted">
               {GROUPING.map((item) => (
-                <div key={item} className="rounded-xl bg-white px-3 py-2 shadow-sm">
+                <div key={item} className="rounded-[8px] border border-[var(--surface-3)] bg-white px-3 py-2">
                   {item}
                 </div>
               ))}
             </div>
             <div className="mt-3 flex gap-2">
-              <button type="button" className="tab-pill bg-surface-2 text-xs">Add</button>
-              <button type="button" className="tab-pill bg-surface-2 text-xs">Delete</button>
+              <Button type="button" variant="secondary" size="sm">Add</Button>
+              <Button type="button" variant="secondary" size="sm">Delete</Button>
             </div>
           </div>
         </div>
 
         <div className="grid gap-6">
-          <div className="rounded-2xl border border-surface-2 bg-white/80 p-4">
+          <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] p-4">
             <div className="text-xs font-semibold text-ink-muted">Contact history</div>
-            <div className="mt-3 overflow-hidden rounded-xl border border-surface-2">
-              <div className="grid grid-cols-[120px_1fr] gap-3 bg-surface-1/60 px-3 py-2 text-[11px] uppercase tracking-[0.2em] text-ink-soft">
+            <div className="mt-3 overflow-hidden rounded-[18px] border border-[rgba(38,34,96,0.08)]">
+              <div className="grid grid-cols-[120px_1fr] bg-[var(--surface-1)] px-3 py-[6px] text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft">
                 <span>Date</span>
                 <span>Description</span>
               </div>
-              {CONTACT_HISTORY.map((row) => (
-                <div key={`${row.date}-${row.description}`} className="grid grid-cols-[120px_1fr] gap-3 border-t border-surface-2 px-3 py-3 text-xs">
+              {CONTACT_HISTORY.map((row, i) => (
+                <div key={`${row.date}-${row.description}`} className={`grid grid-cols-[120px_1fr] px-3 py-[7px] border-t border-[var(--surface-1)] text-[12px] hover:bg-[rgba(31,149,184,0.04)]${i % 2 === 1 ? " bg-[rgba(243,239,232,0.4)]" : ""}`}>
                   <span className="text-ink-muted">{row.date}</span>
                   <span className="font-semibold text-ink-strong">{row.description}</span>
                 </div>
               ))}
             </div>
-            <button type="button" className="tab-pill mt-3 w-fit bg-surface-2 text-xs">
+            <Button type="button" variant="secondary" size="sm" className="mt-3 w-fit">
               View content
-            </button>
+            </Button>
           </div>
 
-          <div className="rounded-2xl border border-surface-2 bg-white/80 p-4">
+          <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] p-4">
             <div className="text-xs font-semibold text-ink-muted">Recalls</div>
-            <div className="mt-3 overflow-hidden rounded-xl border border-surface-2">
-              <div className="grid grid-cols-[120px_1fr_140px_140px_1fr_120px] gap-3 bg-surface-1/60 px-3 py-2 text-[11px] uppercase tracking-[0.2em] text-ink-soft">
+            <div className="mt-3 overflow-hidden rounded-[18px] border border-[rgba(38,34,96,0.08)]">
+              <div className="grid grid-cols-[120px_1fr_140px_140px_1fr_120px] bg-[var(--surface-1)] px-3 py-[6px] text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft">
                 <span>Recall date</span>
                 <span>Recall type</span>
                 <span>Assignee</span>
@@ -128,8 +130,8 @@ export function PatientMarketing() {
                 <span>Notes</span>
                 <span>Outcome</span>
               </div>
-              {RECALLS.map((row) => (
-                <div key={`${row.date}-${row.type}`} className="grid grid-cols-[120px_1fr_140px_140px_1fr_120px] gap-3 border-t border-surface-2 px-3 py-3 text-xs">
+              {RECALLS.map((row, i) => (
+                <div key={`${row.date}-${row.type}`} className={`grid grid-cols-[120px_1fr_140px_140px_1fr_120px] px-3 py-[7px] border-t border-[var(--surface-1)] text-[12px] hover:bg-[rgba(31,149,184,0.04)]${i % 2 === 1 ? " bg-[rgba(243,239,232,0.4)]" : ""}`}>
                   <span className="text-ink-muted">{row.date}</span>
                   <span className="font-semibold text-ink-strong">{row.type}</span>
                   <span className="text-ink-muted">{row.assignee}</span>
@@ -140,9 +142,9 @@ export function PatientMarketing() {
               ))}
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              <button type="button" className="tab-pill bg-surface-2 text-xs">Add recall</button>
-              <button type="button" className="tab-pill bg-surface-2 text-xs">Edit details</button>
-              <button type="button" className="tab-pill bg-surface-2 text-xs">Refresh</button>
+              <Button type="button" variant="secondary" size="sm">Add recall</Button>
+              <Button type="button" variant="secondary" size="sm">Edit details</Button>
+              <Button type="button" variant="secondary" size="sm">Refresh</Button>
             </div>
           </div>
         </div>

@@ -1,0 +1,1684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280">
+<title>Omni — Variant 06: Command-Bar Workspace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ─── Design Tokens ─── */
+:root {
+  --brand-ink: #262260;
+  --brand-blue: #1f95b8;
+  --brand-orange: #dd6f26;
+
+  --surface-0: #f8f5f0;
+  --surface-1: #f3efe8;
+  --surface-2: #ece6dd;
+  --surface-3: #e6dfd4;
+  --surface-4: #dfd6c8;
+
+  --ink-strong: #1b1a27;
+  --ink: #2f2c3f;
+  --ink-muted: #6c687d;
+  --ink-soft: #9a95ad;
+
+  --success: #1e9b6c;
+  --warning: #c87a2f;
+  --danger: #c94646;
+
+  --card-bg: rgba(255,255,255,0.82);
+  --card-border: rgba(38,34,96,0.08);
+  --card-shadow: 0 1px 3px rgba(38,34,96,0.06), 0 0 0 1px rgba(38,34,96,0.04);
+
+  --radius-card: 18px;
+  --radius-pill: 999px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+
+  --font-body: 'Open Sans', system-ui, sans-serif;
+  --font-display: 'Space Grotesk', 'Open Sans', system-ui, sans-serif;
+
+  --nav-collapsed: 48px;
+  --nav-expanded: 180px;
+  --top-bar-h: 38px;
+  --status-bar-h: 24px;
+}
+
+/* ─── Reset ─── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; }
+body {
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--surface-0);
+  min-width: 1280px;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input { font-family: inherit; color: inherit; }
+
+/* ─── Layout Shell ─── */
+.shell { display: flex; flex: 1; overflow: hidden; }
+.main-col { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+
+/* ─── Left Nav ─── */
+.left-nav {
+  width: var(--nav-collapsed);
+  background: var(--brand-ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0;
+  transition: width 0.2s cubic-bezier(.4,0,.2,1);
+  z-index: 100;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.left-nav:hover { width: var(--nav-expanded); }
+.left-nav:hover .nav-label { opacity: 1; }
+
+.nav-logo {
+  width: 32px; height: 32px;
+  border-radius: 10px;
+  background: var(--brand-blue);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-weight: 700; font-size: 15px; color: #fff;
+}
+
+.nav-items { flex: 1; width: 100%; display: flex; flex-direction: column; gap: 2px; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px;
+  border-radius: 0;
+  color: rgba(255,255,255,0.55);
+  font-size: 12px; font-weight: 500;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+  position: relative;
+}
+.nav-item:hover { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.9); }
+.nav-item.active { color: #fff; background: rgba(255,255,255,0.15); }
+.nav-item.active::before {
+  content: '';
+  position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 20px;
+  background: var(--brand-blue);
+  border-radius: 0 3px 3px 0;
+}
+.nav-icon {
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  font-size: 15px;
+}
+.nav-label { opacity: 0; transition: opacity 0.15s; }
+
+.nav-bottom {
+  width: 100%;
+  padding: 8px 12px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; gap: 10px;
+  color: rgba(255,255,255,0.45);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.nav-bottom-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+/* ─── Top Utility Bar ─── */
+.top-bar {
+  height: var(--top-bar-h);
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--card-border);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.breadcrumb {
+  font-size: 12px;
+  color: var(--ink-muted);
+  display: flex; align-items: center; gap: 4px;
+  flex-shrink: 0;
+}
+.breadcrumb span { color: var(--ink-soft); }
+.breadcrumb strong { color: var(--ink); font-weight: 600; }
+
+.command-bar-wrapper {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  position: relative;
+}
+.command-bar {
+  width: 420px;
+  height: 28px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-pill);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 6px;
+  cursor: text;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.command-bar:focus-within {
+  border-color: var(--brand-blue);
+  box-shadow: 0 0 0 3px rgba(31,149,184,0.12);
+}
+.command-bar-icon { color: var(--ink-soft); font-size: 13px; flex-shrink: 0; }
+.command-bar input {
+  flex: 1; border: none; background: none; outline: none;
+  font-size: 12px; color: var(--ink);
+}
+.command-bar input::placeholder { color: var(--ink-soft); }
+.command-bar-hint {
+  font-size: 10px; color: var(--ink-soft);
+  background: var(--surface-2);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: var(--font-display);
+  flex-shrink: 0;
+}
+
+.top-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.top-btn {
+  height: 26px; padding: 0 10px;
+  font-size: 11px; font-weight: 600;
+  border-radius: var(--radius-pill);
+  display: flex; align-items: center; gap: 4px;
+  transition: background 0.15s;
+}
+.top-btn-primary { background: var(--brand-blue); color: #fff; }
+.top-btn-primary:hover { background: #1a829f; }
+.top-btn-ghost { color: var(--ink-muted); }
+.top-btn-ghost:hover { background: var(--surface-2); }
+
+.top-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.notif-btn {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink-muted);
+  font-size: 14px;
+  position: relative;
+}
+.notif-btn:hover { background: var(--surface-2); }
+.notif-dot {
+  position: absolute; top: 3px; right: 3px;
+  width: 6px; height: 6px;
+  background: var(--danger);
+  border-radius: 50%;
+  border: 1.5px solid var(--surface-1);
+}
+.user-avatar {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--brand-ink);
+  color: #fff;
+  font-size: 10px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display);
+}
+
+
+
+/* ─── Command Palette Overlay ─── */
+.palette-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(27,26,39,0.25);
+  backdrop-filter: blur(2px);
+}
+.palette-overlay.open { display: flex; justify-content: center; padding-top: 80px; }
+.palette {
+  width: 560px;
+  max-height: 420px;
+  background: #fff;
+  border-radius: var(--radius-card);
+  box-shadow: 0 16px 48px rgba(38,34,96,0.18), 0 0 0 1px var(--card-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: paletteIn 0.15s ease-out;
+}
+@keyframes paletteIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.palette-input-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--surface-2);
+}
+.palette-input-row svg { color: var(--ink-soft); flex-shrink: 0; }
+.palette-input {
+  flex: 1; border: none; outline: none; background: none;
+  font-size: 15px; font-weight: 500; color: var(--ink);
+}
+.palette-input::placeholder { color: var(--ink-soft); }
+.palette-body { flex: 1; overflow-y: auto; padding: 8px 0; }
+.palette-section { padding: 4px 0; }
+.palette-section-title {
+  padding: 4px 16px 6px;
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+}
+.palette-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 16px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.palette-item:hover, .palette-item.selected { background: var(--surface-1); }
+.palette-item-icon {
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: var(--ink-muted);
+  flex-shrink: 0;
+}
+.palette-item-icon.blue { background: rgba(31,149,184,0.1); color: var(--brand-blue); }
+.palette-item-icon.orange { background: rgba(38,34,96,0.1); color: var(--brand-orange); }
+.palette-item-icon.purple { background: rgba(38,34,96,0.1); color: var(--brand-ink); }
+.palette-item-text { flex: 1; }
+.palette-item-sub { font-size: 11px; color: var(--ink-soft); margin-left: 4px; }
+.palette-item-hint {
+  font-size: 10px; color: var(--ink-soft);
+  font-family: var(--font-display);
+  background: var(--surface-2);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.palette-footer {
+  padding: 8px 16px;
+  border-top: 1px solid var(--surface-2);
+  display: flex; align-items: center; gap: 12px;
+  font-size: 10px; color: var(--ink-soft);
+}
+.palette-footer kbd {
+  font-family: var(--font-display);
+  background: var(--surface-2);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 10px;
+}
+
+/* ─── Content Area ─── */
+.content-area {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  padding: 8px;
+  gap: 8px;
+}
+
+/* ── Patient Record (Left 60%) ── */
+.record-panel {
+  flex: 0 0 60%;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--card-shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.patient-header {
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--surface-2);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.patient-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--brand-blue), var(--brand-ink));
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 700; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.patient-meta { flex: 1; min-width: 0; }
+.patient-name {
+  font-family: var(--font-display);
+  font-weight: 700; font-size: 16px;
+  color: var(--ink-strong);
+  line-height: 1.2;
+}
+.patient-info {
+  font-size: 12px; color: var(--ink-muted);
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 1px;
+}
+.patient-info-sep { color: var(--surface-4); }
+.patient-badges { display: flex; gap: 4px; flex-shrink: 0; }
+.badge {
+  font-size: 10px; font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+.badge-active { background: rgba(30,155,108,0.1); color: var(--success); }
+.badge-insured { background: rgba(31,149,184,0.1); color: var(--brand-blue); }
+.badge-aids { background: rgba(38,34,96,0.1); color: var(--brand-orange); }
+
+/* Segmented tabs */
+.seg-tabs {
+  display: flex;
+  padding: 8px 16px 0;
+  gap: 0;
+}
+.seg-tabs-inner {
+  display: inline-flex;
+  background: var(--surface-1);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  gap: 1px;
+}
+.seg-tab {
+  font-size: 12px; font-weight: 500;
+  padding: 5px 14px;
+  border-radius: 6px;
+  color: var(--ink-muted);
+  transition: all 0.15s;
+}
+.seg-tab:hover { color: var(--ink); }
+.seg-tab.active {
+  background: #fff;
+  color: var(--ink-strong);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+
+/* Tab content */
+.tab-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px 16px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px 12px;
+}
+.form-field { display: flex; flex-direction: column; gap: 2px; }
+.form-field.span-2 { grid-column: span 2; }
+.form-label {
+  font-size: 10px; font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+}
+.form-value {
+  font-size: 13px;
+  color: var(--ink);
+  padding: 4px 0;
+  border-bottom: 1px solid transparent;
+  cursor: text;
+  transition: border-color 0.15s;
+  line-height: 1.4;
+}
+.form-value:hover { border-bottom-color: var(--surface-3); }
+.form-value:focus {
+  outline: none;
+  border-bottom-color: var(--brand-blue);
+}
+
+/* Section dividers */
+.section-title {
+  font-family: var(--font-display);
+  font-size: 12px; font-weight: 600;
+  color: var(--ink-muted);
+  margin: 14px 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--surface-2);
+}
+
+/* Audiogram mini */
+.audiogram-container {
+  margin-top: 8px;
+  background: var(--surface-1);
+  border-radius: var(--radius-md);
+  padding: 12px;
+}
+.audiogram-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 8px;
+}
+.audiogram-header h4 {
+  font-family: var(--font-display);
+  font-size: 12px; font-weight: 600; color: var(--ink);
+}
+.audiogram-header span { font-size: 11px; color: var(--ink-soft); }
+.audiogram-chart {
+  width: 100%; height: 180px;
+  position: relative;
+  border: 1px solid var(--surface-3);
+  border-radius: var(--radius-sm);
+  background: #fff;
+}
+.audiogram-chart canvas { width: 100%; height: 100%; }
+
+/* ── Context Panel (Right 40%) ── */
+.context-panel {
+  flex: 0 0 40%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+.ctx-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--card-shadow);
+  padding: 12px 14px;
+}
+.ctx-card-title {
+  font-family: var(--font-display);
+  font-size: 12px; font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.ctx-card-title .count {
+  background: var(--surface-2);
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  font-size: 10px; color: var(--ink-muted);
+}
+
+/* Mini table */
+.mini-table { width: 100%; border-collapse: collapse; }
+.mini-table th {
+  font-size: 10px; font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--surface-2);
+}
+.mini-table td {
+  font-size: 12px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--surface-1);
+  color: var(--ink);
+}
+.mini-table tr:nth-child(even) td { background: rgba(243,239,232,0.4); }
+.mini-table tr:hover td { background: rgba(31,149,184,0.04); }
+.mini-table .status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 4px;
+}
+.mini-table .status-dot.confirmed { background: var(--success); }
+.mini-table .status-dot.pending { background: var(--warning); }
+.mini-table .status-dot.cancelled { background: var(--danger); }
+
+/* Appointment card */
+.appt-item {
+  display: flex; gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--surface-1);
+}
+.appt-item:last-child { border-bottom: none; }
+.appt-time {
+  font-family: var(--font-display);
+  font-size: 12px; font-weight: 600;
+  color: var(--brand-blue);
+  width: 52px; flex-shrink: 0;
+}
+.appt-detail { flex: 1; }
+.appt-type { font-size: 12px; font-weight: 600; color: var(--ink); }
+.appt-meta { font-size: 11px; color: var(--ink-muted); margin-top: 1px; }
+
+/* Quick notes */
+.quick-note-input {
+  width: 100%;
+  border: 1px solid var(--surface-3);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font-size: 12px;
+  resize: vertical;
+  min-height: 64px;
+  background: var(--surface-0);
+  transition: border-color 0.15s;
+}
+.quick-note-input:focus {
+  outline: none;
+  border-color: var(--brand-blue);
+}
+.quick-note-actions {
+  display: flex; justify-content: flex-end; gap: 6px;
+  margin-top: 6px;
+}
+.btn-sm {
+  font-size: 11px; font-weight: 600;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+}
+.btn-sm-primary { background: var(--brand-blue); color: #fff; }
+.btn-sm-primary:hover { background: #1a829f; }
+.btn-sm-ghost { color: var(--ink-muted); }
+.btn-sm-ghost:hover { background: var(--surface-2); }
+
+/* Recent notes list */
+.note-item {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--surface-1);
+}
+.note-item:last-child { border-bottom: none; }
+.note-item-header {
+  display: flex; justify-content: space-between;
+  font-size: 10px; color: var(--ink-soft);
+  margin-bottom: 2px;
+}
+.note-item-body { font-size: 12px; color: var(--ink); line-height: 1.4; }
+
+/* ─── Bottom Status Bar ─── */
+.status-bar {
+  height: var(--status-bar-h);
+  background: var(--brand-ink);
+  color: rgba(255,255,255,0.55);
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 16px;
+  flex-shrink: 0;
+}
+.status-bar .active-loc { color: rgba(255,255,255,0.8); font-weight: 600; }
+.status-bar .sep { color: rgba(255,255,255,0.2); }
+.status-bar .right { margin-left: auto; display: flex; gap: 14px; }
+.status-indicator {
+  display: flex; align-items: center; gap: 4px;
+}
+.status-indicator .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+}
+
+/* ─── Open Patients Rail ─── */
+.patient-rail {
+  width: 170px;
+  background: var(--surface-1);
+  border-left: 1px solid rgba(38,34,96,0.06);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+.patient-rail-header {
+  padding: 10px 12px 6px;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink-soft);
+}
+.patient-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  cursor: pointer;
+  transition: background 0.12s;
+  border-left: 2px solid transparent;
+  position: relative;
+}
+.patient-tab:hover { background: var(--surface-2); }
+.patient-tab.active {
+  background: rgba(31,149,184,0.06);
+  border-left-color: var(--brand-blue);
+}
+.patient-tab-avatar {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700; font-size: 9px;
+  color: #fff;
+  flex-shrink: 0;
+}
+.patient-tab-info {
+  flex: 1; min-width: 0;
+}
+.patient-tab-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.patient-tab-sub {
+  font-size: 10px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.patient-tab-close {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px;
+  color: var(--ink-soft);
+  opacity: 0;
+  transition: opacity 0.12s, background 0.12s;
+  flex-shrink: 0;
+}
+.patient-tab:hover .patient-tab-close { opacity: 1; }
+.patient-tab-close:hover { background: var(--surface-3); color: var(--ink); }
+.patient-tab-status {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  position: absolute;
+  left: 28px; bottom: 7px;
+  border: 1.5px solid var(--surface-1);
+}
+.patient-tab.active .patient-tab-status { border-color: rgba(31,149,184,0.06); }
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--surface-4); }
+
+/* ─── Utilities ─── */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+</style>
+</head>
+<body>
+
+<!-- ═══ Left Nav ═══ -->
+<div class="shell">
+<nav class="left-nav" aria-label="Main navigation">
+  <div class="nav-logo">O</div>
+  <div class="nav-items">
+    <button class="nav-item active" data-tip="Patients">
+      <span class="nav-icon">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 15v-1.5a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3V15"/><circle cx="8.5" cy="5.5" r="2.5"/><path d="M15 8.5a2 2 0 0 0-1.5-1.94"/><path d="M13.5 3.56a2 2 0 0 1 0 3.88"/></svg>
+      </span>
+      <span class="nav-label">Patients</span>
+    </button>
+    <button class="nav-item" data-tip="Scheduling">
+      <span class="nav-icon">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="12" height="12" rx="2"/><path d="M3 8h12M7 2v4M11 2v4"/></svg>
+      </span>
+      <span class="nav-label">Scheduling</span>
+    </button>
+    <button class="nav-item" data-tip="Orders">
+      <span class="nav-icon">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h10l-1 8H5L4 4z"/><path d="M4 4L3 2"/><circle cx="7" cy="15" r="1"/><circle cx="12" cy="15" r="1"/></svg>
+      </span>
+      <span class="nav-label">Orders</span>
+    </button>
+    <button class="nav-item" data-tip="Marketing">
+      <span class="nav-icon">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l6-6 6 6"/><path d="M5 7v7a1 1 0 001 1h6a1 1 0 001-1V7"/></svg>
+      </span>
+      <span class="nav-label">Marketing</span>
+    </button>
+    <button class="nav-item" data-tip="Recalls">
+      <span class="nav-icon">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9a6 6 0 0112 0"/><path d="M3 9l2-2m-2 2l2 2"/><path d="M9 5v4l2 2"/></svg>
+      </span>
+      <span class="nav-label">Recalls</span>
+    </button>
+    <button class="nav-item" data-tip="Messages">
+      <span class="nav-icon">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h10a1 1 0 011 1v6a1 1 0 01-1 1H6l-3 3V6a1 1 0 011-1z"/></svg>
+      </span>
+      <span class="nav-label">Messages</span>
+    </button>
+    <button class="nav-item" data-tip="Journal">
+      <span class="nav-icon">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h9a1 1 0 011 1v10a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M7 7h4M7 10h2"/></svg>
+      </span>
+      <span class="nav-label">Journal</span>
+    </button>
+    <button class="nav-item" data-tip="Sales">
+      <span class="nav-icon">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v14"/><path d="M5 6c0-1.1 1.8-2 4-2s4 .9 4 2"/><path d="M5 12c0 1.1 1.8 2 4 2s4-.9 4-2"/></svg>
+      </span>
+      <span class="nav-label">Sales</span>
+    </button>
+    <button class="nav-item" data-tip="Documents">
+      <span class="nav-icon">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h6l4 4v8a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M11 3v4h4"/></svg>
+      </span>
+      <span class="nav-label">Documents</span>
+    </button>
+    <button class="nav-item" data-tip="Settings">
+      <span class="nav-icon">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="2.5"/><path d="M9 2v2m0 10v2M2 9h2m10 0h2M4 4l1.5 1.5m7 7L14 14M14 4l-1.5 1.5m-7 7L4 14"/></svg>
+      </span>
+      <span class="nav-label">Settings</span>
+    </button>
+  </div>
+  <div class="nav-bottom">
+    <span class="nav-bottom-dot"></span>
+    <span class="nav-label">Rosewood Clinic</span>
+  </div>
+</nav>
+
+<!-- ═══ Main Column ═══ -->
+<div class="main-col">
+
+<!-- ── Top Utility Bar ── -->
+<header class="top-bar">
+  <div class="breadcrumb">
+    <span>Patients</span>
+    <span>&rsaquo;</span>
+    <strong>Margaret Chen</strong>
+    <span>&rsaquo;</span>
+    <span>Demographics</span>
+  </div>
+
+  <div class="command-bar-wrapper">
+    <div class="command-bar" id="commandBarTrigger">
+      <span class="command-bar-icon">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="6" r="4.5"/><path d="M13 13l-3.5-3.5"/></svg>
+      </span>
+      <input type="text" placeholder="Type a command or search…" id="commandBarInput" autocomplete="off" />
+      <span class="command-bar-hint">&#8984;K</span>
+    </div>
+  </div>
+
+  <div class="top-actions">
+    <button class="top-btn top-btn-primary">+ Patient</button>
+    <button class="top-btn top-btn-ghost">+ Appt</button>
+    <button class="top-btn top-btn-ghost">+ Note</button>
+  </div>
+
+  <div class="top-right">
+    <button class="notif-btn" aria-label="Notifications">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6.5a4 4 0 018 0c0 4 2 5 2 5H2s2-1 2-5z"/><path d="M6.5 14a1.5 1.5 0 003 0"/></svg>
+      <span class="notif-dot"></span>
+    </button>
+    <div class="user-avatar">DR</div>
+  </div>
+</header>
+
+<!-- ── Content Area ── -->
+<main class="content-area">
+
+  <!-- Patient Record Panel -->
+  <section class="record-panel">
+    <div class="patient-header">
+      <div class="patient-avatar">MC</div>
+      <div class="patient-meta">
+        <div class="patient-name">Margaret Chen</div>
+        <div class="patient-info">
+          <span>DOB: 04/12/1958 (67)</span>
+          <span class="patient-info-sep">|</span>
+          <span>Blue Cross PPO</span>
+          <span class="patient-info-sep">|</span>
+          <span>Last visit: 02/18/2026</span>
+        </div>
+      </div>
+      <div class="patient-badges">
+        <span class="badge badge-active">Active</span>
+        <span class="badge badge-insured">Ins. Verified</span>
+        <span class="badge badge-aids">Has Aids</span>
+      </div>
+    </div>
+
+    <div class="seg-tabs">
+      <div class="seg-tabs-inner">
+        <button class="seg-tab active" data-tab="demographics">Demographics</button>
+        <button class="seg-tab" data-tab="audiogram">Audiogram</button>
+        <button class="seg-tab" data-tab="history">History</button>
+        <button class="seg-tab" data-tab="orders">Orders</button>
+        <button class="seg-tab" data-tab="notes">Notes</button>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tabContent">
+      <!-- Demographics (default) -->
+      <div class="tab-pane" id="pane-demographics">
+        <div class="section-title">Personal Information</div>
+        <div class="form-grid">
+          <div class="form-field">
+            <div class="form-label">First Name</div>
+            <div class="form-value" contenteditable="true">Margaret</div>
+          </div>
+          <div class="form-field">
+            <div class="form-label">Last Name</div>
+            <div class="form-value" contenteditable="true">Chen</div>
+          </div>
+          <div class="form-field">
+            <div class="form-label">Preferred Name</div>
+            <div class="form-value" contenteditable="true">Maggie</div>
+          </div>
+          <div class="form-field">
+            <div class="form-label">Date of Birth</div>
+            <div class="form-value" contenteditable="true">04/12/1958</div>
+          </div>
+          <div class="form-field">
+            <div class="form-label">Gender</div>
+            <div class="form-value" contenteditable="true">Female</div>
+          </div>
+          <div class="form-field">
+            <div class="form-label">SSN (last 4)</div>
+            <div class="form-value" contenteditable="true">••••4821</div>
+          </div>
+        </div>
+
+        <div class="section-title">Contact</div>
+        <div class="form-grid">
+          <div class="form-field">
+            <div class="form-label">Phone (Primary)</div>
+            <div class="form-value" contenteditable="true">(503) 555-0187</div>
+          </div>
+          <div class="form-field">
+            <div class="form-label">Phone (Cell)</div>
+            <div class="form-value" contenteditable="true">(503) 555-0234</div>
+          </div>
+          <div class="form-field">
+            <div class="form-label">Email</div>
+            <div class="form-value" contenteditable="true">m.chen@example.com</div>
+          </div>
+          <div class="form-field span-2">
+            <div class="form-label">Address</div>
+            <div class="form-value" contenteditable="true">1847 NW Rosewood Ave, Portland, OR 97210</div>
+          </div>
+          <div class="form-field">
+            <div class="form-label">Emergency Contact</div>
+            <div class="form-value" contenteditable="true">David Chen (Son) — (503) 555-0312</div>
+          </div>
+        </div>
+
+        <div class="section-title">Insurance</div>
+        <div class="form-grid">
+          <div class="form-field">
+            <div class="form-label">Primary Insurance</div>
+            <div class="form-value" contenteditable="true">Blue Cross Blue Shield PPO</div>
+          </div>
+          <div class="form-field">
+            <div class="form-label">Member ID</div>
+            <div class="form-value" contenteditable="true">BCB-99284710</div>
+          </div>
+          <div class="form-field">
+            <div class="form-label">Group Number</div>
+            <div class="form-value" contenteditable="true">GRP-44821</div>
+          </div>
+          <div class="form-field">
+            <div class="form-label">Subscriber</div>
+            <div class="form-value" contenteditable="true">Self</div>
+          </div>
+          <div class="form-field">
+            <div class="form-label">Authorization</div>
+            <div class="form-value" contenteditable="true">AUTH-20260301-A</div>
+          </div>
+          <div class="form-field">
+            <div class="form-label">Coverage Verified</div>
+            <div class="form-value" contenteditable="true">03/01/2026 — Active</div>
+          </div>
+        </div>
+
+        <div class="section-title">Clinical</div>
+        <div class="form-grid">
+          <div class="form-field">
+            <div class="form-label">Referring Physician</div>
+            <div class="form-value" contenteditable="true">Dr. Sarah Walters, ENT</div>
+          </div>
+          <div class="form-field">
+            <div class="form-label">PCP</div>
+            <div class="form-value" contenteditable="true">Dr. James Liu</div>
+          </div>
+          <div class="form-field">
+            <div class="form-label">Current Aids</div>
+            <div class="form-value" contenteditable="true">Phonak Audeo P90-R (bilateral)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Audiogram Pane (hidden by default) -->
+      <div class="tab-pane" id="pane-audiogram" style="display:none;">
+        <div class="audiogram-container">
+          <div class="audiogram-header">
+            <h4>Pure Tone Audiogram — 02/18/2026</h4>
+            <span>Audiologist: Dr. Rebecca Torres</span>
+          </div>
+          <div class="audiogram-chart">
+            <canvas id="audiogramCanvas"></canvas>
+          </div>
+        </div>
+        <div style="margin-top:12px;">
+          <div class="section-title">Threshold Summary (dB HL)</div>
+          <table class="mini-table">
+            <thead>
+              <tr><th>Freq (Hz)</th><th>250</th><th>500</th><th>1k</th><th>2k</th><th>3k</th><th>4k</th><th>6k</th><th>8k</th></tr>
+            </thead>
+            <tbody>
+              <tr><td style="font-weight:600;color:var(--danger)">Right</td><td>20</td><td>25</td><td>35</td><td>45</td><td>50</td><td>55</td><td>60</td><td>65</td></tr>
+              <tr><td style="font-weight:600;color:var(--brand-blue)">Left</td><td>15</td><td>20</td><td>30</td><td>40</td><td>50</td><td>55</td><td>65</td><td>70</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:12px;">
+          <div class="section-title">Interpretation</div>
+          <p style="font-size:12px;line-height:1.5;color:var(--ink);">Bilateral sloping moderate-to-moderately-severe sensorineural hearing loss. Right ear slightly better in low frequencies. Word recognition: Right 84%, Left 80% at 65 dB HL. Consistent with presbycusis. Current amplification providing adequate benefit per patient report.</p>
+        </div>
+      </div>
+
+      <!-- History Pane -->
+      <div class="tab-pane" id="pane-history" style="display:none;">
+        <div class="section-title">Visit History</div>
+        <table class="mini-table">
+          <thead>
+            <tr><th>Date</th><th>Type</th><th>Provider</th><th>Summary</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>02/18/2026</td><td>Follow-up</td><td>Dr. Torres</td><td>Audiogram + hearing aid check. Programming adjustment R ear.</td></tr>
+            <tr><td>11/04/2025</td><td>Fitting</td><td>Dr. Torres</td><td>Bilateral Phonak Audeo P90-R fitting. REM completed.</td></tr>
+            <tr><td>10/15/2025</td><td>Evaluation</td><td>Dr. Torres</td><td>Comprehensive audiologic evaluation. HA recommendation discussed.</td></tr>
+            <tr><td>10/01/2025</td><td>Consultation</td><td>Dr. Patel</td><td>Initial consultation. Referred by Dr. Walters. Tinnitus eval.</td></tr>
+            <tr><td>06/22/2025</td><td>Screening</td><td>K. Martinez</td><td>Community hearing screening. Referred for full evaluation.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Orders Pane -->
+      <div class="tab-pane" id="pane-orders" style="display:none;">
+        <div class="section-title">Active Orders</div>
+        <table class="mini-table">
+          <thead>
+            <tr><th>Order #</th><th>Date</th><th>Item</th><th>Status</th><th>Est. Arrival</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>ORD-2026-0847</td><td>03/05/2026</td><td>Custom ear molds (bilateral)</td>
+              <td><span class="status-dot pending"></span>In Production</td>
+              <td>03/19/2026</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="section-title" style="margin-top:16px;">Past Orders</div>
+        <table class="mini-table">
+          <thead>
+            <tr><th>Order #</th><th>Date</th><th>Item</th><th>Status</th><th>Total</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>ORD-2025-0612</td><td>10/28/2025</td><td>Phonak Audeo P90-R x2</td><td><span class="status-dot confirmed"></span>Delivered</td><td>$6,400.00</td></tr>
+            <tr><td>ORD-2025-0613</td><td>10/28/2025</td><td>Charging case (Phonak)</td><td><span class="status-dot confirmed"></span>Delivered</td><td>$149.00</td></tr>
+            <tr><td>ORD-2025-0591</td><td>10/15/2025</td><td>Impression supplies</td><td><span class="status-dot confirmed"></span>Delivered</td><td>—</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Notes Pane -->
+      <div class="tab-pane" id="pane-notes" style="display:none;">
+        <div class="section-title">Clinical Notes</div>
+        <div class="note-item">
+          <div class="note-item-header">
+            <span>Dr. Rebecca Torres</span>
+            <span>02/18/2026 10:45 AM</span>
+          </div>
+          <div class="note-item-body">Follow-up visit. Patient reports improved hearing in noisy environments since last programming adjustment. Audiogram stable. Adjusted right ear gain +2dB at 2-4kHz per patient preference. Ordered custom ear molds for better retention during gardening activities. Follow-up in 3 months.</div>
+        </div>
+        <div class="note-item">
+          <div class="note-item-header">
+            <span>Dr. Rebecca Torres</span>
+            <span>11/04/2025 2:15 PM</span>
+          </div>
+          <div class="note-item-body">Bilateral fitting Phonak Audeo P90-R. REM verified per NAL-NL2 targets. Patient counseled on device use, care, and realistic expectations. Initial program set to 80% target for acclimatization. Bluetooth paired to iPhone. Follow-up in 2 weeks.</div>
+        </div>
+        <div class="note-item">
+          <div class="note-item-header">
+            <span>Dr. Rebecca Torres</span>
+            <span>10/15/2025 9:30 AM</span>
+          </div>
+          <div class="note-item-body">Comprehensive audiologic evaluation. Bilateral SNHL, moderate sloping to moderately severe. WRS: R 84%, L 80%. Tympanograms Type A bilaterally. Discussed treatment options — patient elected to proceed with bilateral hearing aids. Insurance pre-auth submitted.</div>
+        </div>
+        <div class="note-item">
+          <div class="note-item-header">
+            <span>Dr. Anil Patel</span>
+            <span>10/01/2025 11:00 AM</span>
+          </div>
+          <div class="note-item-body">Initial consultation. Patient referred by Dr. Sarah Walters (ENT) for audiologic assessment. Reports progressive hearing difficulty over past 3 years, especially in group settings. Mild bilateral tinnitus — not bothersome. No history of noise exposure or ototoxic medications. Scheduled for comprehensive evaluation.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Context Panel -->
+  <aside class="context-panel">
+    <div class="ctx-card">
+      <div class="ctx-card-title">
+        Upcoming Appointments
+        <span class="count">2</span>
+      </div>
+      <div class="appt-item">
+        <div class="appt-time">Mar 19</div>
+        <div class="appt-detail">
+          <div class="appt-type">Ear Mold Fitting</div>
+          <div class="appt-meta">Dr. Torres — 10:00 AM — 30 min</div>
+        </div>
+      </div>
+      <div class="appt-item">
+        <div class="appt-time">Jun 18</div>
+        <div class="appt-detail">
+          <div class="appt-type">6-Month Follow-up</div>
+          <div class="appt-meta">Dr. Torres — 2:30 PM — 45 min</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ctx-card">
+      <div class="ctx-card-title">
+        Recent Orders
+        <span class="count">1 active</span>
+      </div>
+      <table class="mini-table">
+        <thead>
+          <tr><th>Item</th><th>Status</th><th>ETA</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Custom ear molds (bi)</td>
+            <td><span class="status-dot pending"></span>Production</td>
+            <td>Mar 19</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="ctx-card">
+      <div class="ctx-card-title">Quick Note</div>
+      <textarea class="quick-note-input" placeholder="Add a note about this patient…"></textarea>
+      <div class="quick-note-actions">
+        <button class="btn-sm btn-sm-ghost">Cancel</button>
+        <button class="btn-sm btn-sm-primary">Save Note</button>
+      </div>
+    </div>
+
+    <div class="ctx-card">
+      <div class="ctx-card-title">
+        Recent Notes
+        <span class="count">4</span>
+      </div>
+      <div class="note-item">
+        <div class="note-item-header">
+          <span>Dr. Torres</span>
+          <span>02/18/2026</span>
+        </div>
+        <div class="note-item-body">Follow-up — audiogram stable, R ear gain adjusted +2dB. Custom molds ordered.</div>
+      </div>
+      <div class="note-item">
+        <div class="note-item-header">
+          <span>Dr. Torres</span>
+          <span>11/04/2025</span>
+        </div>
+        <div class="note-item-body">Bilateral Phonak fitting. REM verified. Bluetooth paired. Initial 80% target.</div>
+      </div>
+      <div class="note-item">
+        <div class="note-item-header">
+          <span>Dr. Torres</span>
+          <span>10/15/2025</span>
+        </div>
+        <div class="note-item-body">Comprehensive eval — bilateral moderate-severe SNHL. HA recommended.</div>
+      </div>
+    </div>
+
+    <div class="ctx-card">
+      <div class="ctx-card-title">Recalls &amp; Reminders</div>
+      <div style="font-size:12px;color:var(--ink-muted);display:flex;flex-direction:column;gap:4px;">
+        <div style="display:flex;justify-content:space-between;">
+          <span>Annual audiogram</span>
+          <span style="color:var(--warning);font-weight:600;">Due Oct 2026</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span>Hearing aid warranty check</span>
+          <span style="color:var(--ink-soft);">Oct 2028</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span>Insurance re-verification</span>
+          <span style="color:var(--success);font-weight:600;">Verified</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+</main>
+
+</div><!-- /main-col -->
+
+<!-- ═══ Open Patients Rail ═══ -->
+<aside class="patient-rail">
+  <div class="patient-rail-header">Open Patients</div>
+  <div class="patient-tab active" data-patient="chen">
+    <div class="patient-tab-avatar" style="background:linear-gradient(135deg,var(--brand-blue),var(--brand-ink));">MC</div>
+    <span class="patient-tab-status" style="background:var(--success);"></span>
+    <div class="patient-tab-info">
+      <div class="patient-tab-name">Chen, Margaret</div>
+      <div class="patient-tab-sub">Follow-up</div>
+    </div>
+    <button class="patient-tab-close" title="Close">&times;</button>
+  </div>
+  <div class="patient-tab" data-patient="williams">
+    <div class="patient-tab-avatar" style="background:linear-gradient(135deg,#dd6f26,#b85a1e);">RW</div>
+    <span class="patient-tab-status" style="background:var(--warning);"></span>
+    <div class="patient-tab-info">
+      <div class="patient-tab-name">Williams, Robert</div>
+      <div class="patient-tab-sub">Evaluation</div>
+    </div>
+    <button class="patient-tab-close" title="Close">&times;</button>
+  </div>
+  <div class="patient-tab" data-patient="johnson">
+    <div class="patient-tab-avatar" style="background:linear-gradient(135deg,#1e9b6c,#167a55);">LJ</div>
+    <span class="patient-tab-status" style="background:var(--success);"></span>
+    <div class="patient-tab-info">
+      <div class="patient-tab-name">Johnson, Linda</div>
+      <div class="patient-tab-sub">Fitting</div>
+    </div>
+    <button class="patient-tab-close" title="Close">&times;</button>
+  </div>
+  <div class="patient-tab" data-patient="garcia">
+    <div class="patient-tab-avatar" style="background:linear-gradient(135deg,#c94646,#a33636);">AG</div>
+    <span class="patient-tab-status" style="background:var(--danger);"></span>
+    <div class="patient-tab-info">
+      <div class="patient-tab-name">Garcia, Antonio</div>
+      <div class="patient-tab-sub">Urgent — Repair</div>
+    </div>
+    <button class="patient-tab-close" title="Close">&times;</button>
+  </div>
+  <div class="patient-tab" data-patient="patel">
+    <div class="patient-tab-avatar" style="background:linear-gradient(135deg,#6c687d,#4a4760);">SP</div>
+    <div class="patient-tab-info">
+      <div class="patient-tab-name">Patel, Sunita</div>
+      <div class="patient-tab-sub">Consultation</div>
+    </div>
+    <button class="patient-tab-close" title="Close">&times;</button>
+  </div>
+</aside>
+
+</div><!-- /shell -->
+
+<!-- ═══ Bottom Status Bar ═══ -->
+<footer class="status-bar">
+  <span class="status-indicator"><span class="dot"></span></span>
+  <span class="active-loc">Rosewood Clinic</span>
+  <span class="sep">|</span>
+  <span>Dr. Rebecca Torres</span>
+  <span class="sep">|</span>
+  <span>Patients: 1,247</span>
+  <div class="right">
+    <span>Last sync: 2 min ago</span>
+    <span class="sep">|</span>
+    <span>v2.4.1</span>
+  </div>
+</footer>
+
+<!-- ═══ Command Palette Overlay ═══ -->
+<div class="palette-overlay" id="paletteOverlay">
+  <div class="palette" id="palette">
+    <div class="palette-input-row">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="8" r="5.5"/><path d="M17 17l-4-4"/></svg>
+      <input class="palette-input" id="paletteInput" type="text" placeholder="Type a command or search…" autocomplete="off" />
+    </div>
+    <div class="palette-body" id="paletteBody">
+      <div class="palette-section">
+        <div class="palette-section-title">Recent</div>
+        <div class="palette-item selected">
+          <div class="palette-item-icon blue">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="4"/></svg>
+          </div>
+          <span class="palette-item-text">Margaret Chen<span class="palette-item-sub">Patient — last viewed</span></span>
+        </div>
+        <div class="palette-item">
+          <div class="palette-item-icon">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="8" height="8" rx="1.5"/><path d="M2 6h8"/></svg>
+          </div>
+          <span class="palette-item-text">Today's Schedule<span class="palette-item-sub">12 appointments</span></span>
+        </div>
+        <div class="palette-item">
+          <div class="palette-item-icon">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 6a4 4 0 018 0"/><circle cx="6" cy="4" r="2"/></svg>
+          </div>
+          <span class="palette-item-text">Robert Williams<span class="palette-item-sub">Patient</span></span>
+        </div>
+      </div>
+
+      <div class="palette-section">
+        <div class="palette-section-title">Patient Actions</div>
+        <div class="palette-item">
+          <div class="palette-item-icon orange">+</div>
+          <span class="palette-item-text">New Patient</span>
+          <span class="palette-item-hint">&#8984;N</span>
+        </div>
+        <div class="palette-item">
+          <div class="palette-item-icon blue">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="4"/><path d="M6 4v4M4 6h4"/></svg>
+          </div>
+          <span class="palette-item-text">New Appointment</span>
+          <span class="palette-item-hint">&#8984;Shift+A</span>
+        </div>
+        <div class="palette-item">
+          <div class="palette-item-icon purple">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 2h8v8H2z"/><path d="M5 5h2"/></svg>
+          </div>
+          <span class="palette-item-text">Add Clinical Note</span>
+          <span class="palette-item-hint">&#8984;Shift+N</span>
+        </div>
+        <div class="palette-item">
+          <div class="palette-item-icon">$</div>
+          <span class="palette-item-text">Create Order</span>
+          <span class="palette-item-hint">&#8984;O</span>
+        </div>
+      </div>
+
+      <div class="palette-section">
+        <div class="palette-section-title">Navigation</div>
+        <div class="palette-item">
+          <div class="palette-item-icon">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 6a4 4 0 018 0"/><circle cx="6" cy="4" r="2"/></svg>
+          </div>
+          <span class="palette-item-text">Go to Patients</span>
+          <span class="palette-item-hint">G then P</span>
+        </div>
+        <div class="palette-item">
+          <div class="palette-item-icon">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="8" height="8" rx="1.5"/><path d="M2 6h8"/></svg>
+          </div>
+          <span class="palette-item-text">Go to Schedule</span>
+          <span class="palette-item-hint">G then S</span>
+        </div>
+        <div class="palette-item">
+          <div class="palette-item-icon">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h6l-1 6H4L3 3z"/></svg>
+          </div>
+          <span class="palette-item-text">Go to Orders</span>
+          <span class="palette-item-hint">G then O</span>
+        </div>
+        <div class="palette-item">
+          <div class="palette-item-icon">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4h8M2 6h5M2 8h7"/></svg>
+          </div>
+          <span class="palette-item-text">Go to Journal</span>
+          <span class="palette-item-hint">G then J</span>
+        </div>
+      </div>
+
+      <div class="palette-section">
+        <div class="palette-section-title">Scheduling</div>
+        <div class="palette-item">
+          <div class="palette-item-icon blue">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="8" height="8" rx="1.5"/><path d="M2 6h8M5 1v3M7 1v3"/></svg>
+          </div>
+          <span class="palette-item-text">View Today's Schedule</span>
+          <span class="palette-item-hint">&#8984;S</span>
+        </div>
+        <div class="palette-item">
+          <div class="palette-item-icon">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="4"/><path d="M6 3v3l2 1"/></svg>
+          </div>
+          <span class="palette-item-text">Find Next Available Slot</span>
+        </div>
+      </div>
+    </div>
+    <div class="palette-footer">
+      <span><kbd>&uarr;</kbd> <kbd>&darr;</kbd> Navigate</span>
+      <span><kbd>Enter</kbd> Select</span>
+      <span><kbd>Esc</kbd> Close</span>
+      <span style="margin-left:auto;">Type to filter</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Command Palette Toggle ───
+const overlay = document.getElementById('paletteOverlay');
+const paletteInput = document.getElementById('paletteInput');
+const commandBarInput = document.getElementById('commandBarInput');
+const paletteBody = document.getElementById('paletteBody');
+
+function openPalette() {
+  overlay.classList.add('open');
+  paletteInput.value = '';
+  paletteInput.focus();
+  filterPalette('');
+}
+function closePalette() {
+  overlay.classList.remove('open');
+  commandBarInput.blur();
+}
+
+// Open palette on clicking command bar or focusing input
+document.getElementById('commandBarTrigger').addEventListener('click', openPalette);
+commandBarInput.addEventListener('focus', (e) => {
+  e.target.blur();
+  openPalette();
+});
+
+// Close on overlay background click
+overlay.addEventListener('click', (e) => {
+  if (e.target === overlay) closePalette();
+});
+
+// Cmd+K / Ctrl+K
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault();
+    if (overlay.classList.contains('open')) closePalette();
+    else openPalette();
+  }
+  if (e.key === 'Escape' && overlay.classList.contains('open')) {
+    closePalette();
+  }
+});
+
+// ─── Palette Filtering ───
+function filterPalette(query) {
+  const q = query.toLowerCase().trim();
+  const items = paletteBody.querySelectorAll('.palette-item');
+  const sections = paletteBody.querySelectorAll('.palette-section');
+
+  items.forEach(item => {
+    const text = item.textContent.toLowerCase();
+    item.style.display = (!q || text.includes(q)) ? '' : 'none';
+  });
+
+  // Hide sections with no visible items
+  sections.forEach(sec => {
+    const visible = sec.querySelectorAll('.palette-item:not([style*="display: none"])');
+    sec.style.display = visible.length ? '' : 'none';
+  });
+
+  // Highlight first visible
+  const allVisible = paletteBody.querySelectorAll('.palette-item:not([style*="display: none"])');
+  items.forEach(i => i.classList.remove('selected'));
+  if (allVisible.length) allVisible[0].classList.add('selected');
+}
+
+paletteInput.addEventListener('input', (e) => filterPalette(e.target.value));
+
+// Keyboard nav in palette
+paletteInput.addEventListener('keydown', (e) => {
+  const visible = [...paletteBody.querySelectorAll('.palette-item:not([style*="display: none"])')];
+  if (!visible.length) return;
+  const idx = visible.findIndex(i => i.classList.contains('selected'));
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    visible.forEach(i => i.classList.remove('selected'));
+    visible[(idx + 1) % visible.length].classList.add('selected');
+    visible[(idx + 1) % visible.length].scrollIntoView({ block: 'nearest' });
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    visible.forEach(i => i.classList.remove('selected'));
+    const next = idx <= 0 ? visible.length - 1 : idx - 1;
+    visible[next].classList.add('selected');
+    visible[next].scrollIntoView({ block: 'nearest' });
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    const sel = visible.find(i => i.classList.contains('selected'));
+    if (sel) {
+      closePalette();
+      // Could trigger action here
+    }
+  }
+});
+
+// ─── Segmented Tabs ───
+const segTabs = document.querySelectorAll('.seg-tab');
+const panes = document.querySelectorAll('.tab-pane');
+
+segTabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    segTabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const target = tab.dataset.tab;
+    panes.forEach(p => {
+      p.style.display = p.id === 'pane-' + target ? '' : 'none';
+    });
+
+    // Update breadcrumb
+    const crumbParts = document.querySelectorAll('.breadcrumb span, .breadcrumb strong');
+    const label = tab.textContent;
+    if (crumbParts.length >= 5) {
+      crumbParts[4].textContent = label;
+    }
+
+    // Draw audiogram if needed
+    if (target === 'audiogram') drawAudiogram();
+  });
+});
+
+// ─── Audiogram Drawing ───
+function drawAudiogram() {
+  const canvas = document.getElementById('audiogramCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width;
+  canvas.height = rect.height;
+
+  const freqs = [250, 500, 1000, 2000, 3000, 4000, 6000, 8000];
+  const rightDB = [20, 25, 35, 45, 50, 55, 60, 65];
+  const leftDB  = [15, 20, 30, 40, 50, 55, 65, 70];
+
+  const padL = 40, padR = 20, padT = 20, padB = 30;
+  const w = canvas.width - padL - padR;
+  const h = canvas.height - padT - padB;
+
+  // Grid
+  ctx.strokeStyle = '#ece6dd';
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i < freqs.length; i++) {
+    const x = padL + (i / (freqs.length - 1)) * w;
+    ctx.beginPath(); ctx.moveTo(x, padT); ctx.lineTo(x, padT + h); ctx.stroke();
+    ctx.fillStyle = '#9a95ad';
+    ctx.font = '9px Space Grotesk';
+    ctx.textAlign = 'center';
+    ctx.fillText(freqs[i] >= 1000 ? (freqs[i]/1000) + 'k' : freqs[i], x, padT + h + 14);
+  }
+  for (let db = 0; db <= 120; db += 20) {
+    const y = padT + (db / 120) * h;
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL + w, y); ctx.stroke();
+    ctx.fillStyle = '#9a95ad';
+    ctx.font = '9px Space Grotesk';
+    ctx.textAlign = 'right';
+    ctx.fillText(db, padL - 6, y + 3);
+  }
+
+  function plotLine(data, color, symbol) {
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let i = 0; i < data.length; i++) {
+      const x = padL + (i / (freqs.length - 1)) * w;
+      const y = padT + (data[i] / 120) * h;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    // Points
+    for (let i = 0; i < data.length; i++) {
+      const x = padL + (i / (freqs.length - 1)) * w;
+      const y = padT + (data[i] / 120) * h;
+      ctx.beginPath();
+      if (symbol === 'o') {
+        ctx.arc(x, y, 4, 0, Math.PI * 2);
+        ctx.stroke();
+      } else {
+        ctx.moveTo(x - 4, y - 4); ctx.lineTo(x + 4, y + 4);
+        ctx.moveTo(x + 4, y - 4); ctx.lineTo(x - 4, y + 4);
+        ctx.stroke();
+      }
+    }
+  }
+
+  plotLine(rightDB, '#c94646', 'o');
+  plotLine(leftDB, '#1f95b8', 'x');
+
+  // Legend
+  ctx.font = '10px Open Sans';
+  ctx.fillStyle = '#c94646';
+  ctx.fillText('O Right', padL + 8, padT + 12);
+  ctx.fillStyle = '#1f95b8';
+  ctx.fillText('X Left', padL + 60, padT + 12);
+
+  // Axis labels
+  ctx.fillStyle = '#6c687d';
+  ctx.font = '9px Space Grotesk';
+  ctx.textAlign = 'center';
+  ctx.fillText('Frequency (Hz)', padL + w / 2, padT + h + 26);
+  ctx.save();
+  ctx.translate(10, padT + h / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText('Hearing Level (dB)', 0, 0);
+  ctx.restore();
+}
+
+// ─── Patient Rail Tabs ───
+const patientTabs = document.querySelectorAll('.patient-tab');
+patientTabs.forEach(tab => {
+  tab.addEventListener('click', (e) => {
+    if (e.target.closest('.patient-tab-close')) return;
+    patientTabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const name = tab.querySelector('.patient-tab-name').textContent;
+    const parts = name.split(', ');
+    const displayName = parts.length === 2 ? parts[1] + ' ' + parts[0] : name;
+    document.querySelector('.patient-name').textContent = displayName;
+    document.querySelector('.patient-avatar').textContent = tab.querySelector('.patient-tab-avatar').textContent;
+    // Update breadcrumb
+    const bc = document.querySelector('.breadcrumb strong');
+    if (bc) bc.textContent = displayName;
+  });
+  // Close button
+  const closeBtn = tab.querySelector('.patient-tab-close');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const wasActive = tab.classList.contains('active');
+      tab.remove();
+      if (wasActive) {
+        const remaining = document.querySelectorAll('.patient-tab');
+        if (remaining.length) {
+          remaining[0].classList.add('active');
+          remaining[0].click();
+        }
+      }
+    });
+  }
+});
+
+// ─── Palette item hover ───
+document.querySelectorAll('.palette-item').forEach(item => {
+  item.addEventListener('mouseenter', () => {
+    document.querySelectorAll('.palette-item').forEach(i => i.classList.remove('selected'));
+    item.classList.add('selected');
+  });
+});
+</script>
+
+<!-- Variant Selector -->
+<div id="variant-selector" style="position:fixed;bottom:16px;right:16px;z-index:99999;font-family:'Space Grotesk',system-ui,sans-serif;">
+  <button id="vs-toggle" style="width:40px;height:40px;border-radius:12px;border:1px solid rgba(38,34,96,0.12);background:rgba(255,255,255,0.95);backdrop-filter:blur(8px);box-shadow:0 2px 12px rgba(0,0,0,0.1);cursor:pointer;font-size:14px;font-weight:600;color:#262260;display:flex;align-items:center;justify-content:center;transition:all 0.2s;" title="Switch variant">⟐</button>
+  <div id="vs-panel" style="display:none;position:absolute;bottom:48px;right:0;background:rgba(255,255,255,0.97);backdrop-filter:blur(12px);border:1px solid rgba(38,34,96,0.1);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.12);padding:8px;min-width:220px;">
+    <div style="padding:4px 10px 8px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:#9a95ad;">Variant Selector</div>
+    <div id="vs-links"></div>
+    <div style="border-top:1px solid rgba(38,34,96,0.06);margin-top:4px;padding-top:4px;">
+      <a href="README.html" style="display:block;padding:6px 10px;font-size:12px;color:#6c687d;text-decoration:none;border-radius:8px;transition:background 0.15s;" onmouseover="this.style.background='rgba(31,149,184,0.06)'" onmouseout="this.style.background='transparent'">📋 Comparison Notes</a>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var currentVariant = 6;
+  var variants = [
+    {n:1, label:'Dense Clinical Shell'},
+    {n:2, label:'Compact Warm Workspace'},
+    {n:3, label:'Tabbed Record Panels'},
+    {n:4, label:'Split-View Dashboard'},
+    {n:5, label:'Dark Dense Console'},
+    {n:6, label:'Command-Bar Workspace'},
+    {n:7, label:'Split-Pane Console'},
+    {n:8, label:'Clinical Ops Board'},
+    {n:9, label:'Data-Grid Workspace'},
+    {n:10,label:'Ultra-Dense Expert'}
+  ];
+  var linksEl = document.getElementById('vs-links');
+  variants.forEach(function(v){
+    var isCurrent = v.n === currentVariant;
+    var a = document.createElement('a');
+    a.href = 'variant-' + String(v.n).padStart(2,'0') + '.html';
+    a.style.cssText = 'display:flex;align-items:center;gap:8px;padding:5px 10px;font-size:12px;text-decoration:none;border-radius:8px;transition:background 0.15s;color:' + (isCurrent ? '#1f95b8' : '#2f2c3f') + ';font-weight:' + (isCurrent ? '600' : '400') + ';background:' + (isCurrent ? 'rgba(31,149,184,0.08)' : 'transparent');
+    a.innerHTML = '<span style="width:22px;height:22px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;background:' + (isCurrent ? 'rgba(31,149,184,0.15)' : 'rgba(38,34,96,0.06)') + ';color:' + (isCurrent ? '#1f95b8' : '#6c687d') + '">' + String(v.n).padStart(2,'0') + '</span>' + v.label;
+    if(!isCurrent){
+      a.onmouseover = function(){ this.style.background='rgba(31,149,184,0.06)'; };
+      a.onmouseout = function(){ this.style.background='transparent'; };
+    }
+    linksEl.appendChild(a);
+  });
+  var toggle = document.getElementById('vs-toggle');
+  var panel = document.getElementById('vs-panel');
+  toggle.textContent = String(currentVariant).padStart(2,'0');
+  toggle.addEventListener('click', function(){
+    var open = panel.style.display !== 'none';
+    panel.style.display = open ? 'none' : 'block';
+    toggle.style.background = open ? 'rgba(255,255,255,0.95)' : 'rgba(31,149,184,0.1)';
+    toggle.style.borderColor = open ? 'rgba(38,34,96,0.12)' : 'rgba(31,149,184,0.3)';
+    toggle.style.color = open ? '#262260' : '#1f95b8';
+  });
+  document.addEventListener('click', function(e){
+    if(!document.getElementById('variant-selector').contains(e.target)){
+      panel.style.display = 'none';
+      toggle.style.background = 'rgba(255,255,255,0.95)';
+      toggle.style.borderColor = 'rgba(38,34,96,0.12)';
+      toggle.style.color = '#262260';
+    }
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape'){ panel.style.display = 'none'; }
+    if((e.key === '.' || e.key === '>') && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA'){
+      var next = currentVariant < 10 ? currentVariant + 1 : 1;
+      window.location.href = 'variant-' + String(next).padStart(2,'0') + '.html';
+    }
+    if((e.key === ',' || e.key === '<') && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA'){
+      var prev = currentVariant > 1 ? currentVariant - 1 : 10;
+      window.location.href = 'variant-' + String(prev).padStart(2,'0') + '.html';
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

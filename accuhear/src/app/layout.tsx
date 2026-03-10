@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Open_Sans, Space_Grotesk } from "next/font/google";
 import "./globals.css";
-import "antd/dist/reset.css";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const openSans = Open_Sans({
   variable: "--font-body",
@@ -28,7 +28,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${openSans.variable} ${spaceGrotesk.variable} antialiased`}>
-        {children}
+        <TooltipProvider>{children}</TooltipProvider>
       </body>
     </html>
   );

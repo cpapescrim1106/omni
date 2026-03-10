@@ -1,0 +1,22 @@
+Templates overview
+Merge fields
+Template types
+Documents as templates
+Patient correspondence and marketing
+Ida Institute tools
+Generating forms, correspondence, and invoices, by category
+Patient form
+Order-related form
+Note
+Audiological form
+Online form
+Loaner agreement form
+Manufacturer repair form
+Manufacturer return form
+Manufacturer order form
+Patient correspondence
+Healthcare provider correspondence
+Fax cover page
+Invoices
+Quotes
+Credit memos

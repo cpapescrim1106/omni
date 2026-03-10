@@ -1,6 +1,6 @@
 generator client {
   provider = "prisma-client-js"
-  }
+}
 
 datasource db {
   provider = "postgresql"
@@ -8,31 +8,33 @@ datasource db {
 }
 
 model Patient {
-  id              String   @id @default(cuid())
-  legacyId        String?  @unique
-  firstName       String
-  lastName        String
-  preferredName   String?
-  dateOfBirth     DateTime?
-  email           String?
-  status          String?
-  providerName    String?
-  location        String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id            String    @id @default(cuid())
+  legacyId      String?   @unique
+  firstName     String
+  lastName      String
+  preferredName String?
+  dateOfBirth   DateTime?
+  email         String?
+  status        String?
+  providerName  String?
+  location      String?
+  photoDataUrl  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  phones           PhoneNumber[]
-  appointments     Appointment[]
-  journalEntries   JournalEntry[]
+  phones            PhoneNumber[]
+  appointments      Appointment[]
+  journalEntries    JournalEntry[]
   marketingContacts MarketingContact[]
-  recalls          Recall[]
-  devices          Device[]
-  documents        Document[]
-  payerPolicies    PayerPolicy[]
-  sales            SaleTransaction[]
-  messageThreads   MessageThread[]
-  audiograms       Audiogram[]
-  smsConsents      SmsConsent[]
+  recalls           Recall[]
+  devices           Device[]
+  documents         Document[]
+  payerPolicies     PayerPolicy[]
+  sales             SaleTransaction[]
+  purchaseOrders    PurchaseOrder[]
+  messageThreads    MessageThread[]
+  audiograms        Audiogram[]
+  smsConsents       SmsConsent[]
 
   @@index([lastName, firstName])
   @@index([email])
@@ -66,35 +68,36 @@ model AppointmentStatus {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
-  appointments   Appointment[]
+  appointments    Appointment[]
   fromTransitions AppointmentStatusTransition[] @relation("AppointmentStatusTransitionFrom")
-  toTransitions  AppointmentStatusTransition[] @relation("AppointmentStatusTransitionTo")
+  toTransitions   AppointmentStatusTransition[] @relation("AppointmentStatusTransitionTo")
 }
 
 model Appointment {
-  id           String   @id @default(cuid())
-  patientId    String?
-  patient      Patient? @relation(fields: [patientId], references: [id])
-  providerName String
-  location     String
+  id             String            @id @default(cuid())
+  patientId      String?
+  patient        Patient?          @relation(fields: [patientId], references: [id])
+  providerName   String
+  location       String
   referralSource String?
-  typeId       String
-  type         AppointmentType @relation(fields: [typeId], references: [id])
-  statusId     String
-  status       AppointmentStatus @relation(fields: [statusId], references: [id])
-  startTime    DateTime
-  endTime      DateTime
-  notes        String?
-  arrivedAt    DateTime?
-  readyAt      DateTime?
-  inProgressAt DateTime?
-  completedAt  DateTime?
-  cancelledAt  DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  typeId         String
+  type           AppointmentType   @relation(fields: [typeId], references: [id])
+  statusId       String
+  status         AppointmentStatus @relation(fields: [statusId], references: [id])
+  startTime      DateTime
+  endTime        DateTime
+  notes          String?
+  arrivedAt      DateTime?
+  readyAt        DateTime?
+  inProgressAt   DateTime?
+  completedAt    DateTime?
+  cancelledAt    DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 
-  transitions  AppointmentStatusTransition[] @relation("AppointmentStatusTransition")
-  statusEvents AppointmentStatusEvent[]      @relation("AppointmentStatusEvent")
+  transitions    AppointmentStatusTransition[] @relation("AppointmentStatusTransition")
+  statusEvents   AppointmentStatusEvent[]      @relation("AppointmentStatusEvent")
+  purchaseOrders PurchaseOrder[]
 
   @@index([providerName, startTime])
   @@index([patientId])
@@ -102,15 +105,15 @@ model Appointment {
 }
 
 model AppointmentStatusTransition {
-  id            String              @id @default(cuid())
+  id            String             @id @default(cuid())
   appointmentId String
   fromStatusId  String?
   toStatusId    String
   actor         String
-  createdAt     DateTime            @default(now())
-  appointment   Appointment         @relation("AppointmentStatusTransition", fields: [appointmentId], references: [id], onDelete: Cascade)
-  fromStatus    AppointmentStatus?  @relation("AppointmentStatusTransitionFrom", fields: [fromStatusId], references: [id], onDelete: SetNull)
-  toStatus      AppointmentStatus   @relation("AppointmentStatusTransitionTo", fields: [toStatusId], references: [id], onDelete: Restrict)
+  createdAt     DateTime           @default(now())
+  appointment   Appointment        @relation("AppointmentStatusTransition", fields: [appointmentId], references: [id], onDelete: Cascade)
+  fromStatus    AppointmentStatus? @relation("AppointmentStatusTransitionFrom", fields: [fromStatusId], references: [id], onDelete: SetNull)
+  toStatus      AppointmentStatus  @relation("AppointmentStatusTransitionTo", fields: [toStatusId], references: [id], onDelete: Restrict)
 
   @@index([appointmentId])
   @@index([fromStatusId])
@@ -129,13 +132,13 @@ enum AppointmentLifecycleStatus {
 }
 
 model AppointmentStatusEvent {
-  id            String                    @id @default(cuid())
+  id            String                      @id @default(cuid())
   appointmentId String
   fromStatus    AppointmentLifecycleStatus?
   toStatus      AppointmentLifecycleStatus
   actorId       String
-  createdAt     DateTime                  @default(now())
-  appointment   Appointment               @relation("AppointmentStatusEvent", fields: [appointmentId], references: [id], onDelete: Cascade)
+  createdAt     DateTime                    @default(now())
+  appointment   Appointment                 @relation("AppointmentStatusEvent", fields: [appointmentId], references: [id], onDelete: Cascade)
 
   @@index([appointmentId])
   @@index([toStatus])
@@ -144,16 +147,16 @@ model AppointmentStatusEvent {
 }
 
 model ProviderSchedule {
-  id          String   @id @default(cuid())
+  id           String   @id @default(cuid())
   providerName String
-  dayOfWeek   Int
-  startMinute Int
-  endMinute   Int
-  isActive    Boolean @default(true)
-  createdAt   DateTime @default(now())
+  dayOfWeek    Int
+  startMinute  Int
+  endMinute    Int
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
 
-  @@index([providerName, dayOfWeek])
   @@unique([providerName, dayOfWeek])
+  @@index([providerName, dayOfWeek])
 }
 
 model MarketingContact {
@@ -174,31 +177,31 @@ model MarketingContact {
 }
 
 model RecallRule {
-  id              String             @id @default(cuid())
+  id              String            @id @default(cuid())
   name            String
   triggerType     RecallTriggerType
   triggerDays     Int?
   appointmentType String?
   messageTemplate String?
-  active          Boolean            @default(true)
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  active          Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   recalls Recall[]
 }
 
 model Recall {
-  id                     String        @id @default(cuid())
+  id                     String       @id @default(cuid())
   patientId              String
-  patient                Patient       @relation(fields: [patientId], references: [id])
+  patient                Patient      @relation(fields: [patientId], references: [id])
   recallRuleId           String
-  recallRule             RecallRule    @relation(fields: [recallRuleId], references: [id])
+  recallRule             RecallRule   @relation(fields: [recallRuleId], references: [id])
   dueDate                DateTime
-  status                 RecallStatus  @default(pending)
-  statusUpdatedAt        DateTime      @default(now())
+  status                 RecallStatus @default(pending)
+  statusUpdatedAt        DateTime     @default(now())
   scheduledAppointmentId String?
-  createdAt              DateTime      @default(now())
-  updatedAt              DateTime      @updatedAt
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
 
   @@index([patientId, dueDate])
   @@index([status, dueDate])
@@ -247,13 +250,13 @@ model JournalEntry {
 }
 
 model MessageThread {
-  id        String   @id @default(cuid())
-  patientId String
-  patient   Patient  @relation(fields: [patientId], references: [id])
-  channel   MessageChannel
-  status    MessageThreadStatus @default(open)
-  createdAt DateTime            @default(now())
-  lastSeenAt DateTime           @default(now())
+  id            String              @id @default(cuid())
+  patientId     String
+  patient       Patient             @relation(fields: [patientId], references: [id])
+  channel       MessageChannel
+  status        MessageThreadStatus @default(open)
+  createdAt     DateTime            @default(now())
+  lastSeenAt    DateTime            @default(now())
   // Used for "needs attention" notifications: if an inbound message is newer than lastHandledAt,
   // the thread will be considered awaiting staff action until replied-to or explicitly marked as read.
   lastHandledAt DateTime?
@@ -265,12 +268,12 @@ model MessageThread {
 }
 
 model Message {
-  id        String   @id @default(cuid())
+  id        String           @id @default(cuid())
   threadId  String
-  thread    MessageThread @relation(fields: [threadId], references: [id])
+  thread    MessageThread    @relation(fields: [threadId], references: [id])
   direction MessageDirection
   body      String
-  sentAt    DateTime @default(now())
+  sentAt    DateTime         @default(now())
   status    MessageStatus
 
   provider          String?
@@ -284,9 +287,9 @@ model Message {
   errorMessage      String?
   rawPayload        Json?
 
+  @@unique([provider, providerMessageId])
   @@index([threadId, sentAt])
   @@index([status, sentAt])
-  @@unique([provider, providerMessageId])
 }
 
 enum MessageChannel {
@@ -352,17 +355,192 @@ enum WebhookEventStatus {
   failed
 }
 
+enum CatalogItemCategory {
+  hearing_aid
+  serialized_accessory
+  earmold
+  accessory
+  consumable
+  service
+}
+
+enum PurchaseOrderStatus {
+  draft
+  placed
+  partially_received
+  received
+  partially_delivered
+  delivered
+  cancelled
+  returned
+}
+
+enum PurchaseOrderItemStatus {
+  ordered
+  received
+  delivered
+  returned
+  cancelled
+}
+
+enum InvoiceStatus {
+  open
+  partially_paid
+  paid
+  void
+  written_off
+  credited
+}
+
+enum FulfillmentStatus {
+  pending_fulfillment
+  partially_fulfilled
+  fulfilled
+  returned
+}
+
+enum PaymentKind {
+  payment
+  deposit
+  refund
+  credit
+}
+
+model CatalogItem {
+  id                               String              @id @default(cuid())
+  name                             String
+  manufacturer                     String?
+  family                           String?
+  technologyLevel                  Int?
+  category                         CatalogItemCategory
+  active                           Boolean             @default(true)
+  cptHcpcsCode                     String?
+  technology                       String?
+  style                            String?
+  hasSide                          Boolean             @default(false)
+  trackInventory                   Boolean             @default(false)
+  accessoryCategory                String?
+  serviceGroup                     String?
+  batteryCellSize                  String?
+  batteryCellQuantity              Int?
+  insurerSpecific                  Boolean             @default(false)
+  expenseAccount                   String?
+  incomeAccount                    String?
+  taxOnPurchases                   String?
+  taxOnSales                       String?
+  isPinned                         Boolean             @default(false)
+  requiresSerial                   Boolean             @default(false)
+  tracksWarranty                   Boolean             @default(false)
+  createsPatientAsset              Boolean             @default(false)
+  requiresManufacturerOrder        Boolean             @default(false)
+  returnable                       Boolean             @default(true)
+  defaultManufacturerWarrantyYears Float?
+  defaultLossDamageWarrantyYears   Float?
+  unitPrice                        Float
+  purchaseCost                     Float?
+  createdAt                        DateTime            @default(now())
+  updatedAt                        DateTime            @updatedAt
+
+  orderItems PurchaseOrderItem[]
+  devices    Device[]
+
+  @@unique([name, manufacturer])
+  @@index([active, category])
+}
+
+model CatalogManufacturer {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active, name])
+}
+
+model PurchaseOrder {
+  id                               String              @id @default(cuid())
+  patientId                        String
+  patient                          Patient             @relation(fields: [patientId], references: [id])
+  appointmentId                    String?
+  appointment                      Appointment?        @relation(fields: [appointmentId], references: [id])
+  provider                         String?
+  location                         String?
+  prescriber                       String?
+  fitter                           String?
+  notes                            String?
+  fittingDate                      DateTime?
+  manufacturerDocPromptDismissedAt DateTime?
+  status                           PurchaseOrderStatus @default(draft)
+  createdAt                        DateTime            @default(now())
+  updatedAt                        DateTime            @updatedAt
+
+  lineItems PurchaseOrderItem[]
+  invoices  SaleTransaction[]
+  documents Document[]
+
+  @@index([patientId, createdAt])
+  @@index([status, updatedAt])
+}
+
+model PurchaseOrderItem {
+  id                        String                  @id @default(cuid())
+  orderId                   String
+  order                     PurchaseOrder           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  catalogItemId             String?
+  catalogItem               CatalogItem?            @relation(fields: [catalogItemId], references: [id])
+  itemName                  String
+  manufacturer              String?
+  quantity                  Int                     @default(1)
+  unitPrice                 Float
+  purchaseCost              Float?
+  side                      String?
+  status                    PurchaseOrderItemStatus @default(ordered)
+  requiresSerial            Boolean                 @default(false)
+  tracksWarranty            Boolean                 @default(false)
+  createsPatientAsset       Boolean                 @default(false)
+  requiresManufacturerOrder Boolean                 @default(false)
+  returnable                Boolean                 @default(true)
+  serialNumber              String?
+  manufacturerWarrantyEnd   DateTime?
+  lossDamageWarrantyEnd     DateTime?
+  color                     String?
+  battery                   String?
+  notes                     String?
+  receivedAt                DateTime?
+  deliveredAt               DateTime?
+  createdAt                 DateTime                @default(now())
+  updatedAt                 DateTime                @updatedAt
+
+  device        Device?
+  saleLineItems SaleLineItem[]
+
+  @@index([orderId, status])
+  @@index([serialNumber])
+}
+
 model Device {
-  id           String   @id @default(cuid())
-  patientId    String
-  patient      Patient  @relation(fields: [patientId], references: [id])
-  ear          String
-  manufacturer String
-  model        String
-  serial       String
-  warrantyEnd  DateTime
-  status       String
-  createdAt    DateTime @default(now())
+  id                    String             @id @default(cuid())
+  patientId             String
+  patient               Patient            @relation(fields: [patientId], references: [id])
+  catalogItemId         String?
+  catalogItem           CatalogItem?       @relation(fields: [catalogItemId], references: [id])
+  purchaseOrderItemId   String?            @unique
+  purchaseOrderItem     PurchaseOrderItem? @relation(fields: [purchaseOrderItemId], references: [id])
+  ear                   String
+  manufacturer          String
+  model                 String
+  serial                String
+  warrantyEnd           DateTime
+  lossDamageWarrantyEnd DateTime?
+  status                String
+  purchaseDate          DateTime?
+  deliveryDate          DateTime?
+  fittingDate           DateTime?
+  color                 String?
+  battery               String?
+  notes                 String?
+  createdAt             DateTime           @default(now())
 
   statusHistory DeviceStatusHistory[]
 
@@ -382,74 +560,100 @@ model DeviceStatusHistory {
 }
 
 model Document {
-  id        String   @id @default(cuid())
-  patientId String
-  patient   Patient  @relation(fields: [patientId], references: [id])
-  title     String
-  category  String
-  addedBy   String?
-  fileName  String?
-  contentType String?
-  sizeBytes Int?
-  storageProvider String?
-  storageKey String?
-  createdAt DateTime @default(now())
+  id                String           @id @default(cuid())
+  patientId         String
+  patient           Patient          @relation(fields: [patientId], references: [id])
+  purchaseOrderId   String?
+  purchaseOrder     PurchaseOrder?   @relation(fields: [purchaseOrderId], references: [id])
+  saleTransactionId String?
+  saleTransaction   SaleTransaction? @relation(fields: [saleTransactionId], references: [id])
+  title             String
+  category          String
+  description       String?
+  status            String?
+  addedBy           String?
+  fileName          String?
+  contentType       String?
+  sizeBytes         Int?
+  storageProvider   String?
+  storageKey        String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @default(now()) @updatedAt
 
   @@index([patientId])
+  @@index([purchaseOrderId])
+  @@index([saleTransactionId])
 }
 
 model SaleTransaction {
-  id        String   @id @default(cuid())
-  patientId String?
-  patient   Patient? @relation(fields: [patientId], references: [id])
-  txnId     String
-  txnType   String
-  date      DateTime
-  location  String?
-  provider  String?
-  total     Float?
-  createdAt DateTime @default(now())
+  id                String            @id @default(cuid())
+  patientId         String?
+  patient           Patient?          @relation(fields: [patientId], references: [id])
+  purchaseOrderId   String?
+  purchaseOrder     PurchaseOrder?    @relation(fields: [purchaseOrderId], references: [id])
+  txnId             String
+  txnType           String
+  date              DateTime
+  location          String?
+  provider          String?
+  notes             String?
+  fittingDate       DateTime?
+  invoiceStatus     InvoiceStatus     @default(open)
+  fulfillmentStatus FulfillmentStatus @default(fulfilled)
+  total             Float?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @default(now()) @updatedAt
 
   lineItems SaleLineItem[]
   payments  Payment[]
+  documents Document[]
 
   @@index([patientId])
   @@index([txnId])
+  @@index([purchaseOrderId])
 }
 
 model SaleLineItem {
-  id            String   @id @default(cuid())
-  transactionId String
-  transaction   SaleTransaction @relation(fields: [transactionId], references: [id])
-  item          String
-  cptCode       String?
-  quantity      Int?
-  revenue       Float?
-  discount      Float?
-  tax           Float?
-  serialNumber  String?
+  id                  String               @id @default(cuid())
+  transactionId       String
+  transaction         SaleTransaction      @relation(fields: [transactionId], references: [id])
+  purchaseOrderItemId String?
+  purchaseOrderItem   PurchaseOrderItem?   @relation(fields: [purchaseOrderItemId], references: [id])
+  item                String
+  itemCategory        CatalogItemCategory?
+  cptCode             String?
+  quantity            Int?
+  unitPrice           Float?
+  revenue             Float?
+  discount            Float?
+  tax                 Float?
+  serialNumber        String?
 }
 
 model Payment {
-  id            String   @id @default(cuid())
+  id            String          @id @default(cuid())
   transactionId String
   transaction   SaleTransaction @relation(fields: [transactionId], references: [id])
   amount        Float
+  date          DateTime        @default(now())
+  kind          PaymentKind     @default(payment)
   method        String?
+  note          String?
+  createdAt     DateTime        @default(now())
 }
 
 model PayerPolicy {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
   patientId String
-  patient   Patient  @relation(fields: [patientId], references: [id])
+  patient   Patient @relation(fields: [patientId], references: [id])
   payerName String
   memberId  String?
   groupId   String?
   priority  Int?
 
+  @@unique([patientId, payerName])
   @@index([patientId])
   @@index([payerName])
-  @@unique([patientId, payerName])
 }
 
 model Audiogram {

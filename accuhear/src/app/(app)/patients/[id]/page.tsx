@@ -1,23 +1,27 @@
+import { Fragment } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import dayjs from "dayjs";
 import { getPatientById } from "@/lib/patient-data";
+import { Button } from "@/components/ui/button";
 import { PatientJournal } from "@/components/patient-journal";
 import { PatientMessaging } from "@/components/patient-messaging";
 import { PatientDocuments } from "@/components/patient-documents";
 import { PatientSales } from "@/components/patient-sales";
 import { PatientAudiology } from "@/components/patient-audiology";
 import { PatientDevices } from "@/components/patient-devices";
+import { PatientDeviceRegistry } from "@/components/patient-device-registry";
 import { PatientPayers } from "@/components/patient-payers";
-import { PatientDetails } from "@/components/patient-details";
 import { PatientMarketing } from "@/components/patient-marketing";
+import { PatientSummaryForm } from "@/components/patient-summary-form";
 import { PatientTabRegistrar } from "@/components/patient-tabs";
+import { PurchaseButton } from "@/components/purchase-dialog";
+import { PatientPhotoAvatar } from "@/components/patient-photo-avatar";
 
 const tabs = [
   "Summary",
-  "Details",
-  "Hearing aids",
   "Audiology",
+  "Hearing aids",
   "Journal",
   "3rd party payers",
   "Messaging",
@@ -43,7 +47,7 @@ export default async function PatientProfilePage({
   searchParams,
 }: {
   params: { id: string } | Promise<{ id: string }>;
-  searchParams?: { tab?: string } | Promise<{ tab?: string }>;
+  searchParams?: { tab?: string; purchase?: string } | Promise<{ tab?: string; purchase?: string }>;
 }) {
   const resolvedParams = params instanceof Promise ? await params : params;
   const resolvedSearchParams =
@@ -51,9 +55,19 @@ export default async function PatientProfilePage({
   const patient = await getPatientById(resolvedParams.id);
   if (!patient) notFound();
   const activeTab = resolvedSearchParams?.tab ?? "Summary";
+  const normalizedActiveTab = activeTab === "Ordered/delivered items" ? "Hearing aids" : activeTab;
+  const purchaseMode = resolvedSearchParams?.purchase ?? "";
   const patientLabel = `${patient.lastName}, ${patient.firstName}${patient.preferredName ? ` (${patient.preferredName})` : ""}`;
 
   const age = patient.dateOfBirth ? dayjs().diff(dayjs(patient.dateOfBirth), "year") : null;
+  const primaryPayer = patient.payerPolicies
+    ?.slice()
+    .sort((a, b) => {
+      const priorityA = a.priority ?? Number.MAX_SAFE_INTEGER;
+      const priorityB = b.priority ?? Number.MAX_SAFE_INTEGER;
+      if (priorityA !== priorityB) return priorityA - priorityB;
+      return a.payerName.localeCompare(b.payerName);
+    })?.[0]?.payerName;
   const phoneButtons = patient.phones.length
     ? patient.phones.slice(0, 3).map((phone) => ({
         label: phone.type || "Phone",
@@ -64,212 +78,232 @@ export default async function PatientProfilePage({
         { label: "Mobile", number: "(202) 555-0101" },
       ];
 
-  const payerTags = patient.payerPolicies.map((policy) => policy.payerName);
+  const deviceRecords = patient.devices.map((d) => ({
+    id: d.id,
+    ear: d.ear,
+    manufacturer: d.manufacturer,
+    model: d.model,
+    serial: d.serial,
+    warrantyEnd: d.warrantyEnd?.toISOString() ?? null,
+    lossDamageWarrantyEnd: d.lossDamageWarrantyEnd?.toISOString() ?? null,
+    status: d.status || "Current",
+    purchaseDate: d.purchaseDate?.toISOString() ?? null,
+    createdAt: d.createdAt.toISOString(),
+  }));
 
-  const aidRows = patient.devices.length
-    ? patient.devices.map((device) => ({
-        model: `${device.manufacturer} ${device.model}`.trim(),
-        battery: "Other",
-        notes: device.serial ? `Serial ${device.serial}` : "—",
-        purchase: device.createdAt ? dayjs(device.createdAt).format("MM/DD/YYYY") : "—",
-        status: device.status || "Active",
+  const inOrderItems = (patient.purchaseOrders ?? []).flatMap((order) =>
+    order.lineItems
+      .filter((item) => item.status === "ordered" || item.status === "received")
+      .map((item) => ({
+        orderId: order.id,
+        lineItemId: item.id,
+        itemName: item.itemName,
+        side: item.side,
+        status: item.status,
+        orderedAt: order.createdAt.toISOString(),
+        serialNumber: item.serialNumber ?? null,
+        manufacturerWarrantyEnd: item.manufacturerWarrantyEnd?.toISOString() ?? null,
+        lossDamageWarrantyEnd: item.lossDamageWarrantyEnd?.toISOString() ?? null,
+        color: item.color ?? null,
+        battery: item.battery ?? null,
+        notes: item.notes ?? null,
+        requiresManufacturerOrder: item.requiresManufacturerOrder,
       }))
-    : [
-        {
-          model: "Oticon More 3 miniRITE R",
-          battery: "Other",
-          notes: "extended warranty exp 1/15/27",
-          purchase: "01/17/2023",
-          status: "Active",
-        },
-      ];
+  );
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-2">
       <PatientTabRegistrar id={patient.id} label={patientLabel} status={patient.status} />
-      <section className="card p-4">
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
-          <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-blue/15 text-base font-semibold text-brand-ink">
-              {patient.firstName.charAt(0)}
-            </div>
-            <div className="min-w-0">
-              <div className="truncate text-lg font-semibold text-ink-strong">
-                {patient.lastName}, {patient.firstName}
-              </div>
-              <div className="text-xs text-ink-muted">
-                {patient.dateOfBirth
-                  ? dayjs(patient.dateOfBirth).format("MM/DD/YYYY")
-                  : "—"}{" "}
-                {age ? `· ${age}` : ""}
-              </div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {phoneButtons.slice(0, 2).map((phone) => (
-                  <span
-                    key={`${phone.label}-${phone.number}`}
-                    className="rounded-full bg-success px-2.5 py-1 text-[11px] font-semibold text-white"
-                  >
-                    {phone.number}
-                  </span>
-                ))}
-              </div>
+      <section className="patient-header">
+        {/* Row 1: avatar + name/meta + badges + stats */}
+        <div className="patient-header-row">
+          <PatientPhotoAvatar
+            patientId={patient.id}
+            firstName={patient.firstName}
+            initialPhotoDataUrl={patient.photoDataUrl ?? null}
+          />
 
-              {patient.providerName || patient.location ? (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {patient.providerName ? (
-                    <span className="rounded-full bg-brand-blue/10 px-2.5 py-1 text-[11px] font-semibold text-brand-ink">
-                      {patient.providerName}
-                    </span>
-                  ) : null}
-                  {patient.location ? (
-                    <span className="rounded-full bg-brand-blue/10 px-2.5 py-1 text-[11px] font-semibold text-brand-ink">
-                      {patient.location}
-                    </span>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
+          <div className="patient-header-identity">
+            <span className="patient-header-name">
+              {patient.lastName}, {patient.firstName}
+            </span>
+            <span className="patient-header-meta">
+              {patient.dateOfBirth ? dayjs(patient.dateOfBirth).format("MM/DD/YYYY") : "—"}
+              {age ? <><span className="patient-header-sep">|</span>{age}</> : ""}
+              {primaryPayer ? <><span className="patient-header-sep">|</span>{primaryPayer}</> : ""}
+            </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 text-xs text-ink-muted">
-            <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/70 px-3 py-2">
-              <span>Balance</span>
-              <span className="rounded-full bg-success px-2.5 py-1 text-[11px] font-semibold text-white">$0.00</span>
-            </div>
-            <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/70 px-3 py-2">
-              <span>Reimb.</span>
-              <span className="rounded-full bg-success px-2.5 py-1 text-[11px] font-semibold text-white">$0.00</span>
-            </div>
-            <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/70 px-3 py-2">
-              <span>Punctuality</span>
-              <span className="rounded-full bg-success px-2.5 py-1 text-[11px] font-semibold text-white">1m early</span>
-            </div>
-            <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/70 px-3 py-2">
-              <span>No-shows</span>
-              <span className="rounded-full bg-success px-2.5 py-1 text-[11px] font-semibold text-white">0%</span>
-            </div>
+          <div className="patient-header-badges">
+            {phoneButtons.slice(0, 2).map((phone) => (
+              <span key={`${phone.label}-${phone.number}`} className="patient-header-badge badge-success">
+                {phone.number}
+              </span>
+            ))}
+            {patient.providerName ? (
+              <span className="patient-header-badge badge-blue">{patient.providerName}</span>
+            ) : null}
+            {patient.location ? (
+              <span className="patient-header-badge badge-blue">{patient.location}</span>
+            ) : null}
+            <PurchaseButton patientId={patient.id} />
+          </div>
+
+          <div className="patient-header-stats">
+            {[
+              { label: "Bal", value: "$0.00" },
+              { label: "Reimb", value: "$0.00" },
+              { label: "Punct", value: "1m early" },
+              { label: "No-show", value: "0%" },
+            ].map((stat, i) => (
+              <Fragment key={stat.label}>
+                {i > 0 && <span className="patient-header-stat-sep" />}
+                <span className="patient-header-stat">
+                  <span className="patient-header-stat-label">{stat.label}</span>
+                  <span className="patient-header-stat-value">{stat.value}</span>
+                </span>
+              </Fragment>
+            ))}
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          {tabs.map((tab) => (
-            <Link
-              key={tab}
-              href={`/patients/${patient.id}?tab=${encodeURIComponent(tab)}`}
-              className="tab-pill !px-3 !py-1.5 text-[11px]"
-              data-active={activeTab === tab}
-            >
-              {tab}
-            </Link>
-          ))}
+        {/* Row 2: seg-tabs flush below */}
+        <div className="seg-tabs" style={{ padding: "4px 12px 0" }}>
+          <div className="seg-tabs-inner">
+            {tabs.map((tab) => (
+              <Link
+                key={tab}
+                href={`/patients/${patient.id}?tab=${encodeURIComponent(tab)}`}
+                className={`seg-tab${normalizedActiveTab === tab ? " active" : ""}`}
+              >
+                {tab}
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 
-      {activeTab === "Audiology" ? (
+      {normalizedActiveTab === "Audiology" ? (
         <PatientAudiology patientId={patient.id} />
-      ) : activeTab === "Devices" || activeTab === "Hearing aids" ? (
-        <PatientDevices patientId={patient.id} />
-      ) : activeTab === "Journal" ? (
+      ) : normalizedActiveTab === "Hearing aids" ? (
+        <PatientDevices patientId={patient.id} autoOpenCreate={purchaseMode === "tracked"} />
+      ) : normalizedActiveTab === "Journal" ? (
         <PatientJournal patientId={patient.id} />
-      ) : activeTab === "Insurance/Payers" || activeTab === "3rd party payers" ? (
+      ) : normalizedActiveTab === "Insurance/Payers" || normalizedActiveTab === "3rd party payers" ? (
         <PatientPayers patientId={patient.id} />
-      ) : activeTab === "Messaging" ? (
+      ) : normalizedActiveTab === "Messaging" ? (
         <PatientMessaging patientId={patient.id} />
-      ) : activeTab === "Sales history" ? (
-        <PatientSales patientId={patient.id} />
-      ) : activeTab === "Documents" ? (
+      ) : normalizedActiveTab === "Sales history" ? (
+        <PatientSales patientId={patient.id} autoOpenCreate={purchaseMode === "direct"} />
+      ) : normalizedActiveTab === "Documents" ? (
         <PatientDocuments patientId={patient.id} />
-      ) : activeTab === "Details" ? (
-        <PatientDetails patient={patient} />
-      ) : activeTab === "Marketing" ? (
+      ) : normalizedActiveTab === "Marketing" ? (
         <PatientMarketing />
       ) : (
-        <div className="grid gap-6">
-          <section className="card p-4">
-            <div className="section-title text-xs text-brand-ink">Patient context</div>
-            <div className="mt-3 grid gap-2 text-sm text-ink-muted">
-              <div className="rounded-2xl bg-surface-1/70 px-4 py-3">{PLACEHOLDER_ADDRESS}</div>
-              <div className="rounded-2xl bg-brand-blue/10 px-4 py-3 text-brand-ink">
-                Preferred Name: {patient.preferredName || "—"} · extended warranty exp 1/15/27
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {(payerTags.length ? payerTags : ["Medicare"]).map((payer) => (
-                  <span key={payer} className="rounded-full bg-brand-blue/10 px-3 py-1 text-xs text-brand-ink">
-                    {payer}
-                  </span>
-                ))}
-              </div>
-            </div>
+        <div className="content-area">
+          {/* Record Panel (60%) */}
+          <section className="record-panel">
+            <PatientSummaryForm
+              patient={{
+                ...patient,
+                dateOfBirth: patient.dateOfBirth?.toISOString() ?? null,
+              }}
+            />
           </section>
 
-          <section className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
-          <div className="card p-6">
-            <div className="section-title text-xs text-brand-ink">Appointments</div>
-            <div className="mt-4 overflow-hidden rounded-2xl border border-surface-2 bg-white/80">
-              <div className="grid grid-cols-[1.5fr_1fr_1fr] gap-3 bg-surface-1/60 px-4 py-3 text-[11px] uppercase tracking-[0.2em] text-ink-soft">
-                <span>Appointment date</span>
-                <span>Appointment type</span>
-                <span>Provider</span>
+          {/* Context Panel (40%) */}
+          <aside className="context-panel">
+            {/* Upcoming Appointments */}
+            <div className="ctx-card">
+              <div className="ctx-card-title">
+                <span>Upcoming Appointments</span>
+                <span className="ctx-card-count">
+                  {patient.appointments.length} upcoming
+                </span>
               </div>
-              {APPOINTMENTS.map((appointment) => (
-                <div
-                  key={appointment.date}
-                  className="grid grid-cols-[1.5fr_1fr_1fr] gap-3 border-t border-surface-2 px-4 py-3 text-sm"
-                >
-                  <span className="text-ink-muted">{appointment.date}</span>
-                  <span className="text-ink-strong">{appointment.type}</span>
-                  <span className="text-ink-muted">{appointment.provider}</span>
-                </div>
-              ))}
+              {patient.appointments.length > 0 ? (
+                patient.appointments.map((appt) => (
+                  <div className="appt-item" key={appt.id}>
+                    <div className="appt-time">
+                      {dayjs(appt.startTime).format("MM/DD")}
+                    </div>
+                    <div className="appt-detail">
+                      <div className="appt-type">{appt.typeId || "Appointment"}</div>
+                      <div className="appt-meta">
+                        {dayjs(appt.startTime).format("h:mm A")}
+                        {appt.endTime ? ` – ${dayjs(appt.endTime).format("h:mm A")}` : ""}
+                        {appt.providerName ? ` · ${appt.providerName}` : ""}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="empty-text">No upcoming appointments</div>
+              )}
             </div>
 
-            <div className="mt-6 rounded-2xl border border-surface-2 bg-white/80">
-              <div className="px-4 py-3 text-xs font-semibold text-ink-muted">
-                Last audiogram 01/07/2026
-              </div>
-              <div className="grid grid-cols-[120px_1fr_1fr_1fr] gap-3 bg-surface-1/60 px-4 py-3 text-[11px] uppercase tracking-[0.2em] text-ink-soft">
-                <span></span>
-                <span>Severity</span>
-                <span>Type</span>
-                <span>Shape</span>
-              </div>
-              {LAST_AUDIOGRAM.map((row) => (
-                <div
-                  key={row.ear}
-                  className="grid grid-cols-[120px_1fr_1fr_1fr] gap-3 border-t border-surface-2 px-4 py-3 text-sm"
-                >
-                  <span className="text-ink-muted">{row.ear}</span>
-                  <span className="text-ink-strong">{row.severity}</span>
-                  <span className="text-ink-muted">{row.type}</span>
-                  <span className="text-ink-muted">{row.shape}</span>
-                </div>
-              ))}
+            {/* Device Registry */}
+            <div className="ctx-card">
+              <PatientDeviceRegistry
+                patientId={patient.id}
+                devices={deviceRecords}
+                inOrderItems={inOrderItems}
+              />
             </div>
-          </div>
 
-          <div className="card p-6">
-            <div className="section-title text-xs text-brand-ink">Current aids</div>
-            <div className="mt-4 overflow-hidden rounded-2xl border border-surface-2 bg-white/80">
-              <div className="grid grid-cols-[1.4fr_1fr_1fr_0.8fr] gap-3 bg-surface-1/60 px-4 py-3 text-[11px] uppercase tracking-[0.2em] text-ink-soft">
-                <span>Model</span>
-                <span>Battery/Notes</span>
-                <span>Purchase date</span>
-                <span>Status</span>
+            {/* Recent Notes */}
+            <div className="ctx-card">
+              <div className="ctx-card-title">
+                <span>Recent Notes</span>
+                <Button variant="ghost" size="sm" className="btn-sm-ghost">
+                  + Note
+                </Button>
               </div>
-              {aidRows.map((row) => (
-                <div
-                  key={row.model}
-                  className="grid grid-cols-[1.4fr_1fr_1fr_0.8fr] gap-3 border-t border-surface-2 px-4 py-3 text-sm"
-                >
-                  <span className="text-ink-strong">{row.model}</span>
-                  <span className="text-ink-muted">{row.notes}</span>
-                  <span className="text-ink-muted">{row.purchase}</span>
-                  <span className="text-ink-muted">{row.status}</span>
-                </div>
-              ))}
+              {patient.journalEntries.length > 0 ? (
+                patient.journalEntries.map((entry) => (
+                  <div className="note-item" key={entry.id}>
+                    <div className="note-item-header">
+                      <span>{entry.type || "Note"}</span>
+                      <span className="note-item-date">
+                        {dayjs(entry.createdAt).format("MM/DD/YYYY")}
+                      </span>
+                    </div>
+                    <div className="note-item-body">{entry.content || "—"}</div>
+                  </div>
+                ))
+              ) : (
+                <div className="empty-text">No recent notes</div>
+              )}
             </div>
-          </div>
-          </section>
+
+            {/* Recalls & Reminders */}
+            <div className="ctx-card">
+              <div className="ctx-card-title">
+                <span>Recalls &amp; Reminders</span>
+              </div>
+              <div className="appt-item">
+                <div className="appt-time">Due</div>
+                <div className="appt-detail">
+                  <div className="appt-type">Annual Audiogram</div>
+                  <div className="appt-meta">Next evaluation due for annual checkup</div>
+                </div>
+              </div>
+              <div className="appt-item">
+                <div className="appt-time">Check</div>
+                <div className="appt-detail">
+                  <div className="appt-type">Warranty Expiration</div>
+                  <div className="appt-meta">Review device warranty status</div>
+                </div>
+              </div>
+              <div className="appt-item">
+                <div className="appt-time">Verify</div>
+                <div className="appt-detail">
+                  <div className="appt-type">Insurance Verification</div>
+                  <div className="appt-meta">Confirm coverage for upcoming services</div>
+                </div>
+              </div>
+            </div>
+          </aside>
         </div>
       )}
     </div>

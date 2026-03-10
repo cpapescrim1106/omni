@@ -1,0 +1,16 @@
+Default Roles
+Level of Access
+Summary
+1. Basic privileges:
+Privilege name
+Privileges assigned to role
+2. Administration Privileges:
+Privilege Name
+3. Accounting Privileges:
+4. Advanced Privileges:
+5. Document Management Privileges:
+6. Inventory Privileges:
+Reports Access
+Report category
+Report title
+Reports assigned to role

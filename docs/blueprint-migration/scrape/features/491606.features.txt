@@ -1,0 +1,5 @@
+Searching in patient browser
+Searching in Orders toolbar button
+Searching in recalls
+Searching in journal
+Searching in schedule

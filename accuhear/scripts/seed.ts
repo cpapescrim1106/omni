@@ -4,6 +4,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "csv-parse/sync";
 import { prisma } from "../src/lib/db";
+import { ensureStarterCatalog } from "../src/lib/commerce";
+import { inferManufacturerFromModel } from "../src/lib/manufacturer-inference";
+import { normalizeOptionalProviderName, normalizeProviderName } from "../src/lib/provider-names";
 
 const DATA_DIR = path.resolve(process.cwd(), "..", "data");
 const DAILY_SCHEDULE_FILE = "dailyschedule.csv";
@@ -21,6 +24,10 @@ export const IN_CLINIC_STATUSES = [
 
 export const SEED_BASELINE_STATUSES = [
   "Scheduled",
+  "Tentative",
+  "Confirmed",
+  "Left message",
+  "No answer",
   ...IN_CLINIC_STATUSES,
   "No-show",
   "Rescheduled",
@@ -266,7 +273,7 @@ async function seedPatients() {
         dateOfBirth: parseDate(row["Birthdate"]) || undefined,
         email: row["Email"]?.trim() || null,
         status: row["Status"]?.trim() || null,
-        providerName: row["Provider"]?.trim() || null,
+        providerName: normalizeOptionalProviderName(row["Provider"]),
         location: row["Location"]?.trim() || null,
       },
       create: {
@@ -277,7 +284,7 @@ async function seedPatients() {
         dateOfBirth: parseDate(row["Birthdate"]) || undefined,
         email: row["Email"]?.trim() || null,
         status: row["Status"]?.trim() || null,
-        providerName: row["Provider"]?.trim() || null,
+        providerName: normalizeOptionalProviderName(row["Provider"]),
         location: row["Location"]?.trim() || null,
       },
     });
@@ -329,6 +336,7 @@ async function seedPatients() {
       const model = device.model || "Unknown";
       const serial = device.serial || `${patient.id}-${device.ear}`;
       const warrantyEnd = device.warrantyEnd ?? new Date();
+      const manufacturer = inferManufacturerFromModel(model) ?? "Unknown";
 
       await prisma.device.upsert({
         where: {
@@ -336,7 +344,7 @@ async function seedPatients() {
         },
         update: {
           ear: device.ear,
-          manufacturer: "Unknown",
+          manufacturer,
           model,
           serial,
           warrantyEnd,
@@ -346,7 +354,7 @@ async function seedPatients() {
           id: `${patient.id}-${device.ear}`,
           patientId: patient.id,
           ear: device.ear,
-          manufacturer: "Unknown",
+          manufacturer,
           model,
           serial,
           warrantyEnd,
@@ -416,7 +424,7 @@ async function seedDailySchedule() {
     const end = new Date(start);
     end.setMinutes(start.getMinutes() + duration);
 
-    const providerName = row["Provider"]?.trim() || "Unknown";
+    const providerName = normalizeProviderName(row["Provider"]) || "Unknown";
     if (providerName.toLowerCase() === "cal, marketing") continue;
     const location = row["Location"]?.trim() || "Unknown";
     const typeName = row["Type"]?.trim() || "Appointment";
@@ -554,6 +562,7 @@ async function seedSampleAppointments() {
 }
 
 async function main() {
+  await ensureStarterCatalog(prisma);
   await seedAppointmentMeta();
   await seedPatients();
   await seedPayers();

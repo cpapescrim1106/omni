@@ -1,0 +1,4 @@
+Receive stock from the inventory drop down menu without a bill
+Receive stock from the inventory drop down menu with a bill
+Receive stock from the stock orders tab without a bill
+Receive stock from the stock orders tab with a bill

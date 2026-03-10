@@ -1,0 +1,4 @@
+Creating a journal entry linked to an event
+Viewing linked and unlinked journal entries
+Linking existing journal entries to an event
+Unlinking journal entries from an event

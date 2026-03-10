@@ -1,0 +1,7 @@
+Entering QuickAdd Patients
+Opening QuickAdd Files
+Converting QuickAdds to full patient files
+Manually converting a QuickAdd to a full patient
+Converting a QuickAdd to a full patient using online forms
+Noah integration and QuickAdds
+Online appointment booking and QuickAdds

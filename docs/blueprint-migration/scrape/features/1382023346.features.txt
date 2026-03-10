@@ -1,0 +1,20 @@
+Not all template types support PDF templates
+Overview
+Adding form features to your document
+Tip for editing the placement of elements: Guides
+Tip for editing the placement of elements: Align, Match Size, Center, and Distribute
+It is best to use unique names for form fields
+Tooltips
+Font sizing and other Appearance options
+Text alignment, the multi-line setting, and text snippet capability
+Adding merge fields to the template
+Merge fields for text data
+Notes about merge fields instantiated by text
+Merge fields that can be used with checkboxes, radio buttons, and drop-down menus
+Merge fields that populate pictures
+Numbering logos and user signatures
+Proportions
+Electronic signatures
+Multiple eSignature fields on one form
+Adobe generated signature field
+Uploading your template

@@ -1,0 +1,6 @@
+Operating systems
+Required software
+Native Windows Installer
+Display
+System Memory (RAM)
+Recommended Network Speed

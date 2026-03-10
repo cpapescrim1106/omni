@@ -19,7 +19,7 @@ export default defineConfig({
     video: "retain-on-failure",
   },
   webServer: {
-    command: "pnpm build && pnpm start -p 4102",
+    command: "npx prisma db push --accept-data-loss && npm run build && npm run start -- -p 4102",
     url: "http://127.0.0.1:4102/scheduling",
     reuseExistingServer: false,
     timeout: 120_000,

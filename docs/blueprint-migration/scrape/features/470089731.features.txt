@@ -1,0 +1,9 @@
+Overview
+Requirements
+Cloud storage account
+Mobile device or tablet
+Blueprint OMS workstation
+Configuring a mobile device for automatic photo upload
+Configuring Blueprint OMS to detect incoming photos
+Installing cloud storage desktop software
+Configuring the "Photo upload location" in Blueprint OMS

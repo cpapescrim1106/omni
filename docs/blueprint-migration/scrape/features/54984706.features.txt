@@ -1,0 +1,8 @@
+Overview
+How to ensure reliable email delivery
+Send from a domain that you own
+Add DKIM and DMARC records to your domain
+Add a DKIM record to your domain's DNS settings
+Add a DMARC record to your domain's DNS settings
+Verify your domain
+What happens if I haven't followed the steps above?

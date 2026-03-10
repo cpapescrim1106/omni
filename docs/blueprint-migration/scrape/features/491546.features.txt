@@ -1,0 +1,8 @@
+File type
+Editable text fields
+Merge fields
+Merge fields for pictures
+Checkboxes
+Radio buttons and drop-down menus
+Uploading a template to Blueprint OMS
+Updating a template

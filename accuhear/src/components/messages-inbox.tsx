@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dayjs from "dayjs";
 import { MessageResponseBar } from "@/components/message-response-bar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 type InboxThread = {
   id: string;
@@ -56,7 +58,7 @@ const SNIPPETS = [
 ];
 
 function attentionBadgeClass() {
-  return "bg-brand-orange/15 text-brand-ink";
+  return "orange";
 }
 
 export function MessagesInbox() {
@@ -179,9 +181,11 @@ export function MessagesInbox() {
           <div className="min-h-0 overflow-y-auto">
             {groups.needsReply.length ? (
               groups.needsReply.map((thread) => (
-                <button
+                <Button
                   key={thread.id}
                   type="button"
+                  variant="ghost"
+                  size="default"
                   className={`flex w-full items-start justify-between gap-3 border-b border-surface-2 px-4 py-3 text-left transition-colors hover:bg-surface-1 ${
                     selectedThreadId === thread.id ? "bg-surface-1" : ""
                   }`}
@@ -195,11 +199,11 @@ export function MessagesInbox() {
                       <div className="text-[11px] text-ink-muted">
                         {thread.lastMessage ? dayjs(thread.lastMessage.sentAt).format("h:mm A") : ""}
                       </div>
-                      <div className={`mt-2 inline-flex rounded-full px-2 py-1 text-[11px] ${attentionBadgeClass()}`}>
+                      <Badge variant={attentionBadgeClass() as "orange"} className="mt-2">
                         Needs attention
-                      </div>
+                      </Badge>
                     </div>
-                  </button>
+                  </Button>
                 ))
             ) : (
               <div className="px-4 py-4 text-sm text-ink-muted">No unanswered threads.</div>
@@ -210,9 +214,11 @@ export function MessagesInbox() {
           <div className="min-h-0 overflow-y-auto">
             {groups.rest.length ? (
               groups.rest.map((thread) => (
-                <button
+                <Button
                   key={thread.id}
                   type="button"
+                  variant="ghost"
+                  size="default"
                   className={`flex w-full items-start justify-between gap-3 border-b border-surface-2 px-4 py-3 text-left transition-colors hover:bg-surface-1 ${
                     selectedThreadId === thread.id ? "bg-surface-1" : ""
                   }`}
@@ -227,10 +233,10 @@ export function MessagesInbox() {
                       {thread.lastMessage ? dayjs(thread.lastMessage.sentAt).format("MMM D") : ""}
                     </div>
                     {thread.needsAttention ? (
-                      <div className="mt-2 inline-flex rounded-full bg-brand-orange/15 px-2 py-1 text-[11px] text-brand-ink">Needs attention</div>
+                      <Badge variant="orange" className="mt-2">Needs attention</Badge>
                     ) : null}
                   </div>
-                </button>
+                </Button>
               ))
             ) : (
               <div className="px-4 py-4 text-sm text-ink-muted">No threads yet.</div>
@@ -252,16 +258,18 @@ export function MessagesInbox() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button type="button" className="tab-pill text-xs bg-surface-1" onClick={handleMarkRead}>
+                  <Button type="button" variant="secondary" size="sm" onClick={handleMarkRead}>
                     Mark as read
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
-                    className="text-xs text-brand-ink underline"
+                    variant="ghost"
+                    size="sm"
+                    className="text-brand-ink underline"
                     onClick={() => window.open(`/patients/${selectedThread.patientId}?tab=Messaging`, "_blank", "noopener,noreferrer")}
                   >
                     Open profile
-                  </button>
+                  </Button>
                 </div>
               </div>
 
@@ -303,10 +311,12 @@ export function MessagesInbox() {
           <div className="min-h-0 overflow-y-auto p-4">
             <div className="grid gap-2">
               {SNIPPETS.map((snippet) => (
-                <button
+                <Button
                   key={snippet}
                   type="button"
-                  className="rounded-xl bg-white px-3 py-2 text-left text-xs text-ink-muted shadow-sm transition hover:bg-surface-1"
+                  variant="secondary"
+                  size="sm"
+                  className="justify-start rounded-xl bg-white px-3 py-2 text-left text-xs font-normal text-ink-muted shadow-sm"
                   onClick={() => {
                     setCompose((current) => {
                       const next = current.trim().length ? `${current.trimEnd()} ${snippet}` : snippet;
@@ -315,7 +325,7 @@ export function MessagesInbox() {
                   }}
                 >
                   {snippet}
-                </button>
+                </Button>
               ))}
             </div>
           </div>

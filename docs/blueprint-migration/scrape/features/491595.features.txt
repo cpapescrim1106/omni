@@ -1,0 +1,13 @@
+Selecting a location view
+Switching between day/week/month views Switching between day/week/month views
+Appointment Status Icon
+Moving forward and backward on the schedule
+Viewing today's appointments
+Find events
+Print schedule screen
+Show availability
+Filter by QuickAdds only and Online Booking only
+Viewing patients in the clinic
+Selecting a date using the annual calendar
+Viewing the preview panel
+Filtering the schedule by event status

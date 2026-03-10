@@ -1,0 +1,8 @@
+Voiding invoices
+Writing off invoices
+Viewing transaction history
+Editing prescriber/fitter details
+Printing invoices
+Generating HCFA 1500 Form (United States) Generating insurance claim forms
+Generating insurance claim forms (Canada)
+Searching on item name and Txn ID

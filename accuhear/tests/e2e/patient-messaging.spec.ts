@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import dayjs from "dayjs";
 import type { PrismaClient } from "@prisma/client";
 import { ensureTestDatabaseUrl } from "../helpers/test-database";
+import { ensurePatientSearchSchema } from "../../src/lib/patient-search";
 
 ensureTestDatabaseUrl();
 
@@ -66,6 +67,7 @@ async function cleanupPatients(patientIds: string[]) {
   await prisma.message.deleteMany({ where: { thread: { patientId: { in: patientIds } } } });
   await prisma.messageThread.deleteMany({ where: { patientId: { in: patientIds } } });
   await prisma.phoneNumber.deleteMany({ where: { patientId: { in: patientIds } } });
+  await prisma.journalEntry.deleteMany({ where: { patientId: { in: patientIds } } });
   await prisma.patient.deleteMany({ where: { id: { in: patientIds } } });
 }
 
@@ -75,6 +77,7 @@ test.describe.serial("Patient messaging", () => {
   test.beforeAll(async () => {
     const { PrismaClient } = await import("@prisma/client");
     prisma = new PrismaClient();
+    await ensurePatientSearchSchema();
   });
 
   test.afterAll(async () => {

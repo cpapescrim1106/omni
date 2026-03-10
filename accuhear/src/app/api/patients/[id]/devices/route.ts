@@ -1,6 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 
+function parseOptionalDate(value: unknown) {
+  if (!value) return null;
+  const parsed = new Date(String(value));
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: patientId } = await params;
   if (!patientId) {
@@ -9,10 +15,31 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 
   const devices = await prisma.device.findMany({
     where: { patientId },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ createdAt: "desc" }, { model: "asc" }],
   });
 
-  return NextResponse.json({ devices });
+  return NextResponse.json({
+    devices: devices.map((device) => ({
+      id: device.id,
+      patientId: device.patientId,
+      catalogItemId: device.catalogItemId,
+      purchaseOrderItemId: device.purchaseOrderItemId,
+      ear: device.ear,
+      manufacturer: device.manufacturer,
+      model: device.model,
+      serial: device.serial,
+      warrantyEnd: device.warrantyEnd.toISOString(),
+      lossDamageWarrantyEnd: device.lossDamageWarrantyEnd?.toISOString() ?? null,
+      status: device.status,
+      purchaseDate: device.purchaseDate?.toISOString() ?? null,
+      deliveryDate: device.deliveryDate?.toISOString() ?? null,
+      fittingDate: device.fittingDate?.toISOString() ?? null,
+      color: device.color,
+      battery: device.battery,
+      notes: device.notes,
+      createdAt: device.createdAt.toISOString(),
+    })),
+  });
 }
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -28,20 +55,38 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  const parsedWarrantyEnd = new Date(warrantyEnd);
-  if (Number.isNaN(parsedWarrantyEnd.getTime())) {
+  const parsedWarrantyEnd = parseOptionalDate(warrantyEnd);
+  if (!parsedWarrantyEnd) {
     return NextResponse.json({ error: "Invalid warrantyEnd" }, { status: 400 });
+  }
+
+  const parsedLossDamageWarrantyEnd = parseOptionalDate(body?.lossDamageWarrantyEnd);
+  if (body?.lossDamageWarrantyEnd && parsedLossDamageWarrantyEnd === undefined) {
+    return NextResponse.json({ error: "Invalid lossDamageWarrantyEnd" }, { status: 400 });
+  }
+
+  const parsedPurchaseDate = parseOptionalDate(body?.purchaseDate);
+  if (body?.purchaseDate && parsedPurchaseDate === undefined) {
+    return NextResponse.json({ error: "Invalid purchaseDate" }, { status: 400 });
   }
 
   const device = await prisma.device.create({
     data: {
       patientId,
-      ear,
-      manufacturer,
-      model,
-      serial,
+      catalogItemId: typeof body?.catalogItemId === "string" ? body.catalogItemId : null,
+      ear: String(ear),
+      manufacturer: String(manufacturer),
+      model: String(model),
+      serial: String(serial),
       warrantyEnd: parsedWarrantyEnd,
-      status,
+      lossDamageWarrantyEnd: parsedLossDamageWarrantyEnd ?? null,
+      status: String(status),
+      purchaseDate: parsedPurchaseDate ?? null,
+      deliveryDate: parseOptionalDate(body?.deliveryDate) ?? null,
+      fittingDate: parseOptionalDate(body?.fittingDate) ?? null,
+      color: typeof body?.color === "string" ? body.color : null,
+      battery: typeof body?.battery === "string" ? body.battery : null,
+      notes: typeof body?.notes === "string" ? body.notes : null,
     },
   });
 

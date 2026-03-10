@@ -1,0 +1,8 @@
+Basic:
+Privilege Name
+Description
+Administration:
+Accounting:
+Advanced:
+Document management:
+Inventory:

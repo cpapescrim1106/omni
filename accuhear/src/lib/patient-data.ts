@@ -232,6 +232,20 @@ export async function getPatientById(id: string) {
       phones: true,
       payerPolicies: true,
       devices: true,
+      appointments: {
+        where: { startTime: { gte: new Date() } },
+        orderBy: { startTime: 'asc' },
+        take: 5,
+      },
+      journalEntries: {
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      },
+      purchaseOrders: {
+        where: { status: { notIn: ['delivered', 'returned', 'cancelled'] } },
+        include: { lineItems: true },
+        orderBy: { createdAt: 'desc' },
+      },
     },
   });
 }

@@ -1,0 +1,10 @@
+Overview
+In general
+Cancelling the request
+Resending forms
+Case 1: patient/QuickAdd does not exist yet, and at least one of the forms from the request requires processing
+Create patient wizard
+Case 2: patient/QuickAdd exists, and at least one of the forms from the request requires processing
+Update patient wizard
+Converting a QuickAdd to a patient using new information
+Case 3: patient/QuickAdd exists, and none of the forms from the request require processing

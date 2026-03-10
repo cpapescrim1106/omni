@@ -5,7 +5,51 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import isoWeek from "dayjs/plugin/isoWeek";
 import type { OpUnitType } from "dayjs";
+import {
+  Activity,
+  CalendarIcon,
+  Check,
+  CircleCheckBig,
+  CircleX,
+  Clock,
+  HouseIcon,
+  ListChecksIcon,
+  Lock,
+  LogIn,
+  PhoneCall,
+  PhoneMissed,
+  LockIcon,
+  UnlockIcon,
+  RefreshCw,
+  UserCheck,
+  UsersIcon,
+  UserX,
+  X,
+} from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  formatTransitionHistoryMeta,
+  formatTransitionHistoryStatus,
+  type AppointmentTransitionHistoryItem,
+} from "@/lib/appointments/transition-history";
+import { cn } from "@/lib/utils";
+import { normalizeProviderName } from "@/lib/provider-names";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 const DATE_FORMAT = "YYYY-MM-DD";
 
 const DAY_START_HOUR = 8;
@@ -17,7 +61,6 @@ const WEEK_HEADER_HEIGHT = 32;
 const WEEK_PROVIDER_HEIGHT = 28;
 const TIME_COLUMN_WIDTH = 80;
 
-const fallbackProviders = ["Chris Pape", "C + C, SHD"];
 const providerShortNames: Record<string, string> = {
   "Chris Pape": "Chris",
   "Pape, Chris": "Chris",
@@ -33,13 +76,22 @@ dayjs.extend(utc);
 dayjs.extend(isoWeek);
 
 type ScheduleView = "day" | "week";
-type StatusFilter = "all" | "confirmed" | "pending" | "cancelled";
 
-const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "confirmed", label: "Confirmed" },
-  { value: "pending", label: "Pending" },
-  { value: "cancelled", label: "Cancelled" },
+type InClinicScheduleAction =
+  | "Arrived"
+  | "Arrived & Ready"
+  | "Ready"
+  | "In Progress"
+  | "Completed"
+  | "Cancelled";
+
+const IN_CLINIC_ACTION_ORDER: InClinicScheduleAction[] = [
+  "Arrived",
+  "Arrived & Ready",
+  "Ready",
+  "In Progress",
+  "Completed",
+  "Cancelled",
 ];
 
 type Appointment = {
@@ -53,12 +105,15 @@ type Appointment = {
   notes?: string | null;
 };
 
+type ProviderScheduleMap = Record<string, Record<number, { startMinute: number; endMinute: number; isActive: boolean }>>;
+
 type MetaPayload = {
   providers: string[];
   types: { id: string; name: string }[];
   statuses: { id: string; name: string }[];
   rangeStart?: string | null;
   rangeEnd?: string | null;
+  providerSchedules?: ProviderScheduleMap;
 };
 
 type ScheduleEvent = {
@@ -66,6 +121,7 @@ type ScheduleEvent = {
   providerName: string;
   typeId?: string;
   typeName: string;
+  statusId?: string;
   statusName?: string;
   title: string;
   start: dayjs.Dayjs;
@@ -86,6 +142,7 @@ type PatientSearchResult = {
 type AppointmentFormState = {
   patientId: string;
   patientName: string;
+  isNaBlock: boolean;
   date: string;
   startTime: string;
   endTime: string;
@@ -94,6 +151,29 @@ type AppointmentFormState = {
   statusId: string;
   notes: string;
 };
+
+function QuestionMark({ size, style }: { size?: number; style?: React.CSSProperties }) {
+  return <span style={{ fontSize: size ? size + 2 : 12, lineHeight: 1, fontWeight: 700, display: "inline-block", ...style }}>?</span>;
+}
+
+type StatusIconConfig = { Icon: React.ElementType; color: string };
+
+function getStatusIcon(statusName?: string): StatusIconConfig {
+  const n = (statusName ?? "").toLowerCase();
+  if (n === "tentative")                                    return { Icon: QuestionMark,    color: "#9b8ec4" };
+  if (n === "confirmed")                                    return { Icon: Check,            color: "#2e9e6e" };
+  if (n === "left message")                                 return { Icon: PhoneCall,        color: "#c27c1a" };
+  if (n === "no answer")                                    return { Icon: PhoneMissed,      color: "#c94646" };
+  if (n === "arrived")                                      return { Icon: LogIn,            color: "rgba(31,149,184,0.7)" };
+  if (n === "arrived & ready" || n === "arrived and ready") return { Icon: UserCheck,        color: "#1f95b8" };
+  if (n === "ready")                                        return { Icon: CircleCheckBig,   color: "#2e9e6e" };
+  if (n === "in progress")                                  return { Icon: Activity,         color: "#1f95b8" };
+  if (n === "completed")                                    return { Icon: Lock,             color: "#1a6e47" };
+  if (n === "cancelled" || n === "canceled")                return { Icon: CircleX,          color: "#c94646" };
+  if (n === "no-show" || n === "no show")                   return { Icon: UserX,            color: "#c94646" };
+  if (n === "rescheduled")                                  return { Icon: RefreshCw,        color: "#c27c1a" };
+  return { Icon: Clock, color: "rgba(108,104,125,0.55)" }; // scheduled / fallback
+}
 
 function providerShortLabel(name: string) {
   if (providerShortNames[name]) return providerShortNames[name];
@@ -128,31 +208,6 @@ function normalizeDateParam(value: string | null) {
   return parsed.isValid() ? parsed.format(DATE_FORMAT) : null;
 }
 
-function normalizeStatusParam(value: string | null): StatusFilter {
-  const normalized = (value || "").toLowerCase();
-  if (normalized === "canceled") return "cancelled";
-  if (normalized === "confirmed" || normalized === "pending" || normalized === "cancelled") {
-    return normalized as StatusFilter;
-  }
-  return "all";
-}
-
-function statusMatches(filter: StatusFilter, statusName?: string | null) {
-  if (filter === "all") return true;
-  const normalized = (statusName || "").toLowerCase();
-  if (!normalized) return false;
-  if (filter === "confirmed") return normalized.includes("confirm");
-  if (filter === "pending") {
-    return (
-      normalized.includes("pending") ||
-      normalized.includes("scheduled") ||
-      normalized.includes("tentative") ||
-      normalized.includes("ready")
-    );
-  }
-  return normalized.includes("cancel") || normalized.includes("no show") || normalized.includes("no-show");
-}
-
 function buildSlots(base: dayjs.Dayjs) {
   const start = base.hour(DAY_START_HOUR).minute(0).second(0);
   const end = base.hour(DAY_END_HOUR).minute(0).second(0);
@@ -163,6 +218,22 @@ function buildSlots(base: dayjs.Dayjs) {
   const slotCount = Math.max(1, Math.ceil(totalMinutes / SLOT_MINUTES));
   const slots = Array.from({ length: slotCount }, (_, index) => start.add(index * SLOT_MINUTES, "minute"));
   return { start, end, totalMinutes, slotCount, slots };
+}
+
+function isSlotUnavailable(
+  providerName: string,
+  date: string,
+  slotMinuteInDay: number,
+  providerSchedules: ProviderScheduleMap
+): boolean {
+  // No schedule configured for this provider → all slots open
+  if (!(providerName in providerSchedules)) return false;
+  const dayOfWeek = new Date(date).getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const daySchedule = providerSchedules[providerName]?.[dayOfWeek];
+  // Provider has schedules but none for this day → unavailable
+  if (!daySchedule || !daySchedule.isActive) return true;
+  // Outside configured hours → unavailable
+  return slotMinuteInDay < daySchedule.startMinute || slotMinuteInDay >= daySchedule.endMinute;
 }
 
 function parseAppointmentTime(value: string | Date) {
@@ -178,6 +249,29 @@ function parseAppointmentTime(value: string | Date) {
 
 function formatLocalDateTime(value: dayjs.Dayjs) {
   return value.format("YYYY-MM-DDTHH:mm:ss");
+}
+
+function isInClinicScheduleAction(value: string): value is InClinicScheduleAction {
+  return IN_CLINIC_ACTION_ORDER.includes(value as InClinicScheduleAction);
+}
+
+function toInClinicActionTestId(action: InClinicScheduleAction) {
+  return action.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
+function isAppointmentTransitionHistoryItem(value: unknown): value is AppointmentTransitionHistoryItem {
+  if (!value || typeof value !== "object") return false;
+
+  const event = value as Partial<AppointmentTransitionHistoryItem>;
+  const hasFromStatus = event.fromStatus === null || typeof event.fromStatus === "string";
+
+  return (
+    typeof event.id === "string" &&
+    hasFromStatus &&
+    typeof event.toStatus === "string" &&
+    typeof event.actorId === "string" &&
+    typeof event.timestamp === "string"
+  );
 }
 
 function getColumnMin(totalColumns: number) {
@@ -209,22 +303,35 @@ export function BigSchedule() {
   const [viewDate, setViewDate] = useState(dayjs().format(DATE_FORMAT));
   const [viewType, setViewType] = useState<ScheduleView>("week");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [selectedProviders, setSelectedProviders] = useState<string[]>(fallbackProviders);
-  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-  const [colorByType, setColorByType] = useState(true);
-  const [selectedStatus, setSelectedStatus] = useState<StatusFilter>("all");
+  const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
+  const colorByType = true;
   const [hasSynced, setHasSynced] = useState(false);
   const [hasExplicitDate, setHasExplicitDate] = useState(false);
+  const [hasExplicitProviders, setHasExplicitProviders] = useState(false);
   const [hasAutoFocused, setHasAutoFocused] = useState(false);
-  const [actionMenu, setActionMenu] = useState<{ id: string; x: number; y: number } | null>(null);
-  const [actionMenuView, setActionMenuView] = useState<"main" | "status">("main");
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [scheduleContextState, setScheduleContextState] = useState<{
+    appointmentId: string;
+    isToday: boolean;
+    availableActions: InClinicScheduleAction[];
+    history: AppointmentTransitionHistoryItem[];
+    isLoading: boolean;
+    pendingAction: InClinicScheduleAction | null;
+  } | null>(null);
   const [sidebarSections, setSidebarSections] = useState({
-    status: true,
-    types: true,
     calendar: true,
   });
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
-  const [pinnedAppointmentId, setPinnedAppointmentId] = useState<string | null>(null);
+  const [isSidebarPinned, setIsSidebarPinned] = useState(() => {
+    if (typeof window === "undefined") return true;
+    const stored = localStorage.getItem("schedule-sidebar-pinned");
+    return stored === null ? true : stored === "true";
+  });
+  const [clinicPatients, setClinicPatients] = useState<{ id: string; name: string; arrivedAt: string | null }[]>([]);
+  const [clinicNow, setClinicNow] = useState(() => Date.now());
+  const [dockedAppointment, setDockedAppointment] = useState<{
+    event: ScheduleEvent;
+    originalAppointment: Appointment;
+  } | null>(null);
   const resizeRef = useRef<{
     id: string;
     start: dayjs.Dayjs;
@@ -234,9 +341,9 @@ export function BigSchedule() {
   } | null>(null);
   const isResizingRef = useRef(false);
   const scheduleBoardRef = useRef<HTMLDivElement | null>(null);
-  const actionMenuRef = useRef<HTMLDivElement | null>(null);
-  const clickTimeoutRef = useRef<number | null>(null);
   const draggingRef = useRef(false);
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null);
+  const [isDragOverDock, setIsDragOverDock] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formState, setFormState] = useState<AppointmentFormState | null>(null);
@@ -246,6 +353,9 @@ export function BigSchedule() {
   const [patientLoading, setPatientLoading] = useState(false);
   const [patientStatusFilter, setPatientStatusFilter] = useState<"active" | "inactive">("active");
   const [modalError, setModalError] = useState<string | null>(null);
+  const [editHistory, setEditHistory] = useState<AppointmentTransitionHistoryItem[]>([]);
+  const [statusPicker, setStatusPicker] = useState<{ id: string; x: number; y: number } | null>(null);
+  const statusPickerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!toastMessage) return;
@@ -254,13 +364,13 @@ export function BigSchedule() {
   }, [toastMessage]);
 
   useEffect(() => {
-    if (!actionMenu) return;
+    if (!statusPicker) return;
     function handlePointerDown(event: PointerEvent) {
-      if (actionMenuRef.current?.contains(event.target as Node)) return;
-      setActionMenu(null);
+      if (statusPickerRef.current?.contains(event.target as Node)) return;
+      setStatusPicker(null);
     }
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setActionMenu(null);
+      if (event.key === "Escape") setStatusPicker(null);
     }
     window.addEventListener("pointerdown", handlePointerDown);
     window.addEventListener("keydown", handleKeyDown);
@@ -268,16 +378,15 @@ export function BigSchedule() {
       window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [actionMenu]);
+  }, [statusPicker]);
 
   useEffect(() => {
     if (hasSynced) return;
     const dateParam = normalizeDateParam(searchParams.get("date"));
-    const statusParam = normalizeStatusParam(searchParams.get("status"));
-    const providerParams = searchParams.getAll("provider");
+    const providerParams = searchParams.getAll("provider").map(normalizeProviderName);
     setHasExplicitDate(Boolean(dateParam));
+    setHasExplicitProviders(providerParams.length > 0);
     if (dateParam) setViewDate(dateParam);
-    setSelectedStatus(statusParam);
     if (providerParams.length) setSelectedProviders(providerParams);
     setHasSynced(true);
   }, [hasSynced, searchParams]);
@@ -290,9 +399,10 @@ export function BigSchedule() {
   }, []);
 
   const providers = useMemo(() => {
-    const list = meta?.providers?.length ? meta.providers : fallbackProviders;
-    return orderProviders(list);
+    return orderProviders(meta?.providers ?? []);
   }, [meta]);
+
+  const providerSchedules = useMemo<ProviderScheduleMap>(() => meta?.providerSchedules ?? {}, [meta]);
 
   useEffect(() => {
     if (!meta || hasAutoFocused || hasExplicitDate) return;
@@ -312,16 +422,12 @@ export function BigSchedule() {
   useEffect(() => {
     if (!providers.length) return;
     setSelectedProviders((current) => {
+      if (!hasExplicitProviders) return providers;
       if (!current.length) return providers;
-      const filtered = current.filter((provider) => providers.includes(provider));
+      const filtered = current.map(normalizeProviderName).filter((provider) => providers.includes(provider));
       return filtered.length ? filtered : providers;
     });
-  }, [providers]);
-
-  useEffect(() => {
-    if (!meta?.types?.length) return;
-    setSelectedTypes((current) => (current.length ? current : meta.types.map((type) => type.id)));
-  }, [meta]);
+  }, [hasExplicitProviders, providers]);
 
   const typeColors = useTypeColors(meta?.types ?? []);
   const statusByName = useMemo(() => {
@@ -333,16 +439,17 @@ export function BigSchedule() {
   }, [meta]);
   const orderedStatusOptions = useMemo(() => {
     const preferred = [
-      "Ready",
-      "Arrived",
-      "In progress",
-      "Completed",
-      "Confirmed",
       "Tentative",
+      "Confirmed",
+      "Left message",
+      "No answer",
+      "Arrived",
+      "Ready",
+      "In Progress",
+      "Completed",
+      "No-show",
       "Rescheduled",
-      "No show",
       "Cancelled",
-      "Scheduled",
     ];
     const used = new Set<string>();
     const ordered = preferred
@@ -353,20 +460,28 @@ export function BigSchedule() {
         return status;
       });
 
+    const excluded = new Set(["scheduled", "arrived & ready", "arrived and ready"]);
     const extras = (meta?.statuses ?? [])
-      .filter((status) => !used.has(status.name.toLowerCase()))
+      .filter((status) => !used.has(status.name.toLowerCase()) && !excluded.has(status.name.toLowerCase()))
       .sort((a, b) => a.name.localeCompare(b.name));
 
     return [...ordered, ...extras];
   }, [meta, statusByName]);
   const defaultStatusId = useMemo(() => {
     if (!meta?.statuses?.length) return "";
-    return meta.statuses.find((status) => status.name === "Scheduled")?.id ?? meta.statuses[0].id;
+    return meta.statuses.find((status) => status.name === "Tentative")?.id ?? meta.statuses[0].id;
   }, [meta]);
   const defaultTypeId = useMemo(() => {
     if (!meta?.types?.length) return "";
     return meta.types[0].id;
   }, [meta]);
+
+  const isEditingTerminalAppt = useMemo(() => {
+    if (!editingId) return false;
+    const appt = appointments.find((a) => a.id === editingId);
+    const n = (appt?.status?.name ?? "").toLowerCase();
+    return n === "completed" || n === "cancelled" || n === "canceled";
+  }, [editingId, appointments]);
 
   useEffect(() => {
     if (!formState) return;
@@ -391,6 +506,7 @@ export function BigSchedule() {
 
   useEffect(() => {
     if (!isModalOpen) return;
+    if (formState?.patientId) return;
     const query = debouncedPatientQuery.trim();
     if (!query) {
       setPatientResults([]);
@@ -434,12 +550,6 @@ export function BigSchedule() {
       params.delete("date");
     }
 
-    if (selectedStatus !== "all") {
-      params.set("status", selectedStatus);
-    } else {
-      params.delete("status");
-    }
-
     params.delete("provider");
     if (providers.length && selectedProviders.length && selectedProviders.length !== providers.length) {
       selectedProviders.forEach((provider) => params.append("provider", provider));
@@ -450,7 +560,7 @@ export function BigSchedule() {
     if (nextQuery !== currentQuery) {
       router.replace(nextQuery ? `/scheduling?${nextQuery}` : "/scheduling", { scroll: false });
     }
-  }, [hasSynced, providers, router, searchParams, selectedProviders, selectedStatus, viewDate]);
+  }, [hasSynced, providers, router, searchParams, selectedProviders, viewDate]);
 
   const buildDefaultForm = useCallback((): AppointmentFormState => {
     const baseDate = dayjs(viewDate).format("YYYY-MM-DD");
@@ -462,6 +572,7 @@ export function BigSchedule() {
     return {
       patientId: "",
       patientName: "",
+      isNaBlock: false,
       date: baseDate,
       startTime: start,
       endTime: end,
@@ -507,7 +618,7 @@ export function BigSchedule() {
     setPatientResults([]);
     setModalError(null);
     setIsModalOpen(true);
-    setActionMenu(null);
+    setOpenMenuId(null);
   }, [buildDefaultForm]);
 
   useEffect(() => {
@@ -540,6 +651,7 @@ export function BigSchedule() {
       setFormState({
         patientId: appointment.patient?.id ?? "",
         patientName,
+        isNaBlock: !appointment.patient?.id,
         date: start.format("YYYY-MM-DD"),
         startTime: start.format("HH:mm"),
         endTime: end.format("HH:mm"),
@@ -551,10 +663,42 @@ export function BigSchedule() {
       setPatientQuery(patientName);
       setPatientResults([]);
       setModalError(null);
+      setEditHistory([]);
       setIsModalOpen(true);
-      setActionMenu(null);
+      setOpenMenuId(null);
+
+      fetch(`/api/appointments/${appointment.id}/history`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data.history)) setEditHistory(data.history);
+        })
+        .catch(() => {});
     },
     [appointments, defaultStatusId, defaultTypeId]
+  );
+
+  const openNewModalForSlot = useCallback(
+    (payload: { date: string; time: string; provider: string }) => {
+      const [hour, minute] = payload.time.split(":").map((value) => Number(value));
+      const start = dayjs(payload.date).hour(hour).minute(minute).second(0);
+      const end = start.add(SLOT_MINUTES, "minute");
+
+      setEditingId(null);
+      setFormState({
+        ...buildDefaultForm(),
+        date: payload.date,
+        startTime: start.format("HH:mm"),
+        endTime: end.format("HH:mm"),
+        providerName: payload.provider,
+      });
+      setPatientQuery("");
+      setPatientResults([]);
+      setModalError(null);
+      setEditHistory([]);
+      setIsModalOpen(true);
+      setOpenMenuId(null);
+    },
+    [buildDefaultForm]
   );
 
   const closeModal = useCallback(() => {
@@ -564,7 +708,7 @@ export function BigSchedule() {
     setPatientQuery("");
     setPatientResults([]);
     setModalError(null);
-    setActionMenu(null);
+    setOpenMenuId(null);
   }, []);
 
   useEffect(() => {
@@ -599,14 +743,13 @@ export function BigSchedule() {
           ? `${appointment.patient.lastName}, ${appointment.patient.firstName}`
           : "Reserved";
         const typeName = appointment.type?.name || "Appointment";
-        const color = colorByType
-          ? typeColors.get(appointment.type?.id || "") || fallbackColor
-          : fallbackColor;
+        const color = typeColors.get(appointment.type?.id || "") || fallbackColor;
         return {
           id: appointment.id,
           providerName: appointment.providerName,
           typeId: appointment.type?.id,
           typeName,
+          statusId: appointment.status?.id,
           statusName: appointment.status?.name,
           title: `${patientName} · ${typeName}`,
           start,
@@ -616,10 +759,8 @@ export function BigSchedule() {
         } as ScheduleEvent;
       })
       .filter((event) => visibleProviders.includes(event.providerName))
-      .filter((event) => (selectedTypes.length ? selectedTypes.includes(event.typeId || "") : true))
-      .filter((event) => statusMatches(selectedStatus, event.statusName))
       .sort((a, b) => a.start.valueOf() - b.start.valueOf());
-  }, [appointments, colorByType, selectedStatus, selectedTypes, typeColors, visibleProviders]);
+  }, [appointments, typeColors, visibleProviders]);
 
   const eventMap = useMemo(() => {
     return new Map(events.map((event) => [event.id, event]));
@@ -629,61 +770,112 @@ export function BigSchedule() {
     return new Map(appointments.map((appointment) => [appointment.id, appointment]));
   }, [appointments]);
 
-  const actionAppointment = actionMenu ? appointmentMap.get(actionMenu.id) ?? null : null;
+  const actionAppointment = openMenuId ? appointmentMap.get(openMenuId) ?? null : null;
 
-  const actionMenuSummary = useMemo(() => {
-    if (!actionAppointment) return null;
-    const start = parseAppointmentTime(actionAppointment.startTime);
-    const end = parseAppointmentTime(actionAppointment.endTime);
-    const patientName = actionAppointment.patient
-      ? `${actionAppointment.patient.lastName}, ${actionAppointment.patient.firstName}`
-      : "Reserved";
-    const typeName = actionAppointment.type?.name || "Appointment";
-    return {
-      title: `${patientName} · ${typeName}`,
-      timeLabel: `${start.format("h:mm A")} – ${end.format("h:mm A")}`,
-      patientId: actionAppointment.patient?.id ?? null,
-    };
-  }, [actionAppointment]);
-  const arrivedAndReadyStatus =
-    statusByName.get("ready") ??
-    statusByName.get("arrived") ??
-    statusByName.get("in progress") ??
-    null;
+  const scheduleContextActions = useMemo(() => {
+    if (!openMenuId || !scheduleContextState || scheduleContextState.appointmentId !== openMenuId) {
+      return [] as InClinicScheduleAction[];
+    }
 
-  const openActionMenu = useCallback((appointmentId: string, rect: DOMRect) => {
-    const board = scheduleBoardRef.current;
-    if (!board) return;
-    const boardRect = board.getBoundingClientRect();
-    const menuWidth = 240;
-    const menuHeight = 180;
-    const padding = 8;
-    let x = rect.right - boardRect.left + 8;
-    if (x + menuWidth > boardRect.width - padding) {
-      x = rect.left - boardRect.left - menuWidth - 8;
-    }
-    if (x < padding) x = padding;
-    let y = rect.top - boardRect.top;
-    if (y + menuHeight > boardRect.height - padding) {
-      y = boardRect.height - menuHeight - padding;
-    }
-    if (y < padding) y = padding;
-    setActionMenu({ id: appointmentId, x, y });
-  }, []);
+    const available = new Set(scheduleContextState.availableActions);
+    return IN_CLINIC_ACTION_ORDER.filter((action) => available.has(action));
+  }, [openMenuId, scheduleContextState]);
+
+  const isInClinicActionPending = Boolean(scheduleContextState?.pendingAction);
 
   useEffect(() => {
-    setActionMenu(null);
-  }, [viewDate, viewType, selectedProviders, selectedTypes, selectedStatus]);
+    setOpenMenuId(null);
+  }, [viewDate, viewType, selectedProviders]);
 
   const showError = useCallback((message: string) => {
     setToastMessage(message);
   }, []);
 
   useEffect(() => {
-    if (actionMenu) {
-      setActionMenuView("main");
+    const IN_CLINIC = new Set(["arrived", "ready", "in progress"]);
+    function formatDateOnly(d: Date) {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     }
-  }, [actionMenu]);
+    async function fetchClinic() {
+      try {
+        const res = await fetch(`/api/appointments/monitor?date=${formatDateOnly(new Date())}`, { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json() as { appointments: { id: string; patient: { firstName: string; lastName: string } | null; status: { name: string }; arrivedAt: string | null }[] };
+        setClinicPatients(
+          data.appointments
+            .filter((a) => IN_CLINIC.has(a.status.name.toLowerCase()))
+            .map((a) => ({
+              id: a.id,
+              name: a.patient ? `${a.patient.lastName}, ${a.patient.firstName}` : "—",
+              arrivedAt: a.arrivedAt,
+            }))
+        );
+        setClinicNow(Date.now());
+      } catch { /* silent */ }
+    }
+    void fetchClinic();
+    const interval = window.setInterval(() => { void fetchClinic(); }, 30_000);
+    const tick = window.setInterval(() => setClinicNow(Date.now()), 60_000);
+    return () => { window.clearInterval(interval); window.clearInterval(tick); };
+  }, []);
+
+  useEffect(() => {
+    if (!openMenuId) {
+      setScheduleContextState(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    const appointmentId = openMenuId;
+    setScheduleContextState({
+      appointmentId,
+      isToday: false,
+      availableActions: [],
+      history: [],
+      isLoading: true,
+      pendingAction: null,
+    });
+
+    fetch(`/api/appointments/${appointmentId}/schedule-context`, { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error("Unable to load in-clinic actions.");
+        }
+
+        return response.json() as Promise<{
+          isToday?: boolean;
+          availableActions?: string[];
+          history?: unknown[];
+        }>;
+      })
+      .then((payload) => {
+        setScheduleContextState((current) => {
+          if (!current || current.appointmentId !== appointmentId) return current;
+          const availableActions = (payload.availableActions ?? []).filter(isInClinicScheduleAction);
+          const history = (payload.history ?? []).filter(isAppointmentTransitionHistoryItem);
+          return {
+            appointmentId,
+            isToday: Boolean(payload.isToday),
+            availableActions,
+            history,
+            isLoading: false,
+            pendingAction: null,
+          };
+        });
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        setScheduleContextState((current) => {
+          if (!current || current.appointmentId !== appointmentId) return current;
+          return {
+            ...current,
+            isLoading: false,
+          };
+        });
+      });
+
+    return () => controller.abort();
+  }, [openMenuId]);
 
   const openPatientFromAppointment = useCallback(
     (appointmentId: string) => {
@@ -709,6 +901,178 @@ export function BigSchedule() {
       router.push(`/patients/${patientId}?tab=${encodeURIComponent(tab)}`);
     },
     [appointmentMap, router, showError]
+  );
+
+  const scheduleFollowUp = useCallback(
+    async (appointmentId: string, typeLabel: "HE" | "C+C") => {
+      const appt = appointmentMap.get(appointmentId);
+      if (!appt) return;
+
+      const targetProvider = typeLabel === "HE" ? "Chris Pape" : "C + C, SHD";
+      const targetTypeKeyword = typeLabel === "HE" ? "hearing" : "clean";
+      const targetTypeId =
+        meta?.types.find((t) => t.name.toLowerCase().includes(targetTypeKeyword))?.id ?? defaultTypeId;
+
+      const apptStart = parseAppointmentTime(appt.startTime);
+      const apptEnd = parseAppointmentTime(appt.endTime);
+      const durationMinutes = apptEnd.diff(apptStart, "minute");
+      const targetHour = apptStart.hour();
+      const targetMinute = apptStart.minute();
+      const targetDate = apptStart.add(182, "day");
+
+      // Mark current appointment completed
+      const completeRes = await fetch(`/api/appointments/${appointmentId}/schedule-context`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "Completed" }),
+      });
+      if (!completeRes.ok) {
+        const payload = await completeRes.json().catch(() => ({})) as { error?: string };
+        showError(payload.error ?? "Unable to complete appointment.");
+        return;
+      }
+      await loadAppointments();
+
+      // Fetch provider appointments in search window (target day + 30 days forward)
+      const searchStart = targetDate.startOf("day");
+      const searchEnd = targetDate.add(30, "day").endOf("day");
+      const res = await fetch(
+        `/api/appointments?start=${formatLocalDateTime(searchStart)}&end=${formatLocalDateTime(searchEnd)}&provider=${encodeURIComponent(targetProvider)}`
+      );
+      const data = await res.json() as { appointments: Appointment[] };
+      const TERMINAL = new Set(["completed", "cancelled", "canceled", "no-show", "no show", "rescheduled"]);
+      const active = (data.appointments ?? []).filter(
+        (a) => !a.patient?.id || !TERMINAL.has((a.status?.name ?? "").toLowerCase())
+      );
+
+      function isSlotFree(slotStart: dayjs.Dayjs, slotEnd: dayjs.Dayjs) {
+        return !active.some((a) => {
+          const aStart = parseAppointmentTime(a.startTime);
+          const aEnd = parseAppointmentTime(a.endTime);
+          return aStart.isBefore(slotEnd) && aEnd.isAfter(slotStart);
+        });
+      }
+
+      // Determine available time window for a candidate date based on provider schedules
+      function getAvailableWindow(date: dayjs.Dayjs): { startMinute: number; endMinute: number } | null {
+        const providerSched = providerSchedules[targetProvider];
+        if (!providerSched) {
+          // No schedule configured → full day open
+          return { startMinute: DAY_START_HOUR * 60, endMinute: DAY_END_HOUR * 60 };
+        }
+        const dow = date.day(); // JS: 0=Sun, 1=Mon, ..., 6=Sat
+        const daySched = providerSched[dow];
+        if (!daySched || !daySched.isActive) return null; // provider off this day
+        return { startMinute: daySched.startMinute, endMinute: daySched.endMinute };
+      }
+
+      // Search: try slots within available window, sorted by closeness to original time
+      let foundSlot: dayjs.Dayjs | null = null;
+      const targetMinuteInDay = targetHour * 60 + targetMinute;
+
+      for (let dayOffset = 0; dayOffset <= 30 && !foundSlot; dayOffset++) {
+        const candidateDate = targetDate.add(dayOffset, "day");
+        const window = getAvailableWindow(candidateDate);
+        if (!window) continue; // provider unavailable this day
+
+        const { startMinute: winStart, endMinute: winEnd } = window;
+
+        // Build all valid slot start minutes within the available window
+        const allSlots: number[] = [];
+        for (let m = winStart; m + durationMinutes <= winEnd; m += SLOT_MINUTES) {
+          allSlots.push(m);
+        }
+
+        // Sort slots by closeness to the original appointment time
+        allSlots.sort((a, b) => Math.abs(a - targetMinuteInDay) - Math.abs(b - targetMinuteInDay));
+
+        for (const minuteInDay of allSlots) {
+          const h = Math.floor(minuteInDay / 60);
+          const m = minuteInDay % 60;
+          const slotStart = candidateDate.hour(h).minute(m).second(0);
+          const slotEnd = slotStart.add(durationMinutes, "minute");
+          if (isSlotFree(slotStart, slotEnd)) {
+            foundSlot = slotStart;
+            break;
+          }
+        }
+      }
+
+      // Fallback: first available day's opening slot if nothing free found
+      if (!foundSlot) {
+        for (let dayOffset = 0; dayOffset <= 30; dayOffset++) {
+          const candidateDate = targetDate.add(dayOffset, "day");
+          const window = getAvailableWindow(candidateDate);
+          if (window) {
+            const h = Math.floor(window.startMinute / 60);
+            const m = window.startMinute % 60;
+            foundSlot = candidateDate.hour(h).minute(m).second(0);
+            break;
+          }
+        }
+        if (!foundSlot) foundSlot = targetDate.hour(targetHour).minute(targetMinute).second(0);
+      }
+
+      const foundEnd = foundSlot.add(durationMinutes, "minute");
+      const patientName = appt.patient ? `${appt.patient.lastName}, ${appt.patient.firstName}` : "";
+
+      setEditingId(null);
+      setFormState({
+        patientId: appt.patient?.id ?? "",
+        patientName,
+        isNaBlock: !appt.patient?.id,
+        date: foundSlot.format("YYYY-MM-DD"),
+        startTime: foundSlot.format("HH:mm"),
+        endTime: foundEnd.format("HH:mm"),
+        providerName: targetProvider,
+        typeId: targetTypeId,
+        statusId: defaultStatusId,
+        notes: "",
+      });
+      setViewDate(foundSlot.format("YYYY-MM-DD"));
+      setPatientQuery(patientName);
+      setPatientResults([]);
+      setModalError(null);
+      setEditHistory([]);
+      setIsModalOpen(true);
+      setOpenMenuId(null);
+    },
+    [appointmentMap, meta, providerSchedules, defaultTypeId, defaultStatusId, loadAppointments, showError, setViewDate]
+  );
+
+  const runScheduleContextAction = useCallback(
+    async (appointmentId: string, action: InClinicScheduleAction) => {
+      setScheduleContextState((current) => {
+        if (!current || current.appointmentId !== appointmentId) return current;
+        return {
+          ...current,
+          pendingAction: action,
+        };
+      });
+
+      const response = await fetch(`/api/appointments/${appointmentId}/schedule-context`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({ error: "Unable to update in-clinic status." }));
+        showError(payload.error || "Unable to update in-clinic status.");
+        setScheduleContextState((current) => {
+          if (!current || current.appointmentId !== appointmentId) return current;
+          return {
+            ...current,
+            pendingAction: null,
+          };
+        });
+        return;
+      }
+
+      await loadAppointments();
+      setOpenMenuId(null);
+    },
+    [loadAppointments, showError]
   );
 
   const updateAppointmentStatus = useCallback(
@@ -750,6 +1114,30 @@ export function BigSchedule() {
       await loadAppointments();
     },
     [appointmentMap, appointments, loadAppointments, showError]
+  );
+
+  const deleteAppointment = useCallback(
+    async (appointmentId: string) => {
+      const confirmed = window.confirm(
+        "Are you sure you want to permanently delete this appointment and remove it from the database?\n\nArchiving or cancelling is often a better option."
+      );
+      if (!confirmed) return;
+
+      const response = await fetch(`/api/appointments/${appointmentId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({ error: "Unable to delete appointment." }));
+        showError(payload.error || "Unable to delete appointment.");
+        return;
+      }
+
+      setDockedAppointment((current) => (current?.event.id === appointmentId ? null : current));
+      setOpenMenuId(null);
+      await loadAppointments();
+    },
+    [loadAppointments, showError]
   );
 
   const dayGrid = useMemo(() => {
@@ -846,6 +1234,21 @@ export function BigSchedule() {
     };
   }, [events, viewDate, viewType, visibleProviders]);
 
+  const ghostEvent = useMemo(() => {
+    if (!isModalOpen || !formState?.date || !formState?.startTime || !formState?.endTime || !formState?.providerName) return null;
+    const start = dayjs(`${formState.date}T${formState.startTime}`);
+    const end = dayjs(`${formState.date}T${formState.endTime}`);
+    if (!start.isValid() || !end.isValid() || !end.isAfter(start)) return null;
+    const durationMinutes = end.diff(start, "minute");
+    const patientName = formState.patientName || (formState.isNaBlock ? "Reserved" : "");
+    const typeName = meta?.types.find((t) => t.id === formState.typeId)?.name ?? "Appointment";
+    const statusName = meta?.statuses.find((s) => s.id === formState.statusId)?.name;
+    const title = `${patientName || "Reserved"} · ${typeName}`;
+    const timeLabel = `${start.format("h:mm A")} – ${end.format("h:mm A")}`;
+    const sizeClass = durationMinutes <= 15 ? "is-compact" : durationMinutes <= 30 ? "is-short" : "";
+    return { start, end, date: formState.date, providerName: formState.providerName, title, statusName, timeLabel, sizeClass };
+  }, [isModalOpen, formState, meta]);
+
   const weekGridStyles = weekGrid
     ? {
         gridTemplateColumns: `${TIME_COLUMN_WIDTH}px repeat(${
@@ -902,32 +1305,51 @@ export function BigSchedule() {
     await loadAppointments();
   }
 
-  async function createAppointment(providerName: string, startTime: dayjs.Dayjs, endTime: dayjs.Dayjs) {
-    if (!meta) return;
-    const statusId = meta.statuses.find((status) => status.name === "Scheduled")?.id || meta.statuses[0]?.id;
-    const typeId = meta.types[0]?.id;
-    if (!statusId || !typeId) return;
+  function dockAppointment(appointmentId: string) {
+    if (dockedAppointment) return; // only one at a time
+    const evt = eventMap.get(appointmentId);
+    if (!evt) return;
+    const original = appointments.find((a) => a.id === appointmentId);
+    if (!original) return;
+    setDockedAppointment({ event: evt, originalAppointment: { ...original } });
+  }
 
-    const response = await fetch("/api/appointments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        providerName,
-        location: "SHD",
-        typeId,
-        statusId,
-        startTime: formatLocalDateTime(startTime),
-        endTime: formatLocalDateTime(endTime),
-      }),
-    });
+  function undockAppointment() {
+    setDockedAppointment(null);
+  }
 
-    if (!response.ok) {
-      const payload = await response.json();
-      showError(payload.error || "Conflict detected");
+  async function placeDocked(payload: { date: string; time: string; provider: string }) {
+    if (!dockedAppointment) return;
+    const { event: dockedEvt, originalAppointment } = dockedAppointment;
+    const [hour, minute] = payload.time.split(":").map((value) => Number(value));
+    if (isSlotUnavailable(payload.provider, payload.date, hour * 60 + minute, providerSchedules)) {
+      setToastMessage("Outside provider availability");
       return;
     }
+    const base = dayjs(payload.date).hour(hour).minute(minute).second(0);
+    let newStart = base;
+    let newEnd = base.add(dockedEvt.durationMinutes, "minute");
+    const dayEnd = dayjs(payload.date).hour(DAY_END_HOUR).minute(0).second(0);
+    if (newEnd.isAfter(dayEnd)) {
+      newEnd = dayEnd;
+      newStart = dayEnd.subtract(dockedEvt.durationMinutes, "minute");
+    }
 
-    await loadAppointments();
+    const snapshot = appointments;
+    setAppointments((current) =>
+      current.map((item) =>
+        item.id === dockedEvt.id
+          ? {
+              ...item,
+              providerName: payload.provider,
+              startTime: formatLocalDateTime(newStart),
+              endTime: formatLocalDateTime(newEnd),
+            }
+          : item
+      )
+    );
+    setDockedAppointment(null);
+    await patchAppointment(dockedEvt.id, payload.provider, newStart, newEnd, snapshot);
   }
 
   function handleDragStart(event: React.DragEvent<HTMLDivElement>, appointmentId: string) {
@@ -935,14 +1357,51 @@ export function BigSchedule() {
       event.preventDefault();
       return;
     }
-    if (clickTimeoutRef.current) {
-      window.clearTimeout(clickTimeoutRef.current);
-      clickTimeoutRef.current = null;
-    }
-    setActionMenu(null);
+    setOpenMenuId(null);
     draggingRef.current = true;
-    event.dataTransfer.setData("application/json", JSON.stringify({ id: appointmentId }));
+    event.dataTransfer.setData("application/json", JSON.stringify({ id: appointmentId, fromDock: false }));
     event.dataTransfer.effectAllowed = "move";
+  }
+
+  function handleDockDragStart(event: React.DragEvent<HTMLDivElement>) {
+    if (!dockedAppointment) return;
+    draggingRef.current = true;
+    event.dataTransfer.setData("application/json", JSON.stringify({ id: dockedAppointment.event.id, fromDock: true }));
+    event.dataTransfer.effectAllowed = "move";
+  }
+
+  function handleDockDrop(event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const raw = event.dataTransfer.getData("application/json");
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as { id: string; fromDock?: boolean };
+    if (parsed.fromDock) return; // already docked
+    dockAppointment(parsed.id);
+  }
+
+  function handleGridDragOver(event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const el = (event.target as HTMLElement).closest<HTMLElement>("[data-time][data-provider][data-date]");
+    if (!el) return;
+    const date = el.dataset.date!;
+    const provider = el.dataset.provider!;
+    const rawTime = el.dataset.time!;
+    const [h, m] = rawTime.split(":").map(Number);
+    const slotMinutes = Math.floor(m / SLOT_MINUTES) * SLOT_MINUTES;
+    const slotMinuteInDay = h * 60 + slotMinutes;
+    if (isSlotUnavailable(provider, date, slotMinuteInDay, providerSchedules)) {
+      setDragOverKey(null);
+      return;
+    }
+    const time = `${String(h).padStart(2, "0")}:${String(slotMinutes).padStart(2, "0")}`;
+    const key = `cell-${date}-${provider}-${time}`;
+    setDragOverKey((prev) => (prev === key ? prev : key));
+  }
+
+  function handleGridDragLeave(event: React.DragEvent<HTMLDivElement>) {
+    if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+      setDragOverKey(null);
+    }
   }
 
   async function handleDrop(
@@ -950,13 +1409,25 @@ export function BigSchedule() {
     payload: { date: string; time: string; provider: string }
   ) {
     event.preventDefault();
+    setDragOverKey(null);
     const raw = event.dataTransfer.getData("application/json");
     if (!raw) return;
-    const parsed = JSON.parse(raw) as { id: string };
+    const parsed = JSON.parse(raw) as { id: string; fromDock?: boolean };
+
+    // If dropped from the dock, use placeDocked instead
+    if (parsed.fromDock && dockedAppointment?.event.id === parsed.id) {
+      await placeDocked(payload);
+      return;
+    }
+
     const appointment = eventMap.get(parsed.id);
     if (!appointment) return;
 
     const [hour, minute] = payload.time.split(":").map((value) => Number(value));
+    if (isSlotUnavailable(payload.provider, payload.date, hour * 60 + minute, providerSchedules)) {
+      setToastMessage("Outside provider availability");
+      return;
+    }
     const base = dayjs(payload.date).hour(hour).minute(minute).second(0);
     let newStart = base;
     let newEnd = base.add(appointment.durationMinutes, "minute");
@@ -983,10 +1454,9 @@ export function BigSchedule() {
   }
 
   async function handleCreate(payload: { date: string; time: string; provider: string }) {
-    const [hour, minute] = payload.time.split(":").map((value) => Number(value));
-    const base = dayjs(payload.date).hour(hour).minute(minute).second(0);
-    const end = base.add(SLOT_MINUTES, "minute");
-    await createAppointment(payload.provider, base, end);
+    const [h, m] = payload.time.split(":").map(Number);
+    if (isSlotUnavailable(payload.provider, payload.date, h * 60 + m, providerSchedules)) return;
+    openNewModalForSlot(payload);
   }
 
   async function hasConflict(
@@ -1004,9 +1474,12 @@ export function BigSchedule() {
         )}&provider=${encodeURIComponent(providerName)}`
       );
       const data = await response.json();
+      const TERMINAL_STATUSES = new Set(["completed", "cancelled", "canceled", "no-show", "no show", "rescheduled"]);
       const appointmentsList: Appointment[] = data.appointments || [];
       return appointmentsList.some((appt) => {
         if (ignoreId && appt.id === ignoreId) return false;
+        const isNaBlock = !appt.patient?.id;
+        if (!isNaBlock && TERMINAL_STATUSES.has((appt.status?.name ?? "").toLowerCase())) return false;
         const start = parseAppointmentTime(appt.startTime);
         const end = parseAppointmentTime(appt.endTime);
         return start.isBefore(endTime) && end.isAfter(startTime);
@@ -1022,7 +1495,6 @@ export function BigSchedule() {
     setToastMessage(null);
 
     const requiredMissing =
-      !formState.patientId ||
       !formState.date ||
       !formState.startTime ||
       !formState.endTime ||
@@ -1034,10 +1506,21 @@ export function BigSchedule() {
       return;
     }
 
+    if (!formState.patientId && !formState.isNaBlock) {
+      setModalError("Select a patient or check N/A block.");
+      return;
+    }
+
     const start = dayjs(`${formState.date}T${formState.startTime}`);
     const end = dayjs(`${formState.date}T${formState.endTime}`);
     if (!start.isValid() || !end.isValid() || !end.isAfter(start)) {
       setModalError("End time must be after start time.");
+      return;
+    }
+
+    const startMinuteInDay = start.hour() * 60 + start.minute();
+    if (isSlotUnavailable(formState.providerName, formState.date, startMinuteInDay, providerSchedules)) {
+      setModalError("Outside provider availability");
       return;
     }
 
@@ -1055,7 +1538,7 @@ export function BigSchedule() {
       typeId: formState.typeId,
       statusId: formState.statusId,
       notes: formState.notes,
-      patientId: formState.patientId,
+      patientId: formState.isNaBlock ? "" : formState.patientId,
       location: "SHD",
     };
 
@@ -1087,6 +1570,7 @@ export function BigSchedule() {
       current
         ? {
             ...current,
+            isNaBlock: false,
             patientId: "",
             patientName: "",
           }
@@ -1100,6 +1584,7 @@ export function BigSchedule() {
       current
         ? {
             ...current,
+            isNaBlock: false,
             patientId: patient.id,
             patientName: name,
           }
@@ -1155,9 +1640,6 @@ export function BigSchedule() {
     window.addEventListener("pointerup", handlePointerUp);
   }
 
-  const sidebarTypes = meta?.types ?? [];
-  const rangeStart = meta?.rangeStart ? dayjs(meta.rangeStart) : null;
-  const rangeEnd = meta?.rangeEnd ? dayjs(meta.rangeEnd) : null;
   const dayGridHeight = dayGrid ? DAY_HEADER_HEIGHT + dayGrid.slotCount * DAY_ROW_HEIGHT : 0;
   const weekGridHeight = weekGrid
     ? WEEK_HEADER_HEIGHT + WEEK_PROVIDER_HEIGHT + weekGrid.slots.slotCount * DAY_ROW_HEIGHT
@@ -1168,96 +1650,151 @@ export function BigSchedule() {
   }
 
   return (
-    <section className="card schedule-card p-4">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <div className="section-title text-xs text-brand-ink">Scheduling</div>
-          <div className="text-sm text-ink-muted">Drag and drop to reschedule across providers.</div>
+    <section className="card schedule-card px-4 pt-0 pb-4">
+      <div className="mb-0 flex flex-wrap items-center justify-between gap-2">
+        <div
+          className={cn(
+            "flex items-center gap-3 min-h-[28px] px-3 py-0 rounded-xl border-2 border-dashed border-transparent transition-colors duration-150",
+            !dockedAppointment && !isDragOverDock && "hover:border-surface-3 hover:bg-surface-1",
+            !dockedAppointment && isDragOverDock && "border-brand-blue bg-brand-blue/[0.06]",
+            dockedAppointment && "border-solid border-brand-orange bg-brand-orange/[0.06]"
+          )}
+          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setIsDragOverDock(true); }}
+          onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragOverDock(false); }}
+          onDrop={(e) => { setIsDragOverDock(false); handleDockDrop(e); }}
+        >
+          {dockedAppointment ? (
+            <div
+              className="flex w-full items-center gap-2 cursor-grab active:cursor-grabbing"
+              draggable
+              onDragStart={handleDockDragStart}
+              onDragEnd={() => { window.setTimeout(() => { draggingRef.current = false; }, 0); }}
+            >
+              <div className="flex flex-1 flex-col min-w-0">
+                <span className="text-[13px] font-semibold text-ink truncate">{dockedAppointment.event.title}</span>
+                <span className="text-[11px] text-ink-muted whitespace-nowrap">
+                  {dockedAppointment.event.start.format("h:mm A")} · {dockedAppointment.event.durationMinutes}min · {dockedAppointment.event.providerName}
+                </span>
+              </div>
+              <Tooltip>
+                <TooltipTrigger render={
+                  <Button type="button" variant="ghost" size="icon-sm" onClick={undockAppointment} aria-label="Cancel reschedule" />
+                }>
+                  <X size={14} />
+                </TooltipTrigger>
+                <TooltipContent>Cancel reschedule</TooltipContent>
+              </Tooltip>
+            </div>
+          ) : (
+            <div>
+              <div className="section-title text-xs text-brand-ink">Scheduling</div>
+              <div className="text-sm text-ink-muted">Drag and drop to reschedule across providers.</div>
+            </div>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
+          <Button type="button" size="sm" data-testid="new-appointment" onClick={openNewModal}>
+            New appointment
+          </Button>
           <div className="flex items-center gap-2">
-            <button
+            <Button
               onClick={prevClick}
               data-testid="schedule-prev"
               aria-label="Previous"
-              className="tab-pill bg-surface-2"
+              variant="secondary"
+              size="sm"
             >
               {"<"}
-            </button>
-            <button
+            </Button>
+            <Tooltip>
+              <TooltipTrigger render={
+                <Button
+                  type="button"
+                  onClick={() => setViewDate(dayjs().format(DATE_FORMAT))}
+                  data-testid="schedule-home"
+                  variant="secondary"
+                  size="icon-sm"
+                  aria-label="Go to today"
+                >
+                  <HouseIcon className="size-4" />
+                </Button>
+              } />
+              <TooltipContent>Go to today</TooltipContent>
+            </Tooltip>
+            <Button
+              onClick={nextClick}
+              data-testid="schedule-next"
+              aria-label="Next"
+              variant="secondary"
+              size="sm"
+            >
+              {">"}
+            </Button>
+            <Button
               type="button"
               onClick={() => {
                 const nextDate = dayjs(viewDate).add(6, "month");
                 setViewDate(nextDate.format(DATE_FORMAT));
               }}
               data-testid="schedule-six-months"
-              className="tab-pill bg-surface-2"
+              variant="secondary"
+              size="sm"
               aria-label="Jump ahead 6 months"
-              title="Jump ahead 6 months"
             >
               +6mo
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewDate(dayjs().format(DATE_FORMAT))}
-              data-testid="schedule-home"
-              className="tab-pill bg-surface-2"
-              aria-label="Go to today"
-              title="Go to today"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-                focusable="false"
-                className="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M3 10.5L12 3l9 7.5" />
-                <path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9" />
-              </svg>
-            </button>
-            <button
-              onClick={nextClick}
-              data-testid="schedule-next"
-              aria-label="Next"
-              className="tab-pill bg-surface-2"
-            >
-              {">"}
-            </button>
+            </Button>
           </div>
           <div className="flex items-center gap-2">
-            <button
+            <Button
               onClick={() => setViewType("day")}
               data-testid="schedule-day"
-              className={`tab-pill ${viewType === "day" ? "" : "bg-surface-2"}`}
+              variant={viewType === "day" ? "default" : "secondary"}
+              size="sm"
             >
               Day
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => setViewType("week")}
               data-testid="schedule-week"
-              className={`tab-pill ${viewType === "week" ? "" : "bg-surface-2"}`}
+              variant={viewType === "week" ? "default" : "secondary"}
+              size="sm"
             >
               5-day
-            </button>
+            </Button>
           </div>
-          <button
-            type="button"
-            className="tab-pill bg-surface-2"
-            onClick={() => setIsSidebarCollapsed((current) => !current)}
-            data-testid="schedule-toggle-filters"
-          >
-            {isSidebarCollapsed ? "Show filters" : "Hide filters"}
-          </button>
           <div data-testid="schedule-date" className="rounded-full bg-surface-2 px-3 py-2">
             {dayjs(viewDate).format("MMM D, YYYY")}
           </div>
         </div>
       </div>
+
+      {statusPicker ? (
+        <div
+          ref={statusPickerRef}
+          className="schedule-status-picker"
+          style={{ left: statusPicker.x, top: statusPicker.y }}
+          role="menu"
+        >
+          {orderedStatusOptions.map((status) => {
+            const { Icon, color } = getStatusIcon(status.name);
+            return (
+              <button
+                key={status.id}
+                type="button"
+                className="schedule-status-picker-option"
+                role="menuitem"
+                onClick={() => {
+                  void updateAppointmentStatus(statusPicker.id, status.id, status.name);
+                  setStatusPicker(null);
+                }}
+              >
+                <Icon size={13} style={{ color }} strokeWidth={2.5} className="shrink-0" />
+                {status.name}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
 
       {toastMessage ? (
         <div
@@ -1269,28 +1806,22 @@ export function BigSchedule() {
         </div>
       ) : null}
 
-      {isModalOpen && formState ? (
-        <div className="appointment-modal-overlay" data-testid="appointment-modal" role="dialog" aria-modal="true">
-          <div className="appointment-modal-card">
-            <div className="appointment-modal-header">
-              <div>
-                <div className="text-xs uppercase tracking-[0.2em] text-ink-soft">
-                  {editingId ? "Edit appointment" : "New appointment"}
-                </div>
-                <div className="text-lg font-semibold text-ink-strong">
-                  {editingId ? "Update appointment details" : "Schedule a new visit"}
-                </div>
-              </div>
-              <button
-                type="button"
-                data-testid="appointment-cancel"
-                className="rounded-full border border-surface-3 px-4 py-2 text-xs text-ink-soft"
-                onClick={closeModal}
-              >
-                Cancel
-              </button>
+      <div className="flex flex-row-reverse items-stretch gap-0">
+        {isModalOpen && (
+          <div
+            data-testid="appointment-modal"
+            className="w-[420px] flex-none flex flex-col gap-0 overflow-hidden border-l border-border"
+          >
+          <div className="px-5 pt-5 pb-4 border-b border-border">
+            <div className="text-xs uppercase tracking-[0.2em] text-ink-soft">
+              {editingId ? "Edit appointment" : "New appointment"}
             </div>
+            <div className="text-lg font-semibold text-ink-strong">
+              {editingId ? "Update appointment details" : "Schedule a new visit"}
+            </div>
+          </div>
 
+          <div className="flex-1 overflow-y-auto">
             {modalError ? (
               <div className="appointment-modal-error" data-testid="appointment-modal-error">
                 {modalError}
@@ -1300,50 +1831,82 @@ export function BigSchedule() {
             <div className="appointment-modal-body">
               <div className="appointment-field">
                 <div className="flex items-center justify-between gap-3">
-                  <label className="appointment-label">Patient</label>
-                  <div className="flex items-center gap-2 text-xs text-ink-muted">
-                    <button
+                  <Label className="appointment-label">Patient</Label>
+                  <div className="flex items-center gap-3 text-xs text-ink-muted">
+                    <label className="flex items-center gap-2 whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        data-testid="appointment-na-block"
+                        checked={formState?.isNaBlock ?? false}
+                        onChange={(event) => {
+                          const checked = event.target.checked;
+                          setFormState((current) =>
+                            current
+                              ? {
+                                  ...current,
+                                  isNaBlock: checked,
+                                  patientId: checked ? "" : current.patientId,
+                                  patientName: checked ? "" : current.patientName,
+                                }
+                              : current
+                          );
+                          if (checked) {
+                            setPatientQuery("");
+                            setPatientResults([]);
+                          }
+                        }}
+                      />
+                      N/A block
+                    </label>
+                    <Button
                       type="button"
                       onClick={() => setPatientStatusFilter("active")}
-                      className={`tab-pill ${patientStatusFilter === "active" ? "" : "bg-surface-2"}`}
+                      variant={patientStatusFilter === "active" ? "default" : "secondary"}
+                      size="sm"
                     >
                       Active
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
                       onClick={() => setPatientStatusFilter("inactive")}
-                      className={`tab-pill ${patientStatusFilter === "inactive" ? "" : "bg-surface-2"}`}
+                      variant={patientStatusFilter === "inactive" ? "default" : "secondary"}
+                      size="sm"
                     >
                       Inactive
-                    </button>
+                    </Button>
                   </div>
                 </div>
-                <input
+                <Input
                   data-testid="appointment-patient-search"
                   value={patientQuery}
-                  required
+                  required={!formState?.isNaBlock}
+                  disabled={formState?.isNaBlock}
                   placeholder="Name, phone, DOB (MM/DD/YYYY), serial #"
                   onChange={(event) => handlePatientQueryChange(event.target.value)}
                   className="appointment-input"
                 />
-                {patientLoading ? <div className="appointment-hint">Searching…</div> : null}
-                {patientResults.length ? (
+                {formState?.isNaBlock ? (
+                  <div className="appointment-hint">This slot will be saved without a patient attached.</div>
+                ) : null}
+                {patientLoading && !formState?.isNaBlock ? <div className="appointment-hint">Searching…</div> : null}
+                {patientResults.length && !formState?.isNaBlock ? (
                   <div className="appointment-patient-results">
                     {patientResults.map((patient) => (
-                      <button
+                      <Button
                         key={patient.id}
                         type="button"
                         data-testid="appointment-patient-option"
+                        variant="ghost"
                         className="appointment-patient-option"
                         onClick={() => handlePatientSelect(patient)}
                       >
                         {patient.lastName}, {patient.firstName}
                         {patient.dob ? ` · DOB ${patient.dob}` : ""}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 ) : null}
-                {formState.patientId ? (
+                {formState?.patientId ? (
                   <div className="appointment-selected" data-testid="appointment-patient-selected">
                     Selected: {formState.patientName}
                   </div>
@@ -1352,13 +1915,13 @@ export function BigSchedule() {
 
               <div className="appointment-grid">
                 <div className="appointment-field">
-                  <label className="appointment-label">Date</label>
+                  <Label className="appointment-label">Date</Label>
                   <input
                     type="date"
                     required
                     data-testid="appointment-date"
                     className="appointment-input"
-                    value={formState.date}
+                    value={formState?.date ?? ""}
                     onChange={(event) =>
                       setFormState((current) =>
                         current ? { ...current, date: event.target.value } : current
@@ -1367,13 +1930,14 @@ export function BigSchedule() {
                   />
                 </div>
                 <div className="appointment-field">
-                  <label className="appointment-label">Start</label>
+                  <Label className="appointment-label">Start</Label>
                   <input
                     type="time"
                     required
+                    step={900}
                     data-testid="appointment-start-time"
                     className="appointment-input"
-                    value={formState.startTime}
+                    value={formState?.startTime ?? ""}
                     onChange={(event) =>
                       setFormState((current) =>
                         current ? { ...current, startTime: event.target.value } : current
@@ -1382,13 +1946,14 @@ export function BigSchedule() {
                   />
                 </div>
                 <div className="appointment-field">
-                  <label className="appointment-label">End</label>
+                  <Label className="appointment-label">End</Label>
                   <input
                     type="time"
                     required
+                    step={900}
                     data-testid="appointment-end-time"
                     className="appointment-input"
-                    value={formState.endTime}
+                    value={formState?.endTime ?? ""}
                     onChange={(event) =>
                       setFormState((current) =>
                         current ? { ...current, endTime: event.target.value } : current
@@ -1397,73 +1962,81 @@ export function BigSchedule() {
                   />
                 </div>
                 <div className="appointment-field">
-                  <label className="appointment-label">Provider</label>
-                  <select
-                    required
-                    data-testid="appointment-provider"
-                    className="appointment-input"
-                    value={formState.providerName}
-                    onChange={(event) =>
+                  <Label className="appointment-label">Provider</Label>
+                  <Select required value={formState?.providerName ?? ""}
+                    onValueChange={(value) =>
                       setFormState((current) =>
-                        current ? { ...current, providerName: event.target.value } : current
+                        current ? { ...current, providerName: value || "" } : current
                       )
                     }
                   >
-                    {providers.map((provider) => (
-                      <option key={provider} value={provider}>
-                        {provider}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="appointment-input" data-testid="appointment-provider">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {providers.map((provider) => (
+                        <SelectItem key={provider} value={provider}>
+                          {provider}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="appointment-field">
-                  <label className="appointment-label">Appointment Type</label>
-                  <select
-                    required
-                    data-testid="appointment-type"
-                    className="appointment-input"
-                    value={formState.typeId}
-                    onChange={(event) =>
+                  <Label className="appointment-label">Appointment Type</Label>
+                  <Select required value={formState?.typeId ?? ""}
+                    onValueChange={(value) =>
                       setFormState((current) =>
-                        current ? { ...current, typeId: event.target.value } : current
+                        current ? { ...current, typeId: value || "" } : current
                       )
                     }
                   >
-                    {meta?.types?.map((type) => (
-                      <option key={type.id} value={type.id}>
-                        {type.name}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="appointment-input" data-testid="appointment-type">
+                      <SelectValue placeholder="Select type">
+                        {meta?.types?.find((t) => t.id === formState?.typeId)?.name}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {meta?.types?.map((type) => (
+                        <SelectItem key={type.id} value={type.id}>
+                          {type.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="appointment-field">
-                  <label className="appointment-label">Status</label>
-                  <select
-                    required
-                    data-testid="appointment-status"
-                    className="appointment-input"
-                    value={formState.statusId}
-                    onChange={(event) =>
+                  <Label className="appointment-label">Status</Label>
+                  <Select required value={formState?.statusId ?? ""}
+                    disabled={isEditingTerminalAppt}
+                    onValueChange={(value) =>
                       setFormState((current) =>
-                        current ? { ...current, statusId: event.target.value } : current
+                        current ? { ...current, statusId: value || "" } : current
                       )
                     }
                   >
-                    {meta?.statuses?.map((status) => (
-                      <option key={status.id} value={status.id}>
-                        {status.name}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="appointment-input" data-testid="appointment-status">
+                      <SelectValue placeholder="Select status">
+                        {meta?.statuses?.find((s) => s.id === formState?.statusId)?.name}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {orderedStatusOptions.map((status) => (
+                        <SelectItem key={status.id} value={status.id}>
+                          {status.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
               <div className="appointment-field">
-                <label className="appointment-label">Notes</label>
+                <Label className="appointment-label">Notes</Label>
                 <textarea
                   data-testid="appointment-notes"
                   className="appointment-textarea"
-                  value={formState.notes}
+                  value={formState?.notes ?? ""}
                   onChange={(event) =>
                     setFormState((current) =>
                       current ? { ...current, notes: event.target.value } : current
@@ -1474,38 +2047,91 @@ export function BigSchedule() {
               </div>
             </div>
 
-            <div className="appointment-modal-actions">
-              <button
-                type="button"
-                data-testid="appointment-cancel"
-                className="rounded-full border border-surface-3 px-4 py-2 text-xs text-ink-soft"
-                onClick={closeModal}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                data-testid="appointment-submit"
-                className="rounded-full bg-brand-ink px-5 py-2 text-xs font-semibold text-white"
-                onClick={handleModalSubmit}
-              >
-                {editingId ? "Save changes" : "Create appointment"}
-              </button>
-            </div>
           </div>
-        </div>
-      ) : null}
 
-      <div
-        className={`schedule-shell${isSidebarCollapsed ? " is-collapsed" : ""}`}
-        data-testid="scheduler-root"
-      >
+          <div className="px-5 py-4 border-t border-border flex flex-row justify-end gap-2">
+            <Button
+              type="button"
+              data-testid="appointment-cancel"
+              variant="outline"
+              size="sm"
+              onClick={closeModal}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              data-testid="appointment-submit"
+              onClick={handleModalSubmit}
+            >
+              {editingId ? "Save changes" : "Create appointment"}
+            </Button>
+          </div>
+
+            {editingId && editHistory.length > 0 ? (
+              <div className="px-5 pb-3 flex flex-col min-h-0">
+                <div className="font-display text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-1.5">
+                  Transition history
+                </div>
+                <div className="overflow-y-auto max-h-[220px] grid gap-1.5">
+                  {[...editHistory].reverse().map((event) => (
+                    <div
+                      key={event.id}
+                      className="grid gap-0.5 rounded-[10px] border border-border bg-muted/40 px-2.5 py-1.5"
+                    >
+                      <div className="text-[11px] font-semibold text-foreground">
+                        {formatTransitionHistoryStatus(event)}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {formatTransitionHistoryMeta(event)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+        </div>
+        )}
+
+        <div className={cn("schedule-shell flex-1 min-w-0", !isSidebarPinned && "is-hoverable")} data-testid="scheduler-root">
         <aside className="schedule-sidebar">
+          <div className="schedule-sidebar-pin">
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => setIsSidebarPinned((c) => { const next = !c; localStorage.setItem("schedule-sidebar-pinned", String(next)); return next; })}
+                    aria-label={isSidebarPinned ? "Unpin filters" : "Pin filters"}
+                  />
+                }
+              >
+                {isSidebarPinned ? <LockIcon size={14} /> : <UnlockIcon size={14} />}
+              </TooltipTrigger>
+              <TooltipContent side="right">{isSidebarPinned ? "Unpin filters" : "Pin filters open"}</TooltipContent>
+            </Tooltip>
+          </div>
+          <div className="schedule-sidebar-icons">
+            <UsersIcon size={16} className="text-ink-muted" />
+            <span className="sidebar-icon-badge-wrap">
+              <UserCheck size={16} className="text-ink-muted" />
+              {clinicPatients.length > 0 ? <span className="sidebar-icon-badge">{clinicPatients.length}</span> : null}
+            </span>
+            <ListChecksIcon size={16} className="text-ink-muted" />
+            <CalendarIcon size={16} className="text-ink-muted" />
+          </div>
           <div className="schedule-sidebar-card">
             <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">Filter by</div>
-            <select className="mt-2 w-full rounded-xl border border-surface-3 bg-white/80 px-3 py-2 text-xs">
-              <option>People</option>
-            </select>
+            <Select defaultValue="people">
+              <SelectTrigger className="mt-2 bg-white/80 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="people">People</SelectItem>
+              </SelectContent>
+            </Select>
             <div className="mt-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">Providers</div>
             <div className="mt-2 space-y-2">
               {providers.map((provider) => (
@@ -1526,245 +2152,66 @@ export function BigSchedule() {
                 </label>
               ))}
             </div>
-            <button
-              className="mt-3 text-xs text-brand-ink"
-              onClick={() => setSelectedProviders(providers)}
-              type="button"
-            >
+            <Button className="mt-3" variant="ghost" size="sm" onClick={() => setSelectedProviders(providers)} type="button">
               Select all
-            </button>
+            </Button>
           </div>
 
-          <div className={`schedule-sidebar-card${sidebarSections.status ? "" : " is-collapsed"}`}>
-            <button
-              type="button"
-              className="schedule-sidebar-toggle"
-              onClick={() => toggleSidebarSection("status")}
-              aria-expanded={sidebarSections.status}
-            >
-              <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">Status</span>
-              <span className={`schedule-sidebar-caret${sidebarSections.status ? "" : " is-collapsed"}`} aria-hidden>
-                ▾
-              </span>
-            </button>
-            {sidebarSections.status ? (
-              <>
-                <select
-                  className="mt-2 w-full rounded-xl border border-surface-3 bg-white/80 px-3 py-2 text-xs"
-                  value={selectedStatus}
-                  data-testid="status-filter"
-                  onChange={(event) => setSelectedStatus(event.target.value as StatusFilter)}
-                >
-                  {STATUS_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <label className="mt-3 flex items-center gap-2 text-xs">
-                  <input
-                    type="checkbox"
-                    checked={colorByType}
-                    onChange={() => setColorByType((value) => !value)}
-                  />
-                  Color by appointment type
-                </label>
-              </>
-            ) : null}
+          <div className="schedule-sidebar-card">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft mb-2">Patients in Clinic</div>
+            {clinicPatients.length === 0 ? (
+              <div className="text-[11px] text-ink-soft">No patients currently in clinic.</div>
+            ) : (
+              <div className="grid gap-1.5">
+                {clinicPatients.map((p) => {
+                  const mins = p.arrivedAt ? Math.floor((clinicNow - new Date(p.arrivedAt).getTime()) / 60_000) : null;
+                  return (
+                    <div key={p.id} className="flex items-center justify-between gap-2">
+                      <span className="text-[12px] font-medium text-ink truncate">{p.name}</span>
+                      {mins !== null ? (
+                        <span className={cn("text-[11px] tabular-nums shrink-0", mins >= 5 ? "text-destructive" : "text-ink-muted")}>
+                          {mins}m
+                        </span>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          <div className={`schedule-sidebar-card${sidebarSections.types ? "" : " is-collapsed"}`}>
-            <button
+          <div className={cn("schedule-sidebar-card", !sidebarSections.calendar && "is-collapsed")}>
+            <Button
               type="button"
-              className="schedule-sidebar-toggle"
-              onClick={() => toggleSidebarSection("types")}
-              aria-expanded={sidebarSections.types}
-            >
-              <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">
-                Appointment Types
-              </span>
-              <span className={`schedule-sidebar-caret${sidebarSections.types ? "" : " is-collapsed"}`} aria-hidden>
-                ▾
-              </span>
-            </button>
-            {sidebarSections.types ? (
-              <>
-                <div className="mt-2 space-y-2">
-                  {sidebarTypes.map((type) => (
-                    <label key={type.id} className="flex items-center gap-2 text-xs">
-                      <input
-                        type="checkbox"
-                        checked={selectedTypes.includes(type.id)}
-                        onChange={() => {
-                          setSelectedTypes((current) =>
-                            current.includes(type.id)
-                              ? current.filter((item) => item !== type.id)
-                              : [...current, type.id]
-                          );
-                        }}
-                      />
-                      <span>{type.name}</span>
-                    </label>
-                  ))}
-                </div>
-                <button
-                  className="mt-3 text-xs text-brand-ink"
-                  onClick={() => setSelectedTypes(sidebarTypes.map((type) => type.id))}
-                  type="button"
-                >
-                  Show all
-                </button>
-              </>
-            ) : null}
-          </div>
-
-          <div className={`schedule-sidebar-card${sidebarSections.calendar ? "" : " is-collapsed"}`}>
-            <button
-              type="button"
+              variant="ghost"
               className="schedule-sidebar-toggle"
               onClick={() => toggleSidebarSection("calendar")}
               aria-expanded={sidebarSections.calendar}
             >
               <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">Calendar</span>
-              <span
-                className={`schedule-sidebar-caret${sidebarSections.calendar ? "" : " is-collapsed"}`}
-                aria-hidden
-              >
+              <span className={cn("schedule-sidebar-caret", !sidebarSections.calendar && "is-collapsed")} aria-hidden>
                 ▾
               </span>
-            </button>
+            </Button>
             {sidebarSections.calendar ? (
-              <MiniCalendar viewDate={viewDate} onSelect={(date) => setViewDate(date)} className="mt-2" />
+              <MiniCalendar
+                viewDate={viewDate}
+                onSelect={(date) => setViewDate(date)}
+                onMonthChange={(month) => setViewDate(month)}
+                className="mt-2"
+              />
             ) : null}
           </div>
+
         </aside>
 
         <div className="schedule-board" ref={scheduleBoardRef}>
-          {actionMenu && actionMenuSummary ? (
-            <div
-              ref={actionMenuRef}
-              className="schedule-action-menu"
-              role="menu"
-              style={{ top: actionMenu.y, left: actionMenu.x }}
-            >
-              <div className="schedule-action-menu-title">{actionMenuSummary.title}</div>
-              <div className="schedule-action-menu-time">{actionMenuSummary.timeLabel}</div>
-              <div className="schedule-action-menu-divider" />
-              {actionMenuView === "main" ? (
-                <>
-                  <button
-                    type="button"
-                    className="schedule-action-menu-item"
-                    role="menuitem"
-                    onClick={() => {
-                      if (!arrivedAndReadyStatus) {
-                        showError("No status named Ready or Arrived found.");
-                        setActionMenu(null);
-                        return;
-                      }
-                      void updateAppointmentStatus(
-                        actionMenu.id,
-                        arrivedAndReadyStatus.id,
-                        arrivedAndReadyStatus.name
-                      );
-                      setActionMenu(null);
-                    }}
-                  >
-                    Arrived and Ready
-                  </button>
-                  <button
-                    type="button"
-                    className="schedule-action-menu-item"
-                    role="menuitem"
-                    onClick={() => {
-                      setActionMenu(null);
-                      openEditModal(actionMenu.id);
-                    }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="schedule-action-menu-item"
-                    role="menuitem"
-                    onClick={() => setActionMenuView("status")}
-                  >
-                    Change Status →
-                  </button>
-                  <button
-                    type="button"
-                    className="schedule-action-menu-item"
-                    role="menuitem"
-                    onClick={() => {
-                      setPinnedAppointmentId((current) => (current === actionMenu.id ? null : actionMenu.id));
-                      setActionMenu(null);
-                    }}
-                  >
-                    {pinnedAppointmentId === actionMenu.id ? "Unpin for rescheduling" : "Pin for rescheduling"}
-                  </button>
-                  <button
-                    type="button"
-                    className="schedule-action-menu-item"
-                    role="menuitem"
-                    onClick={() => {
-                      setActionMenu(null);
-                      openPatientTab(actionMenu.id, "Journal");
-                    }}
-                  >
-                    Create a journal entry
-                  </button>
-                  <button
-                    type="button"
-                    className="schedule-action-menu-item"
-                    role="menuitem"
-                    onClick={() => {
-                      setActionMenu(null);
-                      openPatientTab(actionMenu.id, "Details");
-                    }}
-                  >
-                    Patient Details
-                  </button>
-                  <button
-                    type="button"
-                    className="schedule-action-menu-item"
-                    role="menuitem"
-                    onClick={() => setActionMenu(null)}
-                  >
-                    Close
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    className="schedule-action-menu-item"
-                    role="menuitem"
-                    onClick={() => setActionMenuView("main")}
-                  >
-                    ← Back
-                  </button>
-                  {orderedStatusOptions.map((status) => (
-                    <button
-                      key={status.id}
-                      type="button"
-                      className="schedule-action-menu-item"
-                      role="menuitem"
-                      onClick={() => {
-                        void updateAppointmentStatus(actionMenu.id, status.id, status.name);
-                        setActionMenu(null);
-                      }}
-                    >
-                      {status.name}
-                    </button>
-                  ))}
-                </>
-              )}
-            </div>
-          ) : null}
           {viewType === "day" && dayGrid ? (
             <div className="schedule-day-scroll" style={{ height: `${dayGridHeight}px`, flex: "0 0 auto" }}>
-              <div className="schedule-day-grid" data-testid="schedule-day-grid" style={dayGridStyles}>
-                <div className="schedule-day-corner" />
+              <div className="schedule-day-grid" data-testid="schedule-day-grid" style={dayGridStyles} onDragOver={handleGridDragOver} onDragLeave={handleGridDragLeave}>
+                <div className="schedule-day-corner">
+                  <div className="schedule-day-corner-label">{dayjs(viewDate).format("ddd, MMM D")}</div>
+                </div>
                 {visibleProviders.map((provider, index) => (
                   <div
                     key={`provider-${provider}`}
@@ -1791,115 +2238,268 @@ export function BigSchedule() {
                 {visibleProviders.flatMap((provider, colIndex) =>
                   dayGrid.slots.map((slot, rowIndex) => {
                     const isHour = slot.minute() === 0;
+                    const dateStr = dayjs(viewDate).format("YYYY-MM-DD");
+                    const unavailable = isSlotUnavailable(provider, dateStr, slot.hour() * 60 + slot.minute(), providerSchedules);
+                    const cellKey = `cell-${dateStr}-${provider}-${slot.format("HH:mm")}`;
                     return (
                       <div
-                        key={`cell-${provider}-${slot.format("HH:mm")}`}
-                        className={`schedule-day-cell${isHour ? " is-hour" : ""}`}
+                        key={cellKey}
+                        className={cn(
+                          `schedule-day-cell${isHour ? " is-hour" : ""}`,
+                          unavailable && "is-unavailable",
+                          !unavailable && dragOverKey === cellKey && "!bg-brand-blue/10"
+                        )}
                         style={{ gridColumn: colIndex + 2, gridRow: rowIndex + 2 }}
                         data-provider={provider}
-                        data-date={dayjs(viewDate).format("YYYY-MM-DD")}
+                        data-date={dateStr}
                         data-time={slot.format("HH:mm")}
-                        onDragOver={(event) => event.preventDefault()}
                         onDrop={(event) =>
                           handleDrop(event, {
-                            date: dayjs(viewDate).format("YYYY-MM-DD"),
+                            date: dateStr,
                             time: slot.format("HH:mm"),
                             provider,
                           })
                         }
-                        onDoubleClick={() =>
+                        onClick={dockedAppointment && !unavailable ? () => placeDocked({ date: dateStr, time: slot.format("HH:mm"), provider }) : undefined}
+                        onDoubleClick={!dockedAppointment && !unavailable ? () =>
                           handleCreate({
-                            date: dayjs(viewDate).format("YYYY-MM-DD"),
+                            date: dateStr,
                             time: slot.format("HH:mm"),
                             provider,
-                          })
+                          }) : undefined
                         }
                       />
                     );
                   })
                 )}
-                {dayGrid.dayEvents.map((event) => (
-                  <div
+                {dayGrid.dayEvents.map((event) => {
+                  const isDocked = dockedAppointment?.event.id === event.id;
+                  if (isDocked) {
+                    return (
+                      <div
+                        key={`event-${event.id}`}
+                        className={`schedule-day-event opacity-50 pointer-events-none border-[1.5px] border-dashed border-ink-soft rounded-md bg-[repeating-linear-gradient(-45deg,var(--surface-2),var(--surface-2)_4px,var(--surface-3)_4px,var(--surface-3)_8px)] ${event.durationMinutes <= 15 ? "is-compact" : event.durationMinutes <= 30 ? "is-short" : ""}`}
+                        style={{
+                          gridColumn: event.gridColumn,
+                          gridRow: `${event.gridRowStart} / ${event.gridRowEnd}`,
+                        }}
+                        title="Docked for rescheduling"
+                      >
+                        <div className="schedule-day-event-title">
+                          <span className="schedule-event-label">{event.title}</span>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
+                  <DropdownMenu
                     key={`event-${event.id}`}
-                    className={`schedule-day-event${
-                      event.id === pinnedAppointmentId ? " is-pinned" : ""
-                    } ${
-                      event.durationMinutes <= 15
-                        ? "is-compact"
-                        : event.durationMinutes <= 30
-                        ? "is-short"
-                        : ""
-                    }`}
-                    data-testid="schedule-event"
-                    data-appointment-id={event.id}
-                    data-date={event.start.format("YYYY-MM-DD")}
-                    data-time={event.start.format("HH:mm")}
-                    draggable
-                    onDragStart={(dragEvent) => handleDragStart(dragEvent, event.id)}
-                    onDragEnd={() => {
-                      window.setTimeout(() => {
-                        draggingRef.current = false;
-                      }, 0);
-                    }}
-                    onClick={(clickEvent) => {
-                      if (draggingRef.current) return;
-                      if (clickTimeoutRef.current) {
-                        window.clearTimeout(clickTimeoutRef.current);
-                        clickTimeoutRef.current = null;
-                      }
-                      const rect = (clickEvent.currentTarget as HTMLElement).getBoundingClientRect();
-                      clickTimeoutRef.current = window.setTimeout(() => {
-                        openActionMenu(event.id, rect);
-                        clickTimeoutRef.current = null;
-                      }, 220);
-                    }}
-                    onDoubleClick={() => {
-                      if (draggingRef.current) return;
-                      if (clickTimeoutRef.current) {
-                        window.clearTimeout(clickTimeoutRef.current);
-                        clickTimeoutRef.current = null;
-                      }
-                      setActionMenu(null);
-                      openPatientFromAppointment(event.id);
-                    }}
-                    onDragOver={(dragEvent) => dragEvent.preventDefault()}
-                    onDrop={(dragEvent) =>
-                      handleDrop(dragEvent, {
-                        date: event.start.format("YYYY-MM-DD"),
-                        time: event.start.format("HH:mm"),
-                        provider: event.providerName,
-                      })
-                    }
-                    style={{
-                      gridColumn: event.gridColumn,
-                      gridRow: `${event.gridRowStart} / ${event.gridRowEnd}`,
-                      background: event.color,
-                    }}
-                    title={`${event.title} (${event.timeLabel})`}
+                    open={openMenuId === event.id}
+                    onOpenChange={(open) => { if (statusPicker) return; setOpenMenuId(open ? event.id : null); }}
                   >
-                    <div className="schedule-day-event-title">{event.title}</div>
-                    <div className="schedule-day-event-time">{event.timeLabel}</div>
-                    <div
-                      className="schedule-event-resize-handle"
-                      data-testid="schedule-event-resize"
-                      draggable={false}
-                      onPointerDown={(pointerEvent) =>
-                        handleResizeStart(pointerEvent, {
-                          id: event.id,
-                          start: event.start,
-                          end: event.end,
-                          providerName: event.providerName,
-                          date: event.start.format("YYYY-MM-DD"),
-                        })
+                    <DropdownMenuTrigger
+                      nativeButton={false}
+                      render={
+                        <div
+                          className={`schedule-day-event ${
+                            event.durationMinutes <= 15
+                              ? "is-compact"
+                              : event.durationMinutes <= 30
+                              ? "is-short"
+                              : ""
+                          }`}
+                          data-testid="schedule-event"
+                          data-appointment-id={event.id}
+                          data-date={event.start.format("YYYY-MM-DD")}
+                          data-time={event.start.format("HH:mm")}
+                          data-provider={event.providerName}
+                          draggable
+                          onDragStart={(dragEvent) => handleDragStart(dragEvent, event.id)}
+                          onDragEnd={() => {
+                            window.setTimeout(() => {
+                              draggingRef.current = false;
+                            }, 0);
+                          }}
+                          onDoubleClick={(e) => {
+                            if (draggingRef.current) return;
+                            e.preventDefault();
+                            setOpenMenuId(null);
+                            openPatientFromAppointment(event.id);
+                          }}
+                          onDrop={(dragEvent) =>
+                            handleDrop(dragEvent, {
+                              date: event.start.format("YYYY-MM-DD"),
+                              time: event.start.format("HH:mm"),
+                              provider: event.providerName,
+                            })
+                          }
+                          style={{
+                            gridColumn: event.gridColumn,
+                            gridRow: `${event.gridRowStart} / ${event.gridRowEnd}`,
+                            background: event.color,
+                          }}
+                          title={`${event.title} (${event.timeLabel})`}
+                        />
                       }
-                    />
-                  </div>
-                ))}
+                    >
+                      <div className="schedule-day-event-title">
+                        {(() => { const { Icon, color } = getStatusIcon(event.statusName); return (
+                          <button
+                            type="button"
+                            className="schedule-status-dot"
+                            title={event.statusName ?? "Status"}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              setOpenMenuId(null);
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setStatusPicker({ id: event.id, x: rect.left, y: rect.bottom + 6 });
+                            }}
+                          >
+                            <Icon size={12} style={{ color }} strokeWidth={2.5} />
+                          </button>
+                        ); })()}
+                        <span className="schedule-event-label">{event.title}</span>
+                      </div>
+                      <div className="schedule-day-event-time">{event.timeLabel}</div>
+                      <div
+                        className="schedule-event-resize-handle"
+                        data-testid="schedule-event-resize"
+                        draggable={false}
+                        onPointerDown={(pointerEvent) =>
+                          handleResizeStart(pointerEvent, {
+                            id: event.id,
+                            start: event.start,
+                            end: event.end,
+                            providerName: event.providerName,
+                            date: event.start.format("YYYY-MM-DD"),
+                          })
+                        }
+                      />
+                    </DropdownMenuTrigger>
+
+                    <DropdownMenuContent side="right" sideOffset={8} className="w-56">
+                      <div className="px-2 pt-1 text-[13px] font-semibold text-ink-strong">{event.title}</div>
+                      <div className="px-1.5 pb-1 text-[11px] text-muted-foreground">{event.timeLabel}</div>
+                      <DropdownMenuSeparator />
+
+                      {scheduleContextState?.isLoading ? (
+                        <DropdownMenuItem disabled>Loading actions…</DropdownMenuItem>
+                      ) : null}
+                      {!scheduleContextState?.isLoading && scheduleContextState?.isToday && scheduleContextActions.length ? (
+                        <>
+                          {scheduleContextActions
+                            .filter((action) => action !== "In Progress" && action !== "Cancelled")
+                            .map((action) =>
+                              action !== "Completed" ? (
+                                <DropdownMenuItem
+                                  key={action}
+                                  data-testid={`schedule-in-clinic-action-${toInClinicActionTestId(action)}`}
+                                  disabled={isInClinicActionPending}
+                                  onClick={() => void runScheduleContextAction(event.id, action)}
+                                >
+                                  {action}
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuSub key="complete-6mo">
+                                  <DropdownMenuSubTrigger
+                                    data-testid="schedule-in-clinic-action-completed"
+                                    disabled={isInClinicActionPending}
+                                  >
+                                    Complete &amp; Schedule 6mo
+                                  </DropdownMenuSubTrigger>
+                                  <DropdownMenuSubContent>
+                                    {(["HE", "C+C"] as const).map((apptType) => (
+                                      <DropdownMenuItem
+                                        key={apptType}
+                                        onClick={() => void scheduleFollowUp(event.id, apptType)}
+                                      >
+                                        {apptType}
+                                      </DropdownMenuItem>
+                                    ))}
+                                  </DropdownMenuSubContent>
+                                </DropdownMenuSub>
+                              )
+                            )}
+                          <DropdownMenuSeparator />
+                        </>
+                      ) : null}
+
+                      <DropdownMenuItem onClick={() => { setOpenMenuId(null); openEditModal(event.id); }}>
+                        Edit
+                      </DropdownMenuItem>
+
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>Change Status</DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent>
+                          {orderedStatusOptions.map((status) => (
+                            <DropdownMenuItem
+                              key={status.id}
+                              onClick={() => { void updateAppointmentStatus(event.id, status.id, status.name); setOpenMenuId(null); }}
+                            >
+                              {status.name}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+
+                      <DropdownMenuItem
+                        onClick={() => { dockAppointment(event.id); setOpenMenuId(null); }}
+                        disabled={dockedAppointment !== null}
+                      >
+                        {dockedAppointment?.event.id === event.id ? "Already docked" : "Reschedule"}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => { setOpenMenuId(null); openPatientTab(event.id, "Journal"); }}>
+                        Create a journal entry
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => { setOpenMenuId(null); openPatientTab(event.id, "Details"); }}>
+                        Patient Details
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        variant="destructive"
+                        data-testid="schedule-delete-appointment"
+                        onClick={() => void deleteAppointment(event.id)}
+                      >
+                        Delete appointment
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  );
+                })}
+                {ghostEvent && (() => {
+                  if (ghostEvent.date !== dayjs(viewDate).format("YYYY-MM-DD")) return null;
+                  const providerPosition = visibleProviders.indexOf(ghostEvent.providerName);
+                  if (providerPosition === -1) return null;
+                  const dayStart = dayjs(viewDate).hour(DAY_START_HOUR).minute(0).second(0);
+                  const dayEnd = dayjs(viewDate).hour(DAY_END_HOUR).minute(0).second(0);
+                  if (!ghostEvent.end.isAfter(dayStart) || !ghostEvent.start.isBefore(dayEnd)) return null;
+                  const startMins = Math.max(0, ghostEvent.start.diff(dayStart, "minute"));
+                  const endMins = Math.min(dayGrid.slotCount * SLOT_MINUTES, ghostEvent.end.diff(dayStart, "minute"));
+                  const startIndex = Math.floor(startMins / SLOT_MINUTES);
+                  const endIndex = Math.max(startIndex + 1, Math.ceil(endMins / SLOT_MINUTES));
+                  return (
+                    <div
+                      key="ghost-event"
+                      className={`schedule-day-event ${ghostEvent.sizeClass} pointer-events-none border-2 border-dashed border-brand-blue bg-brand-blue/20 opacity-80`}
+                      style={{
+                        gridColumn: providerPosition + 2,
+                        gridRow: `${startIndex + 2} / ${Math.min(endIndex + 2, dayGrid.slotCount + 2)}`,
+                      }}
+                    >
+                      <div className="schedule-day-event-title">
+                        {(() => { const { Icon, color } = getStatusIcon(ghostEvent.statusName); return <span className="schedule-status-dot"><Icon size={12} style={{ color }} strokeWidth={2.5} /></span>; })()}
+                        <span className="schedule-event-label">{ghostEvent.title}</span>
+                      </div>
+                      <div className="schedule-day-event-time">{ghostEvent.timeLabel}</div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           ) : weekGrid ? (
             <div className="schedule-week-scroll" style={{ height: `${weekGridHeight}px`, flex: "0 0 auto" }}>
-              <div className="schedule-week-grid" data-testid="schedule-week-grid" style={weekGridStyles}>
+              <div className="schedule-week-grid" data-testid="schedule-week-grid" style={weekGridStyles} onDragOver={handleGridDragOver} onDragLeave={handleGridDragLeave}>
                 <div className="schedule-week-corner" style={{ gridColumn: 1, gridRow: "1 / 3" }} />
                 {weekGrid.weekDays.map((day, index) => (
                   <div
@@ -1948,114 +2548,268 @@ export function BigSchedule() {
                   visibleProviders.flatMap((provider, providerIndex) =>
                     weekGrid.slots.slots.map((slot, slotIndex) => {
                       const isHour = slot.minute() === 0;
+                      const dateStr = day.format("YYYY-MM-DD");
+                      const unavailable = isSlotUnavailable(provider, dateStr, slot.hour() * 60 + slot.minute(), providerSchedules);
+                      const cellKey = `cell-${dateStr}-${provider}-${slot.format("HH:mm")}`;
                       return (
                         <div
-                          key={`cell-${day.format("YYYY-MM-DD")}-${provider}-${slot.format("HH:mm")}`}
-                          className={`schedule-week-cell${isHour ? " is-hour" : ""}`}
+                          key={cellKey}
+                          className={cn(
+                            `schedule-week-cell${isHour ? " is-hour" : ""}`,
+                            unavailable && "is-unavailable",
+                            !unavailable && dragOverKey === cellKey && "!bg-brand-blue/10"
+                          )}
                           style={{
                             gridColumn: 2 + dayIndex * visibleProviders.length + providerIndex,
                             gridRow: slotIndex + 3,
                           }}
                           data-provider={provider}
-                          data-date={day.format("YYYY-MM-DD")}
+                          data-date={dateStr}
                           data-time={slot.format("HH:mm")}
-                          onDragOver={(event) => event.preventDefault()}
                           onDrop={(event) =>
                             handleDrop(event, {
-                              date: day.format("YYYY-MM-DD"),
+                              date: dateStr,
                               time: slot.format("HH:mm"),
                               provider,
                             })
                           }
-                          onDoubleClick={() =>
+                          onClick={dockedAppointment && !unavailable ? () => placeDocked({ date: dateStr, time: slot.format("HH:mm"), provider }) : undefined}
+                          onDoubleClick={!dockedAppointment && !unavailable ? () =>
                             handleCreate({
-                              date: day.format("YYYY-MM-DD"),
+                              date: dateStr,
                               time: slot.format("HH:mm"),
                               provider,
-                            })
+                            }) : undefined
                           }
                         />
                       );
                     })
                   )
                 )}
-                {weekGrid.weekEvents.map((event) => (
-                  <div
+                {weekGrid.weekEvents.map((event) => {
+                  const isDocked = dockedAppointment?.event.id === event.id;
+                  if (isDocked) {
+                    return (
+                      <div
+                        key={`event-${event.id}`}
+                        className={`schedule-week-event opacity-50 pointer-events-none border-[1.5px] border-dashed border-ink-soft rounded-md bg-[repeating-linear-gradient(-45deg,var(--surface-2),var(--surface-2)_4px,var(--surface-3)_4px,var(--surface-3)_8px)] ${event.durationMinutes <= 15 ? "is-compact" : event.durationMinutes <= 30 ? "is-short" : ""}`}
+                        style={{
+                          gridColumn: event.gridColumn,
+                          gridRow: `${event.gridRowStart} / ${event.gridRowEnd}`,
+                        }}
+                        title="Docked for rescheduling"
+                      >
+                        <div className="schedule-week-event-title">
+                          <span className="schedule-event-label">{event.title}</span>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
+                  <DropdownMenu
                     key={`event-${event.id}`}
-                    className={`schedule-week-event${
-                      event.id === pinnedAppointmentId ? " is-pinned" : ""
-                    } ${
-                      event.durationMinutes <= 15
-                        ? "is-compact"
-                        : event.durationMinutes <= 30
-                        ? "is-short"
-                        : ""
-                    }`}
-                    data-testid="schedule-event"
-                    data-appointment-id={event.id}
-                    data-date={event.start.format("YYYY-MM-DD")}
-                    data-time={event.start.format("HH:mm")}
-                    draggable
-                    onDragStart={(dragEvent) => handleDragStart(dragEvent, event.id)}
-                    onDragEnd={() => {
-                      window.setTimeout(() => {
-                        draggingRef.current = false;
-                      }, 0);
-                    }}
-                    onClick={(clickEvent) => {
-                      if (draggingRef.current) return;
-                      if (clickTimeoutRef.current) {
-                        window.clearTimeout(clickTimeoutRef.current);
-                        clickTimeoutRef.current = null;
-                      }
-                      const rect = (clickEvent.currentTarget as HTMLElement).getBoundingClientRect();
-                      clickTimeoutRef.current = window.setTimeout(() => {
-                        openActionMenu(event.id, rect);
-                        clickTimeoutRef.current = null;
-                      }, 220);
-                    }}
-                    onDoubleClick={() => {
-                      if (draggingRef.current) return;
-                      if (clickTimeoutRef.current) {
-                        window.clearTimeout(clickTimeoutRef.current);
-                        clickTimeoutRef.current = null;
-                      }
-                      setActionMenu(null);
-                      openPatientFromAppointment(event.id);
-                    }}
-                    onDragOver={(dragEvent) => dragEvent.preventDefault()}
-                    onDrop={(dragEvent) =>
-                      handleDrop(dragEvent, {
-                        date: event.start.format("YYYY-MM-DD"),
-                        time: event.start.format("HH:mm"),
-                        provider: event.providerName,
-                      })
-                    }
-                    style={{
-                      gridColumn: event.gridColumn,
-                      gridRow: `${event.gridRowStart} / ${event.gridRowEnd}`,
-                      background: event.color,
-                    }}
-                    title={`${event.title} (${event.timeLabel})`}
+                    open={openMenuId === event.id}
+                    onOpenChange={(open) => { if (statusPicker) return; setOpenMenuId(open ? event.id : null); }}
                   >
-                    <div className="schedule-week-event-title">{event.title}</div>
-                    <div className="schedule-week-event-time">{event.timeLabel}</div>
-                    <div
-                      className="schedule-event-resize-handle"
-                      data-testid="schedule-event-resize"
-                      draggable={false}
-                      onPointerDown={(pointerEvent) =>
-                        handleResizeStart(pointerEvent, {
-                          id: event.id,
-                          start: event.start,
-                          end: event.end,
-                          providerName: event.providerName,
-                          date: event.start.format("YYYY-MM-DD"),
-                        })
+                    <DropdownMenuTrigger
+                      nativeButton={false}
+                      render={
+                        <div
+                          className={`schedule-week-event ${
+                            event.durationMinutes <= 15
+                              ? "is-compact"
+                              : event.durationMinutes <= 30
+                              ? "is-short"
+                              : ""
+                          }`}
+                          data-testid="schedule-event"
+                          data-appointment-id={event.id}
+                          data-date={event.start.format("YYYY-MM-DD")}
+                          data-time={event.start.format("HH:mm")}
+                          data-provider={event.providerName}
+                          draggable
+                          onDragStart={(dragEvent) => handleDragStart(dragEvent, event.id)}
+                          onDragEnd={() => {
+                            window.setTimeout(() => {
+                              draggingRef.current = false;
+                            }, 0);
+                          }}
+                          onDoubleClick={(e) => {
+                            if (draggingRef.current) return;
+                            e.preventDefault();
+                            setOpenMenuId(null);
+                            openPatientFromAppointment(event.id);
+                          }}
+                          onDrop={(dragEvent) =>
+                            handleDrop(dragEvent, {
+                              date: event.start.format("YYYY-MM-DD"),
+                              time: event.start.format("HH:mm"),
+                              provider: event.providerName,
+                            })
+                          }
+                          style={{
+                            gridColumn: event.gridColumn,
+                            gridRow: `${event.gridRowStart} / ${event.gridRowEnd}`,
+                            background: event.color,
+                          }}
+                          title={`${event.title} (${event.timeLabel})`}
+                        />
                       }
-                    />
-                  </div>
-                ))}
+                    >
+                      <div className="schedule-week-event-title">
+                        {(() => { const { Icon, color } = getStatusIcon(event.statusName); return (
+                          <button
+                            type="button"
+                            className="schedule-status-dot"
+                            title={event.statusName ?? "Status"}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              setOpenMenuId(null);
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setStatusPicker({ id: event.id, x: rect.left, y: rect.bottom + 6 });
+                            }}
+                          >
+                            <Icon size={12} style={{ color }} strokeWidth={2.5} />
+                          </button>
+                        ); })()}
+                        <span className="schedule-event-label">{event.title}</span>
+                      </div>
+                      <div className="schedule-week-event-time">{event.timeLabel}</div>
+                      <div
+                        className="schedule-event-resize-handle"
+                        data-testid="schedule-event-resize"
+                        draggable={false}
+                        onPointerDown={(pointerEvent) =>
+                          handleResizeStart(pointerEvent, {
+                            id: event.id,
+                            start: event.start,
+                            end: event.end,
+                            providerName: event.providerName,
+                            date: event.start.format("YYYY-MM-DD"),
+                          })
+                        }
+                      />
+                    </DropdownMenuTrigger>
+
+                    <DropdownMenuContent side="right" sideOffset={8} className="w-56">
+                      <div className="px-2 pt-1 text-[13px] font-semibold text-ink-strong">{event.title}</div>
+                      <div className="px-1.5 pb-1 text-[11px] text-muted-foreground">{event.timeLabel}</div>
+                      <DropdownMenuSeparator />
+
+                      {scheduleContextState?.isLoading ? (
+                        <DropdownMenuItem disabled>Loading actions…</DropdownMenuItem>
+                      ) : null}
+                      {!scheduleContextState?.isLoading && scheduleContextState?.isToday && scheduleContextActions.length ? (
+                        <>
+                          {scheduleContextActions
+                            .filter((action) => action !== "In Progress" && action !== "Cancelled")
+                            .map((action) =>
+                              action !== "Completed" ? (
+                                <DropdownMenuItem
+                                  key={action}
+                                  data-testid={`schedule-in-clinic-action-${toInClinicActionTestId(action)}`}
+                                  disabled={isInClinicActionPending}
+                                  onClick={() => void runScheduleContextAction(event.id, action)}
+                                >
+                                  {action}
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuSub key="complete-6mo">
+                                  <DropdownMenuSubTrigger
+                                    data-testid="schedule-in-clinic-action-completed"
+                                    disabled={isInClinicActionPending}
+                                  >
+                                    Complete &amp; Schedule 6mo
+                                  </DropdownMenuSubTrigger>
+                                  <DropdownMenuSubContent>
+                                    {(["HE", "C+C"] as const).map((apptType) => (
+                                      <DropdownMenuItem
+                                        key={apptType}
+                                        onClick={() => void scheduleFollowUp(event.id, apptType)}
+                                      >
+                                        {apptType}
+                                      </DropdownMenuItem>
+                                    ))}
+                                  </DropdownMenuSubContent>
+                                </DropdownMenuSub>
+                              )
+                            )}
+                          <DropdownMenuSeparator />
+                        </>
+                      ) : null}
+
+                      <DropdownMenuItem onClick={() => { setOpenMenuId(null); openEditModal(event.id); }}>
+                        Edit
+                      </DropdownMenuItem>
+
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>Change Status</DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent>
+                          {orderedStatusOptions.map((status) => (
+                            <DropdownMenuItem
+                              key={status.id}
+                              onClick={() => { void updateAppointmentStatus(event.id, status.id, status.name); setOpenMenuId(null); }}
+                            >
+                              {status.name}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+
+                      <DropdownMenuItem
+                        onClick={() => { dockAppointment(event.id); setOpenMenuId(null); }}
+                        disabled={dockedAppointment !== null}
+                      >
+                        {dockedAppointment?.event.id === event.id ? "Already docked" : "Reschedule"}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => { setOpenMenuId(null); openPatientTab(event.id, "Journal"); }}>
+                        Create a journal entry
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => { setOpenMenuId(null); openPatientTab(event.id, "Details"); }}>
+                        Patient Details
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        variant="destructive"
+                        data-testid="schedule-delete-appointment"
+                        onClick={() => void deleteAppointment(event.id)}
+                      >
+                        Delete appointment
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  );
+                })}
+                {ghostEvent && (() => {
+                  const providerPosition = visibleProviders.indexOf(ghostEvent.providerName);
+                  if (providerPosition === -1) return null;
+                  const dayIndex = weekGrid.weekDays.findIndex((d) => d.format("YYYY-MM-DD") === ghostEvent.date);
+                  if (dayIndex === -1) return null;
+                  const dayStart = weekGrid.weekDays[dayIndex].hour(DAY_START_HOUR).minute(0).second(0);
+                  const dayEnd = weekGrid.weekDays[dayIndex].hour(DAY_END_HOUR).minute(0).second(0);
+                  if (!ghostEvent.end.isAfter(dayStart) || !ghostEvent.start.isBefore(dayEnd)) return null;
+                  const startMins = Math.max(0, ghostEvent.start.diff(dayStart, "minute"));
+                  const endMins = Math.min(weekGrid.slots.totalMinutes, ghostEvent.end.diff(dayStart, "minute"));
+                  const startIndex = Math.floor(startMins / SLOT_MINUTES);
+                  const endIndex = Math.max(startIndex + 1, Math.ceil(endMins / SLOT_MINUTES));
+                  return (
+                    <div
+                      key="ghost-event"
+                      className={`schedule-week-event ${ghostEvent.sizeClass} pointer-events-none border-2 border-dashed border-brand-blue bg-brand-blue/20 opacity-80`}
+                      style={{
+                        gridColumn: 2 + dayIndex * visibleProviders.length + providerPosition,
+                        gridRow: `${startIndex + 3} / ${Math.min(endIndex + 3, weekGrid.slots.slotCount + 3)}`,
+                      }}
+                    >
+                      <div className="schedule-week-event-title">
+                        {(() => { const { Icon, color } = getStatusIcon(ghostEvent.statusName); return <span className="schedule-status-dot"><Icon size={12} style={{ color }} strokeWidth={2.5} /></span>; })()}
+                        <span className="schedule-event-label">{ghostEvent.title}</span>
+                      </div>
+                      <div className="schedule-week-event-time">{ghostEvent.timeLabel}</div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           ) : (
@@ -2065,6 +2819,7 @@ export function BigSchedule() {
           )}
         </div>
       </div>
+      </div>
     </section>
   );
 }
@@ -2072,10 +2827,12 @@ export function BigSchedule() {
 function MiniCalendar({
   viewDate,
   onSelect,
+  onMonthChange,
   className,
 }: {
   viewDate: string;
   onSelect: (date: string) => void;
+  onMonthChange?: (monthStartDate: string) => void;
   className?: string;
 }) {
   const active = dayjs(viewDate);
@@ -2090,14 +2847,30 @@ function MiniCalendar({
     cursor = cursor.add(1, "day");
   }
 
+  const goToPreviousMonth = () => {
+    const prevMonth = monthStart.subtract(1, "month").startOf("month");
+    (onMonthChange ?? onSelect)(prevMonth.format(DATE_FORMAT));
+  };
+
+  const goToNextMonth = () => {
+    const nextMonth = monthStart.add(1, "month").startOf("month");
+    (onMonthChange ?? onSelect)(nextMonth.format(DATE_FORMAT));
+  };
+
   return (
-    <div className={`schedule-mini-calendar ${className || ""}`.trim()}>
+    <div className={cn("schedule-mini-calendar", className)}>
       <div className="schedule-mini-header">
-        {monthStart.format("MMMM YYYY")}
+        <button type="button" className="schedule-mini-nav-button" onClick={goToPreviousMonth} aria-label="Previous month">
+          ‹
+        </button>
+        <span>{monthStart.format("MMMM YYYY")}</span>
+        <button type="button" className="schedule-mini-nav-button" onClick={goToNextMonth} aria-label="Next month">
+          ›
+        </button>
       </div>
       <div className="schedule-mini-grid">
-        {["S", "M", "T", "W", "T", "F", "S"].map((label) => (
-          <div key={label} className="schedule-mini-label">
+        {["S", "M", "T", "W", "T", "F", "S"].map((label, i) => (
+          <div key={i} className="schedule-mini-label">
             {label}
           </div>
         ))}
@@ -2105,16 +2878,17 @@ function MiniCalendar({
           const isCurrentMonth = day.month() === monthStart.month();
           const isSelected = day.isSame(active, "day");
           return (
-            <button
+            <Button
               key={day.format("YYYY-MM-DD")}
               type="button"
-              className={`schedule-mini-day ${isCurrentMonth ? "" : "is-out"} ${isSelected ? "is-active" : ""}`}
+              variant="ghost"
+              className={cn("schedule-mini-day", !isCurrentMonth && "is-out", isSelected && "is-active")}
               data-date={day.format(DATE_FORMAT)}
               data-testid={`mini-calendar-day-${day.format(DATE_FORMAT)}`}
               onClick={() => onSelect(day.format(DATE_FORMAT))}
             >
               {day.date()}
-            </button>
+            </Button>
           );
         })}
       </div>

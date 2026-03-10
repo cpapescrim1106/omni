@@ -1,0 +1,7 @@
+Viewing the list of users
+Creating a new user
+Setting up a user calendar
+Setting user location access
+Uploading a user signature
+Dimensions
+Uploading a user photo

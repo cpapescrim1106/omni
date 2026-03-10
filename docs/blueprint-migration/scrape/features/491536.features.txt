@@ -1,0 +1,8 @@
+Creating a repair or L&D order
+Selecting the insurer
+Selecting items for repair order Selecting items for repair order
+Adjusting item quantities
+Adjusting an order Adjusting an order
+Saving orders
+Editing orders
+Cancelling orders

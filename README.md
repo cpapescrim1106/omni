@@ -24,3 +24,12 @@ Quick start (new machine):
 Notes:
 - The database is not stored in git; it is created from Prisma schema + seed data.
 - If data/ is missing, the seed script will fail (it reads CSVs from ../data).
+
+Blueprint migration docs:
+- Feature-parity + clone planning is documented in `docs/blueprint-migration/README.md`.
+
+Scanner integration:
+- Scanner ingestion for IDs and insurance cards is documented in `accuhear/docs/scanner-integration.md`.
+- Configure scanner secrets/storage in `accuhear/.env` (see `accuhear/.env.example`).
+- Windows one-click bridge setup is documented in `accuhear/docs/windows-scanner-bridge.md`.
+- Windows auto-setup script: `accuhear/scripts/windows/setup-scanner-bridge.ps1`.

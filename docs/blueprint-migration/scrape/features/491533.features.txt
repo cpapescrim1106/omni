@@ -1,0 +1,5 @@
+Overview
+Enabling availability scheduling
+Creating availability
+Editing availability
+Deleting availability

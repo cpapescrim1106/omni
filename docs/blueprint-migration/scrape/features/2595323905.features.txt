@@ -1,0 +1,17 @@
+Overview
+Enabling online patient payments for the first time
+Running the online payment setup wizard
+Changing online patient payment settings
+Terms of service URL
+Privacy statement URL
+Online payment page text
+Online receipt page text
+Sending email/SMS templates
+Email templates
+SMS templates
+Editing templates
+Requesting online patient payments
+What patients see
+Pay via Email
+Pay via SMS
+Viewing incoming online patient payments

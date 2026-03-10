@@ -1,6 +1,8 @@
 import { test, expect, type APIRequestContext } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
 import { ensureTestDatabaseUrl } from "../helpers/test-database";
+import { ensurePatientSearchSchema } from "../../src/lib/patient-search";
+import { selectOmniOption } from "./helpers/omni-select";
 
 ensureTestDatabaseUrl();
 
@@ -136,6 +138,7 @@ test.describe.serial("Appointment modal", () => {
 
   test.beforeAll(async () => {
     await ensureAppointmentMeta();
+    await ensurePatientSearchSchema();
   });
 
   test.afterAll(async () => {
@@ -165,9 +168,6 @@ test.describe.serial("Appointment modal", () => {
     await expect(page.getByTestId("appointment-date")).toHaveAttribute("required", "");
     await expect(page.getByTestId("appointment-start-time")).toHaveAttribute("required", "");
     await expect(page.getByTestId("appointment-end-time")).toHaveAttribute("required", "");
-    await expect(page.getByTestId("appointment-provider")).toHaveAttribute("required", "");
-    await expect(page.getByTestId("appointment-type")).toHaveAttribute("required", "");
-    await expect(page.getByTestId("appointment-status")).toHaveAttribute("required", "");
   });
 
   test("search and select patient - populates patient field", async ({ page }) => {
@@ -200,11 +200,10 @@ test.describe.serial("Appointment modal", () => {
     await page.getByTestId("appointment-patient-option").first().click();
 
     const providerName = meta.providers[0];
-    await page.getByTestId("appointment-provider").selectOption({ label: providerName });
-    await page.getByTestId("appointment-type").selectOption(meta.types[0].id);
-    await page.getByTestId("appointment-status").selectOption(
-      meta.statuses.find((status) => status.name === "Scheduled")?.id ?? meta.statuses[0].id
-    );
+    const scheduledStatusName = meta.statuses.find((status) => status.name === "Scheduled")?.name ?? meta.statuses[0].name;
+    await selectOmniOption(page, "appointment-provider", providerName);
+    await selectOmniOption(page, "appointment-type", meta.types[0].name);
+    await selectOmniOption(page, "appointment-status", scheduledStatusName);
 
     const rangeStart = buildLocalDateTime(dateValue, DAY_START_HOUR, 0);
     const rangeEnd = buildLocalDateTime(dateValue, DAY_STOP_HOUR, 0);
@@ -274,6 +273,7 @@ test.describe.serial("Appointment modal", () => {
     const event = page.locator(`[data-appointment-id="${appointmentId}"]`).first();
     await expect(event).toBeVisible();
     await event.click();
+    await page.getByRole("menuitem", { name: "Edit" }).click();
 
     await expect(page.getByTestId("appointment-modal")).toBeVisible();
     await expect(page.getByTestId("appointment-patient-selected")).toContainText(patient.lastName);
@@ -281,7 +281,7 @@ test.describe.serial("Appointment modal", () => {
     await expect(page.getByTestId("appointment-end-time")).toHaveValue(toTimeLabel(end));
 
     const newStatus = meta.statuses.find((status) => status.name !== meta.statuses[0].name) ?? meta.statuses[0];
-    await page.getByTestId("appointment-status").selectOption(newStatus.id);
+    await selectOmniOption(page, "appointment-status", newStatus.name);
     await page.getByTestId("appointment-notes").fill("Updated notes");
 
     const patchResponse = page.waitForResponse(
@@ -339,12 +339,58 @@ test.describe.serial("Appointment modal", () => {
     await page.getByTestId("appointment-date").fill(date);
     await page.getByTestId("appointment-start-time").fill(toTimeLabel(start));
     await page.getByTestId("appointment-end-time").fill(toTimeLabel(end));
-    await page.getByTestId("appointment-provider").selectOption(providerName);
-    await page.getByTestId("appointment-type").selectOption(meta.types[0].id);
-    await page.getByTestId("appointment-status").selectOption(meta.statuses[0].id);
+    await selectOmniOption(page, "appointment-provider", providerName);
+    await selectOmniOption(page, "appointment-type", meta.types[0].name);
+    await selectOmniOption(page, "appointment-status", meta.statuses[0].name);
 
     await page.getByTestId("appointment-submit").click();
     await expect(page.getByTestId("appointment-modal-error")).toBeVisible();
     await expect(page.getByTestId("appointment-modal")).toBeVisible();
+  });
+
+  test("N/A block allows creating an appointment without selecting a patient", async ({ page, request }) => {
+    const dateValue = getFutureDate();
+    await page.goto(`/scheduling?date=${dateValue}`);
+    await page.getByTestId("new-appointment").click();
+
+    const meta = await getMeta(request);
+    const providerName = meta.providers[0];
+
+    const rangeStart = buildLocalDateTime(dateValue, DAY_START_HOUR, 0);
+    const rangeEnd = buildLocalDateTime(dateValue, DAY_STOP_HOUR, 0);
+    const listResponse = await request.get(
+      `/api/appointments?start=${rangeStart.toISOString()}&end=${rangeEnd.toISOString()}&provider=${encodeURIComponent(
+        providerName
+      )}`
+    );
+    expect(listResponse.ok()).toBeTruthy();
+    const listPayload = await listResponse.json();
+    const slot = findFreeSlot(listPayload.appointments || [], dateValue);
+    expect(slot.hasConflict).toBeFalsy();
+
+    await page.getByTestId("appointment-na-block").check();
+    const scheduledStatusName = meta.statuses.find((status) => status.name === "Scheduled")?.name ?? meta.statuses[0].name;
+    await selectOmniOption(page, "appointment-provider", providerName);
+    await selectOmniOption(page, "appointment-type", meta.types[0].name);
+    await selectOmniOption(page, "appointment-status", scheduledStatusName);
+    await page.getByTestId("appointment-start-time").fill(slot.timeLabel);
+    await page.getByTestId("appointment-end-time").fill(toTimeLabel(slot.end));
+    await page.getByTestId("appointment-notes").fill(`${e2eTag} blocked slot`);
+
+    await page.getByTestId("appointment-submit").click();
+    await expect(page.getByTestId("appointment-modal")).toHaveCount(0);
+
+    const verifyResponse = await request.get(
+      `/api/appointments?start=${slot.start.toISOString()}&end=${slot.end.toISOString()}&provider=${encodeURIComponent(
+        providerName
+      )}`
+    );
+    expect(verifyResponse.ok()).toBeTruthy();
+    const verifyPayload = await verifyResponse.json();
+    const created = verifyPayload.appointments.find(
+      (appt: { notes?: string | null; patient?: { id: string } | null }) => appt.notes === `${e2eTag} blocked slot`
+    );
+    expect(created).toBeTruthy();
+    expect(created.patient ?? null).toBeNull();
   });
 });

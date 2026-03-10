@@ -1,0 +1,7 @@
+Overview
+Revenue Group Report
+Managing revenue groups
+Creating a new revenue group
+Editing an existing revenue group
+Linking revenue groups to insurers/3rd party payers
+Private pay: the revenue group for patients

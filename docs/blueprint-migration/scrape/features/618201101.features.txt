@@ -1,0 +1,7 @@
+Overview
+Setting up resource types
+Creating a resource type
+Editing, deactivating, or reactivating a resource type
+Setting up resources
+Creating a resource
+Editing, deactivating, or reactivating, a resource
