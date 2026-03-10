@@ -12,7 +12,11 @@ import {
   formatTransitionHistoryStatus,
   type AppointmentTransitionHistoryItem,
 } from "@/lib/appointments/transition-history";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 type MonitorAppointment = {
   id: string;
@@ -58,16 +62,10 @@ function patientLabel(appointment: MonitorAppointment) {
   return `${appointment.patient.lastName}, ${appointment.patient.firstName}`;
 }
 
-function statusToneClass(statusTone: ReturnType<typeof getMonitorStatusTone>) {
-  if (statusTone === "ready") return "is-ready";
-  if (statusTone === "in-progress") return "is-in-progress";
-  return "";
-}
-
-function timerToneClass(timerTone: ReturnType<typeof getMonitorTimerPresentation>["tone"]) {
-  if (timerTone === "warning") return "is-warning";
-  if (timerTone === "in-progress") return "is-in-progress";
-  return "";
+function statusBadgeVariant(statusTone: ReturnType<typeof getMonitorStatusTone>) {
+  if (statusTone === "ready") return "success" as const;
+  if (statusTone === "in-progress") return "blue" as const;
+  return "neutral" as const;
 }
 
 export function InClinicMonitor() {
@@ -152,96 +150,133 @@ export function InClinicMonitor() {
   }
 
   return (
-    <section className="card in-clinic-monitor-card p-4" data-testid="in-clinic-monitor">
-      <div className="in-clinic-monitor-header">
-        <div>
-          <div className="section-title text-xs text-brand-ink">In-Clinic Monitor</div>
-          <div className="text-sm text-ink-muted">Active patients only. Waiting turns red at 5+ minutes.</div>
+    <Card data-testid="in-clinic-monitor">
+      <CardHeader>
+        <div className="grid gap-0.5">
+          <CardTitle>In-Clinic Monitor</CardTitle>
+          <CardDescription>Active patients only. Waiting turns red at 5+ minutes.</CardDescription>
         </div>
-      </div>
+      </CardHeader>
 
-      {error ? <div className="in-clinic-monitor-error">{error}</div> : null}
+      <CardContent className="grid gap-3">
+        {error ? (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        ) : null}
 
-      {loading ? <div className="in-clinic-monitor-empty">Loading active patients…</div> : null}
+        {loading ? (
+          <div className="rounded-[12px] border border-dashed border-border py-3 px-3 text-[12px] text-muted-foreground">
+            Loading active patients…
+          </div>
+        ) : null}
 
-      {!loading && appointments.length === 0 ? (
-        <div className="in-clinic-monitor-empty">No active in-clinic patients right now.</div>
-      ) : null}
+        {!loading && appointments.length === 0 ? (
+          <div className="rounded-[12px] border border-dashed border-border py-3 px-3 text-[12px] text-muted-foreground">
+            No active in-clinic patients right now.
+          </div>
+        ) : null}
 
-      {!loading && appointments.length > 0 ? (
-        <div className="in-clinic-monitor-list">
-          {appointments.map((appointment) => {
-            const statusTone = getMonitorStatusTone(appointment.status.name);
-            const timer = getMonitorTimerPresentation(appointment, monitorNow);
-            const actions = MONITOR_ACTIONS_BY_STATUS[appointment.status.name] ?? [];
+        {!loading && appointments.length > 0 ? (
+          <div className="grid gap-[10px]">
+            {appointments.map((appointment) => {
+              const statusTone = getMonitorStatusTone(appointment.status.name);
+              const timer = getMonitorTimerPresentation(appointment, monitorNow);
+              const actions = MONITOR_ACTIONS_BY_STATUS[appointment.status.name] ?? [];
 
-            return (
-              <article key={appointment.id} className="in-clinic-monitor-item" data-testid="in-clinic-monitor-row">
-                <div className="in-clinic-monitor-main">
-                  <div className="in-clinic-monitor-patient">{patientLabel(appointment)}</div>
-                  <div className="in-clinic-monitor-meta">
-                    <span>{appointment.providerName}</span>
-                    <span aria-hidden>•</span>
-                    <span>{appointment.location}</span>
-                  </div>
-                </div>
-
-                <div className="in-clinic-monitor-state">
-                  <span className={`in-clinic-status-pill ${statusToneClass(statusTone)}`}>{appointment.status.name}</span>
-                  {timer.mode !== "none" ? (
-                    <span className={`in-clinic-timer ${timerToneClass(timer.tone)}`}>
-                      {timer.mode === "wait" ? "Waiting" : "In progress"} {formatMonitorDuration(timer.elapsedSeconds)}
-                    </span>
-                  ) : null}
-                </div>
-
-                <div className="in-clinic-monitor-history" data-testid="monitor-transition-history">
-                  <div className="in-clinic-monitor-history-title">Transition history</div>
-                  {appointment.history.length ? (
-                    <div className="in-clinic-monitor-history-list">
-                      {appointment.history.map((event) => (
-                        <div
-                          key={event.id}
-                          className="in-clinic-monitor-history-row"
-                          data-testid="monitor-transition-history-row"
-                        >
-                          <div className="in-clinic-monitor-history-status">{formatTransitionHistoryStatus(event)}</div>
-                          <div className="in-clinic-monitor-history-meta">{formatTransitionHistoryMeta(event)}</div>
-                        </div>
-                      ))}
+              return (
+                <Card
+                  key={appointment.id}
+                  className="rounded-[14px] p-3 grid gap-[10px] shadow-none"
+                  data-testid="in-clinic-monitor-row"
+                >
+                  {/* Patient + provider/location */}
+                  <div className="grid gap-1">
+                    <div className="text-[14px] font-semibold text-foreground">
+                      {patientLabel(appointment)}
                     </div>
-                  ) : (
-                    <div className="in-clinic-monitor-history-empty">No transition history yet.</div>
-                  )}
-                </div>
-
-                {actions.length > 0 ? (
-                  <div className="in-clinic-monitor-actions">
-                    {actions.map((action) => {
-                      const isPending = pendingAction === `${appointment.id}:${action}`;
-                      return (
-                        <Button
-                          key={action}
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          className="in-clinic-action-btn"
-                          onClick={() => {
-                            void runMonitorAction(appointment.id, action);
-                          }}
-                          disabled={Boolean(pendingAction)}
-                        >
-                          {isPending ? "Saving…" : action}
-                        </Button>
-                      );
-                    })}
+                    <div className="inline-flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                      <span>{appointment.providerName}</span>
+                      <span aria-hidden>·</span>
+                      <span>{appointment.location}</span>
+                    </div>
                   </div>
-                ) : null}
-              </article>
-            );
-          })}
-        </div>
-      ) : null}
-    </section>
+
+                  {/* Status badge + timer */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant={statusBadgeVariant(statusTone)}>
+                      {appointment.status.name}
+                    </Badge>
+                    {timer.mode !== "none" ? (
+                      <span
+                        className={cn(
+                          "tabular-nums text-[12px] font-semibold",
+                          timer.tone === "warning" && "text-destructive",
+                          timer.tone === "in-progress" && "text-primary",
+                          timer.tone !== "warning" && timer.tone !== "in-progress" && "text-foreground"
+                        )}
+                      >
+                        {timer.mode === "wait" ? "Waiting" : "In progress"}{" "}
+                        {formatMonitorDuration(timer.elapsedSeconds)}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {/* Transition history */}
+                  <div className="grid gap-1.5" data-testid="monitor-transition-history">
+                    <div className="font-display text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                      Transition history
+                    </div>
+                    {appointment.history.length ? (
+                      <div className="grid gap-1.5">
+                        {appointment.history.map((event) => (
+                          <div
+                            key={event.id}
+                            className="grid gap-0.5 rounded-[10px] border border-border/[0.08] bg-white/65 px-2 py-1.5"
+                            data-testid="monitor-transition-history-row"
+                          >
+                            <div className="text-[11px] font-semibold text-foreground">
+                              {formatTransitionHistoryStatus(event)}
+                            </div>
+                            <div className="text-[10px] text-muted-foreground">
+                              {formatTransitionHistoryMeta(event)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-[11px] text-muted-foreground">
+                        No transition history yet.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  {actions.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {actions.map((action) => {
+                        const isPending = pendingAction === `${appointment.id}:${action}`;
+                        return (
+                          <Button
+                            key={action}
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => { void runMonitorAction(appointment.id, action); }}
+                            disabled={Boolean(pendingAction)}
+                          >
+                            {isPending ? "Saving…" : action}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </Card>
+              );
+            })}
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 }
