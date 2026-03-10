@@ -476,7 +476,7 @@ export function BigSchedule() {
   }, [meta, statusByName]);
   const defaultStatusId = useMemo(() => {
     if (!meta?.statuses?.length) return "";
-    return meta.statuses.find((status) => status.name === "Scheduled")?.id ?? meta.statuses[0].id;
+    return meta.statuses.find((status) => status.name === "Tentative")?.id ?? meta.statuses[0].id;
   }, [meta]);
   const defaultTypeId = useMemo(() => {
     if (!meta?.types?.length) return "";
@@ -2030,7 +2030,7 @@ export function BigSchedule() {
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      {meta?.statuses?.map((status) => (
+                      {orderedStatusOptions.map((status) => (
                         <SelectItem key={status.id} value={status.id}>
                           {status.name}
                         </SelectItem>
