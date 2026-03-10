@@ -704,6 +704,17 @@ a {
   z-index: 1;
 }
 
+.schedule-day-cell.is-unavailable,
+.schedule-week-cell.is-unavailable {
+  background: rgba(38, 34, 96, 0.035);
+  cursor: not-allowed;
+}
+
+.schedule-day-cell.is-unavailable.is-hour,
+.schedule-week-cell.is-unavailable.is-hour {
+  background: rgba(38, 34, 96, 0.055);
+}
+
 .schedule-day-event {
   background: #dceff6;
   border-radius: 12px;

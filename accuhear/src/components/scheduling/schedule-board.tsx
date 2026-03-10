@@ -112,12 +112,15 @@ type Appointment = {
   notes?: string | null;
 };
 
+type ProviderScheduleMap = Record<string, Record<number, { startMinute: number; endMinute: number; isActive: boolean }>>;
+
 type MetaPayload = {
   providers: string[];
   types: { id: string; name: string }[];
   statuses: { id: string; name: string }[];
   rangeStart?: string | null;
   rangeEnd?: string | null;
+  providerSchedules?: ProviderScheduleMap;
 };
 
 type ScheduleEvent = {
@@ -222,6 +225,22 @@ function buildSlots(base: dayjs.Dayjs) {
   const slotCount = Math.max(1, Math.ceil(totalMinutes / SLOT_MINUTES));
   const slots = Array.from({ length: slotCount }, (_, index) => start.add(index * SLOT_MINUTES, "minute"));
   return { start, end, totalMinutes, slotCount, slots };
+}
+
+function isSlotUnavailable(
+  providerName: string,
+  date: string,
+  slotMinuteInDay: number,
+  providerSchedules: ProviderScheduleMap
+): boolean {
+  // No schedule configured for this provider → all slots open
+  if (!(providerName in providerSchedules)) return false;
+  const dayOfWeek = new Date(date).getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const daySchedule = providerSchedules[providerName]?.[dayOfWeek];
+  // Provider has schedules but none for this day → unavailable
+  if (!daySchedule || !daySchedule.isActive) return true;
+  // Outside configured hours → unavailable
+  return slotMinuteInDay < daySchedule.startMinute || slotMinuteInDay >= daySchedule.endMinute;
 }
 
 function parseAppointmentTime(value: string | Date) {
@@ -389,6 +408,8 @@ export function BigSchedule() {
   const providers = useMemo(() => {
     return orderProviders(meta?.providers ?? []);
   }, [meta]);
+
+  const providerSchedules = useMemo<ProviderScheduleMap>(() => meta?.providerSchedules ?? {}, [meta]);
 
   useEffect(() => {
     if (!meta || hasAutoFocused || hasExplicitDate) return;
@@ -927,7 +948,7 @@ export function BigSchedule() {
       const data = await res.json() as { appointments: Appointment[] };
       const TERMINAL = new Set(["completed", "cancelled", "canceled", "no-show", "no show", "rescheduled"]);
       const active = (data.appointments ?? []).filter(
-        (a) => !TERMINAL.has((a.status?.name ?? "").toLowerCase())
+        (a) => !a.patient?.id || !TERMINAL.has((a.status?.name ?? "").toLowerCase())
       );
 
       function isSlotFree(slotStart: dayjs.Dayjs, slotEnd: dayjs.Dayjs) {
@@ -1258,6 +1279,10 @@ export function BigSchedule() {
     if (!dockedAppointment) return;
     const { event: dockedEvt, originalAppointment } = dockedAppointment;
     const [hour, minute] = payload.time.split(":").map((value) => Number(value));
+    if (isSlotUnavailable(payload.provider, payload.date, hour * 60 + minute, providerSchedules)) {
+      setToastMessage("Outside provider availability");
+      return;
+    }
     const base = dayjs(payload.date).hour(hour).minute(minute).second(0);
     let newStart = base;
     let newEnd = base.add(dockedEvt.durationMinutes, "minute");
@@ -1320,6 +1345,11 @@ export function BigSchedule() {
     const rawTime = el.dataset.time!;
     const [h, m] = rawTime.split(":").map(Number);
     const slotMinutes = Math.floor(m / SLOT_MINUTES) * SLOT_MINUTES;
+    const slotMinuteInDay = h * 60 + slotMinutes;
+    if (isSlotUnavailable(provider, date, slotMinuteInDay, providerSchedules)) {
+      setDragOverKey(null);
+      return;
+    }
     const time = `${String(h).padStart(2, "0")}:${String(slotMinutes).padStart(2, "0")}`;
     const key = `cell-${date}-${provider}-${time}`;
     setDragOverKey((prev) => (prev === key ? prev : key));
@@ -1351,6 +1381,10 @@ export function BigSchedule() {
     if (!appointment) return;
 
     const [hour, minute] = payload.time.split(":").map((value) => Number(value));
+    if (isSlotUnavailable(payload.provider, payload.date, hour * 60 + minute, providerSchedules)) {
+      setToastMessage("Outside provider availability");
+      return;
+    }
     const base = dayjs(payload.date).hour(hour).minute(minute).second(0);
     let newStart = base;
     let newEnd = base.add(appointment.durationMinutes, "minute");
@@ -1377,6 +1411,8 @@ export function BigSchedule() {
   }
 
   async function handleCreate(payload: { date: string; time: string; provider: string }) {
+    const [h, m] = payload.time.split(":").map(Number);
+    if (isSlotUnavailable(payload.provider, payload.date, h * 60 + m, providerSchedules)) return;
     openNewModalForSlot(payload);
   }
 
@@ -1399,7 +1435,8 @@ export function BigSchedule() {
       const appointmentsList: Appointment[] = data.appointments || [];
       return appointmentsList.some((appt) => {
         if (ignoreId && appt.id === ignoreId) return false;
-        if (TERMINAL_STATUSES.has((appt.status?.name ?? "").toLowerCase())) return false;
+        const isNaBlock = !appt.patient?.id;
+        if (!isNaBlock && TERMINAL_STATUSES.has((appt.status?.name ?? "").toLowerCase())) return false;
         const start = parseAppointmentTime(appt.startTime);
         const end = parseAppointmentTime(appt.endTime);
         return start.isBefore(endTime) && end.isAfter(startTime);
@@ -1435,6 +1472,12 @@ export function BigSchedule() {
     const end = dayjs(`${formState.date}T${formState.endTime}`);
     if (!start.isValid() || !end.isValid() || !end.isAfter(start)) {
       setModalError("End time must be after start time.");
+      return;
+    }
+
+    const startMinuteInDay = start.hour() * 60 + start.minute();
+    if (isSlotUnavailable(formState.providerName, formState.date, startMinuteInDay, providerSchedules)) {
+      setModalError("Outside provider availability");
       return;
     }
 
@@ -2155,25 +2198,32 @@ export function BigSchedule() {
                 {visibleProviders.flatMap((provider, colIndex) =>
                   dayGrid.slots.map((slot, rowIndex) => {
                     const isHour = slot.minute() === 0;
+                    const dateStr = dayjs(viewDate).format("YYYY-MM-DD");
+                    const unavailable = isSlotUnavailable(provider, dateStr, slot.hour() * 60 + slot.minute(), providerSchedules);
+                    const cellKey = `cell-${dateStr}-${provider}-${slot.format("HH:mm")}`;
                     return (
                       <div
-                        key={`cell-${dayjs(viewDate).format("YYYY-MM-DD")}-${provider}-${slot.format("HH:mm")}`}
-                        className={cn(`schedule-day-cell${isHour ? " is-hour" : ""}`, dragOverKey === `cell-${dayjs(viewDate).format("YYYY-MM-DD")}-${provider}-${slot.format("HH:mm")}` && "!bg-brand-blue/10")}
+                        key={cellKey}
+                        className={cn(
+                          `schedule-day-cell${isHour ? " is-hour" : ""}`,
+                          unavailable && "is-unavailable",
+                          !unavailable && dragOverKey === cellKey && "!bg-brand-blue/10"
+                        )}
                         style={{ gridColumn: colIndex + 2, gridRow: rowIndex + 2 }}
                         data-provider={provider}
-                        data-date={dayjs(viewDate).format("YYYY-MM-DD")}
+                        data-date={dateStr}
                         data-time={slot.format("HH:mm")}
                         onDrop={(event) =>
                           handleDrop(event, {
-                            date: dayjs(viewDate).format("YYYY-MM-DD"),
+                            date: dateStr,
                             time: slot.format("HH:mm"),
                             provider,
                           })
                         }
-                        onClick={dockedAppointment ? () => placeDocked({ date: dayjs(viewDate).format("YYYY-MM-DD"), time: slot.format("HH:mm"), provider }) : undefined}
-                        onDoubleClick={!dockedAppointment ? () =>
+                        onClick={dockedAppointment && !unavailable ? () => placeDocked({ date: dateStr, time: slot.format("HH:mm"), provider }) : undefined}
+                        onDoubleClick={!dockedAppointment && !unavailable ? () =>
                           handleCreate({
-                            date: dayjs(viewDate).format("YYYY-MM-DD"),
+                            date: dateStr,
                             time: slot.format("HH:mm"),
                             provider,
                           }) : undefined
@@ -2430,28 +2480,35 @@ export function BigSchedule() {
                   visibleProviders.flatMap((provider, providerIndex) =>
                     weekGrid.slots.slots.map((slot, slotIndex) => {
                       const isHour = slot.minute() === 0;
+                      const dateStr = day.format("YYYY-MM-DD");
+                      const unavailable = isSlotUnavailable(provider, dateStr, slot.hour() * 60 + slot.minute(), providerSchedules);
+                      const cellKey = `cell-${dateStr}-${provider}-${slot.format("HH:mm")}`;
                       return (
                         <div
-                          key={`cell-${day.format("YYYY-MM-DD")}-${provider}-${slot.format("HH:mm")}`}
-                          className={cn(`schedule-week-cell${isHour ? " is-hour" : ""}`, dragOverKey === `cell-${day.format("YYYY-MM-DD")}-${provider}-${slot.format("HH:mm")}` && "!bg-brand-blue/10")}
+                          key={cellKey}
+                          className={cn(
+                            `schedule-week-cell${isHour ? " is-hour" : ""}`,
+                            unavailable && "is-unavailable",
+                            !unavailable && dragOverKey === cellKey && "!bg-brand-blue/10"
+                          )}
                           style={{
                             gridColumn: 2 + dayIndex * visibleProviders.length + providerIndex,
                             gridRow: slotIndex + 3,
                           }}
                           data-provider={provider}
-                          data-date={day.format("YYYY-MM-DD")}
+                          data-date={dateStr}
                           data-time={slot.format("HH:mm")}
                           onDrop={(event) =>
                             handleDrop(event, {
-                              date: day.format("YYYY-MM-DD"),
+                              date: dateStr,
                               time: slot.format("HH:mm"),
                               provider,
                             })
                           }
-                          onClick={dockedAppointment ? () => placeDocked({ date: day.format("YYYY-MM-DD"), time: slot.format("HH:mm"), provider }) : undefined}
-                          onDoubleClick={!dockedAppointment ? () =>
+                          onClick={dockedAppointment && !unavailable ? () => placeDocked({ date: dateStr, time: slot.format("HH:mm"), provider }) : undefined}
+                          onDoubleClick={!dockedAppointment && !unavailable ? () =>
                             handleCreate({
-                              date: day.format("YYYY-MM-DD"),
+                              date: dateStr,
                               time: slot.format("HH:mm"),
                               provider,
                             }) : undefined

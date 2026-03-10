@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 type CatalogItemCategory =
   | "hearing_aid"
@@ -269,6 +270,255 @@ function itemMeta(item: CatalogItem) {
     item.batteryCellQuantity ? `Qty ${item.batteryCellQuantity}` : null,
   ].filter(Boolean);
   return bits.join(" · ");
+}
+
+// ---- Provider Availability ----
+
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const WEEKDAYS = [1, 2, 3, 4, 5]; // Mon–Fri shown first
+const WEEKEND = [6, 0]; // Sat, Sun
+
+function minutesToTimeString(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function timeStringToMinutes(value: string): number {
+  const [h, m] = value.split(":").map(Number);
+  return h * 60 + (m || 0);
+}
+
+type DayState = {
+  dayOfWeek: number;
+  isActive: boolean;
+  startMinute: number;
+  endMinute: number;
+};
+
+type ProviderAvailabilityState = Record<string, DayState[]>;
+
+function buildDefaultDays(): DayState[] {
+  return Array.from({ length: 7 }, (_, i) => ({
+    dayOfWeek: i,
+    isActive: false,
+    startMinute: 9 * 60,
+    endMinute: 17 * 60,
+  }));
+}
+
+function ProviderAvailabilitySection() {
+  const [providers, setProviders] = useState<string[]>([]);
+  const [availability, setAvailability] = useState<ProviderAvailabilityState>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadSchedules = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/provider-schedules", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Unable to load availability.");
+      const providerList: string[] = data.providers ?? [];
+      const schedules: Record<string, Record<number, { startMinute: number; endMinute: number; isActive: boolean }>> =
+        data.schedules ?? {};
+      setProviders(providerList);
+      const state: ProviderAvailabilityState = {};
+      for (const provider of providerList) {
+        const days = buildDefaultDays();
+        const providerSchedule = schedules[provider] ?? {};
+        for (const day of days) {
+          const saved = providerSchedule[day.dayOfWeek];
+          if (saved) {
+            day.isActive = saved.isActive;
+            day.startMinute = saved.startMinute;
+            day.endMinute = saved.endMinute;
+          }
+        }
+        state[provider] = days;
+      }
+      setAvailability(state);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to load availability.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadSchedules();
+  }, [loadSchedules]);
+
+  useEffect(() => {
+    if (!message) return;
+    const t = window.setTimeout(() => setMessage(null), 3000);
+    return () => window.clearTimeout(t);
+  }, [message]);
+
+  const updateDay = useCallback(
+    (provider: string, dayOfWeek: number, patch: Partial<DayState>) => {
+      setAvailability((prev) => ({
+        ...prev,
+        [provider]: (prev[provider] ?? buildDefaultDays()).map((day) =>
+          day.dayOfWeek === dayOfWeek ? { ...day, ...patch } : day
+        ),
+      }));
+    },
+    []
+  );
+
+  const saveProvider = useCallback(
+    async (provider: string) => {
+      setSaving(provider);
+      setError(null);
+      setMessage(null);
+      const days = availability[provider] ?? buildDefaultDays();
+      // Validate
+      for (const day of days) {
+        if (day.isActive && day.endMinute <= day.startMinute) {
+          setError(`${DAY_LABELS[day.dayOfWeek]}: end time must be after start time.`);
+          setSaving(null);
+          return;
+        }
+      }
+      try {
+        const res = await fetch("/api/provider-schedules", {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            schedules: days.map((day) => ({
+              providerName: provider,
+              dayOfWeek: day.dayOfWeek,
+              startMinute: day.startMinute,
+              endMinute: day.endMinute,
+              isActive: day.isActive,
+            })),
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Unable to save availability.");
+        setMessage(`Saved availability for ${provider}.`);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Unable to save availability.");
+      } finally {
+        setSaving(null);
+      }
+    },
+    [availability]
+  );
+
+  const dayRow = (provider: string, dayOfWeek: number) => {
+    const days = availability[provider] ?? buildDefaultDays();
+    const day = days.find((d) => d.dayOfWeek === dayOfWeek) ?? {
+      dayOfWeek,
+      isActive: false,
+      startMinute: 9 * 60,
+      endMinute: 17 * 60,
+    };
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    return (
+      <div
+        key={dayOfWeek}
+        className={cn(
+          "grid items-center gap-3 rounded-xl px-3 py-2",
+          "grid-cols-[48px_1fr_1fr_1fr]",
+          day.isActive ? "bg-white/70" : "bg-transparent",
+          isWeekend && !day.isActive && "opacity-50"
+        )}
+      >
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={day.isActive}
+            onChange={(e) => updateDay(provider, dayOfWeek, { isActive: e.target.checked })}
+            className="rounded"
+          />
+          <span className="text-xs font-medium text-ink-strong">{DAY_LABELS[dayOfWeek]}</span>
+        </label>
+        <div>
+          <Label className="text-[10px] uppercase tracking-wide text-ink-muted mb-1 block">Start</Label>
+          <input
+            type="time"
+            step="900"
+            disabled={!day.isActive}
+            value={minutesToTimeString(day.startMinute)}
+            onChange={(e) => updateDay(provider, dayOfWeek, { startMinute: timeStringToMinutes(e.target.value) })}
+            className="w-full rounded-lg border border-border bg-background px-2 py-1 text-xs text-ink disabled:opacity-40 disabled:cursor-not-allowed"
+          />
+        </div>
+        <div>
+          <Label className="text-[10px] uppercase tracking-wide text-ink-muted mb-1 block">End</Label>
+          <input
+            type="time"
+            step="900"
+            disabled={!day.isActive}
+            value={minutesToTimeString(day.endMinute)}
+            onChange={(e) => updateDay(provider, dayOfWeek, { endMinute: timeStringToMinutes(e.target.value) })}
+            className="w-full rounded-lg border border-border bg-background px-2 py-1 text-xs text-ink disabled:opacity-40 disabled:cursor-not-allowed"
+          />
+        </div>
+        <div className="text-xs text-ink-muted">
+          {day.isActive
+            ? `${minutesToTimeString(day.startMinute)} – ${minutesToTimeString(day.endMinute)}`
+            : "Off"}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <section className="card p-6">
+      <div className="section-title text-xs text-brand-ink">Provider availability</div>
+      <p className="mt-1 text-sm text-ink-muted">
+        Set weekly working hours per provider. Unavailable slots are greyed out and blocked on the schedule board.
+      </p>
+
+      {loading ? (
+        <div className="mt-4 rounded-2xl bg-surface-1/60 px-4 py-3 text-sm text-ink-muted">Loading…</div>
+      ) : (
+        <div className="mt-4 space-y-4">
+          {providers.map((provider) => (
+            <div key={provider} className="rounded-3xl border border-surface-2 bg-surface-1/45 p-4">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="text-sm font-semibold text-ink-strong">{provider}</div>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => void saveProvider(provider)}
+                  disabled={saving === provider}
+                >
+                  {saving === provider ? "Saving…" : "Save"}
+                </Button>
+              </div>
+              <div className="space-y-1">
+                {WEEKDAYS.map((dow) => dayRow(provider, dow))}
+                <div className="my-2 border-t border-surface-2" />
+                {WEEKEND.map((dow) => dayRow(provider, dow))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div
+        aria-live="polite"
+        className="pointer-events-none fixed bottom-4 right-4 z-50 flex w-full max-w-sm justify-end px-4"
+      >
+        {message ? (
+          <Alert className="pointer-events-auto shadow-lg">
+            <AlertDescription>{message}</AlertDescription>
+          </Alert>
+        ) : null}
+        {!message && error ? (
+          <Alert variant="destructive" className="pointer-events-auto shadow-lg">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        ) : null}
+      </div>
+    </section>
+  );
 }
 
 export default function SettingsPage() {
@@ -795,6 +1045,8 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
+      <ProviderAvailabilitySection />
+
       <section className="card p-6">
         <div className="section-title text-xs text-brand-ink">Catalog settings</div>
         <p className="mt-1 text-sm text-ink-muted">
