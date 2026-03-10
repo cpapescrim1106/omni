@@ -10,14 +10,14 @@ import { PatientSales } from "@/components/patient-sales";
 import { PatientAudiology } from "@/components/patient-audiology";
 import { PatientDevices } from "@/components/patient-devices";
 import { PatientPayers } from "@/components/patient-payers";
-import { PatientDetails } from "@/components/patient-details";
 import { PatientMarketing } from "@/components/patient-marketing";
+import { PatientSummaryForm } from "@/components/patient-summary-form";
 import { PatientTabRegistrar } from "@/components/patient-tabs";
 import { PurchaseButton } from "@/components/purchase-dialog";
+import { PatientPhotoAvatar } from "@/components/patient-photo-avatar";
 
 const tabs = [
   "Summary",
-  "Details",
   "Hearing aids",
   "Audiology",
   "Journal",
@@ -27,8 +27,6 @@ const tabs = [
   "Sales history",
   "Documents",
 ];
-
-const PLACEHOLDER_ADDRESS = "123 Example St, Washington, DC 20001";
 
 export default async function PatientProfilePage({
   params,
@@ -47,6 +45,14 @@ export default async function PatientProfilePage({
   const patientLabel = `${patient.lastName}, ${patient.firstName}${patient.preferredName ? ` (${patient.preferredName})` : ""}`;
 
   const age = patient.dateOfBirth ? dayjs().diff(dayjs(patient.dateOfBirth), "year") : null;
+  const primaryPayer = patient.payerPolicies
+    ?.slice()
+    .sort((a, b) => {
+      const priorityA = a.priority ?? Number.MAX_SAFE_INTEGER;
+      const priorityB = b.priority ?? Number.MAX_SAFE_INTEGER;
+      if (priorityA !== priorityB) return priorityA - priorityB;
+      return a.payerName.localeCompare(b.payerName);
+    })?.[0]?.payerName;
   const phoneButtons = patient.phones.length
     ? patient.phones.slice(0, 3).map((phone) => ({
         label: phone.type || "Phone",
@@ -56,8 +62,6 @@ export default async function PatientProfilePage({
         { label: "Home", number: "(202) 555-0100" },
         { label: "Mobile", number: "(202) 555-0101" },
       ];
-
-  const payerTags = patient.payerPolicies.map((policy) => policy.payerName);
 
   const aidRows = patient.devices.length
     ? patient.devices.map((device) => ({
@@ -83,12 +87,11 @@ export default async function PatientProfilePage({
       <section className="patient-header">
         {/* Row 1: avatar + name/meta + badges + stats */}
         <div className="patient-header-row">
-          <div
-            className="patient-header-avatar"
-            style={{ background: "linear-gradient(135deg, var(--brand-blue), var(--brand-ink))" }}
-          >
-            {patient.firstName.charAt(0)}
-          </div>
+          <PatientPhotoAvatar
+            patientId={patient.id}
+            firstName={patient.firstName}
+            initialPhotoDataUrl={patient.photoDataUrl ?? null}
+          />
 
           <div className="patient-header-identity">
             <span className="patient-header-name">
@@ -97,6 +100,7 @@ export default async function PatientProfilePage({
             <span className="patient-header-meta">
               {patient.dateOfBirth ? dayjs(patient.dateOfBirth).format("MM/DD/YYYY") : "—"}
               {age ? <><span className="patient-header-sep">|</span>{age}</> : ""}
+              {primaryPayer ? <><span className="patient-header-sep">|</span>{primaryPayer}</> : ""}
             </span>
           </div>
 
@@ -163,129 +167,19 @@ export default async function PatientProfilePage({
         <PatientSales patientId={patient.id} autoOpenCreate={purchaseMode === "direct"} />
       ) : activeTab === "Documents" ? (
         <PatientDocuments patientId={patient.id} />
-      ) : activeTab === "Details" ? (
-        <PatientDetails patient={patient} />
       ) : activeTab === "Marketing" ? (
         <PatientMarketing />
       ) : (
         <div className="content-area">
           {/* Record Panel (60%) */}
           <section className="record-panel">
-            <div className="tab-content">
-              {/* Personal Information */}
-              <div className="section-title">Personal Information</div>
-              <div className="form-grid">
-                <div className="form-field">
-                  <span className="form-label">First Name</span>
-                  <span className="form-value">{patient.firstName}</span>
-                </div>
-                <div className="form-field">
-                  <span className="form-label">Last Name</span>
-                  <span className="form-value">{patient.lastName}</span>
-                </div>
-                <div className="form-field">
-                  <span className="form-label">Preferred Name</span>
-                  <span className="form-value">{patient.preferredName || "—"}</span>
-                </div>
-                <div className="form-field">
-                  <span className="form-label">Date of Birth</span>
-                  <span className="form-value">
-                    {patient.dateOfBirth ? dayjs(patient.dateOfBirth).format("MM/DD/YYYY") : "—"}
-                  </span>
-                </div>
-                <div className="form-field">
-                  <span className="form-label">Gender</span>
-                  <span className="form-value">—</span>
-                </div>
-                <div className="form-field">
-                  <span className="form-label">SS#</span>
-                  <span className="form-value">—</span>
-                </div>
-                <div className="form-field">
-                  <span className="form-label">Patient ID</span>
-                  <span className="form-value">{patient.legacyId || patient.id.slice(0, 8)}</span>
-                </div>
-                <div className="form-field">
-                  <span className="form-label">Reference #</span>
-                  <span className="form-value">—</span>
-                </div>
-                <div className="form-field">
-                  <span className="form-label">Status</span>
-                  <span className="form-value">{patient.status || "Active"}</span>
-                </div>
-                <div className="form-field">
-                  <span className="form-label">Provider</span>
-                  <span className="form-value">{patient.providerName || "—"}</span>
-                </div>
-              </div>
-
-              {/* Contact */}
-              <div className="section-title">Contact</div>
-              <div className="form-grid">
-                {patient.phones.length > 0 ? (
-                  patient.phones.map((phone, i) => (
-                    <div className="form-field" key={phone.id || i}>
-                      <span className="form-label">{phone.type || "Phone"}</span>
-                      <span className="form-value">{phone.number || phone.normalized}</span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="form-field">
-                    <span className="form-label">Phone</span>
-                    <span className="form-value">—</span>
-                  </div>
-                )}
-                <div className="form-field">
-                  <span className="form-label">Email</span>
-                  <span className="form-value">{patient.email || "—"}</span>
-                </div>
-                <div className="form-field span-2">
-                  <span className="form-label">Address</span>
-                  <span className="form-value">{PLACEHOLDER_ADDRESS}</span>
-                </div>
-              </div>
-
-              {/* Insurance / Payers */}
-              <div className="section-title">Insurance / Payers</div>
-              {patient.payerPolicies.length > 0 ? (
-                <div className="form-grid">
-                  {patient.payerPolicies.map((policy, i) => (
-                    <Fragment key={policy.id || i}>
-                      <div className="form-field">
-                        <span className="form-label">Payer</span>
-                        <span className="form-value">{policy.payerName}</span>
-                      </div>
-                      <div className="form-field">
-                        <span className="form-label">Member ID</span>
-                        <span className="form-value">{policy.memberId || "—"}</span>
-                      </div>
-                      <div className="form-field">
-                        <span className="form-label">Group ID</span>
-                        <span className="form-value">{policy.groupId || "—"}</span>
-                      </div>
-                    </Fragment>
-                  ))}
-                </div>
-              ) : (
-                <div className="form-grid">
-                  <div className="form-field">
-                    <span className="form-label">Payer</span>
-                    <span className="form-value">—</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Clinical */}
-              <div className="section-title">Clinical</div>
-              <div className="form-grid">
-                {aidRows.map((aid, i) => (
-                  <div className="form-field" key={i}>
-                    <span className="form-label">Current Aid {aidRows.length > 1 ? i + 1 : ""}</span>
-                    <span className="form-value">{aid.model}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <PatientSummaryForm
+              patient={{
+                ...patient,
+                dateOfBirth: patient.dateOfBirth?.toISOString() ?? null,
+              }}
+              aidModels={aidRows.map((a) => a.model)}
+            />
           </section>
 
           {/* Context Panel (40%) */}

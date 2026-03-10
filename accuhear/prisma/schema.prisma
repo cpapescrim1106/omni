@@ -18,6 +18,7 @@ model Patient {
   status        String?
   providerName  String?
   location      String?
+  photoDataUrl  String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 

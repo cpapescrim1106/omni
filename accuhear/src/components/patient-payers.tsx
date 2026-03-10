@@ -61,11 +61,7 @@ export function PatientPayers({ patientId }: { patientId: string }) {
   }, [loadPolicies]);
 
   const rows = useMemo(() => {
-    if (policies.length) return policies;
-    return [
-      { id: "stub-1", payerName: "Medicare", memberId: "7JK6-NM1-YG82", groupId: "", priority: 1 },
-      { id: "stub-2", payerName: "United Healthcare", memberId: "909034167-00", groupId: "", priority: 2 },
-    ];
+    return policies;
   }, [policies]);
 
   return (
@@ -100,6 +96,8 @@ export function PatientPayers({ patientId }: { patientId: string }) {
         </div>
         {loadError ? (
           <div className="px-4 py-6 text-sm text-danger">{loadError}</div>
+        ) : rows.length === 0 ? (
+          <div className="px-4 py-6 text-sm text-ink-muted">No payer policies found.</div>
         ) : (
           <div className="divide-y divide-surface-2">
             <div className="grid grid-cols-[1.4fr_1fr_1fr_0.7fr] bg-[var(--surface-1)] px-3 py-[6px] text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft">

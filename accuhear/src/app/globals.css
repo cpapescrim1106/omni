@@ -1,5 +1,19 @@
 @import "tailwindcss";
 
+/* Suppress password manager injected icons */
+div[data-lastpass-icon-root],
+div[data-lastpass-root],
+[data-lastpass-icon-root],
+[data-lp-point],
+[data-lp-action-id] {
+  display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  position: absolute !important;
+  overflow: hidden !important;
+}
+
 :root {
   color-scheme: light;
 
@@ -358,6 +372,8 @@ a {
 }
 
 .section-title {
+  display: flex;
+  align-items: center;
   font-family: var(--font-display), "Space Grotesk", sans-serif;
   font-size: 12px;
   font-weight: 600;
@@ -1544,8 +1560,8 @@ a {
 }
 
 .patient-header-avatar {
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -1553,8 +1569,32 @@ a {
   color: #fff;
   font-family: var(--font-display), "Space Grotesk", sans-serif;
   font-weight: 700;
-  font-size: 12px;
+  font-size: 13px;
   flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.patient-header-avatar-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(38, 34, 96, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  font-size: 9px;
+  font-weight: 600;
+  font-family: var(--font-display), "Space Grotesk", sans-serif;
+  letter-spacing: 0.04em;
+  color: #fff;
+}
+
+.patient-header-avatar:hover .patient-header-avatar-overlay {
+  opacity: 1;
 }
 
 .patient-header-identity {
@@ -1701,6 +1741,18 @@ a {
   gap: 8px 12px;
 }
 
+.form-grid-dense {
+  display: grid;
+  grid-template-columns: 5ch 6ch repeat(6, 1fr);
+  gap: 4px 8px;
+}
+
+.form-grid-address {
+  display: grid;
+  grid-template-columns: 5ch 1fr 5ch 1fr 5ch 6ch 7ch;
+  gap: 4px 8px;
+}
+
 .form-field {
   display: flex;
   flex-direction: column;
@@ -1730,6 +1782,147 @@ a {
 
 .form-value:hover {
   border-bottom-color: var(--surface-3);
+}
+
+.form-input,
+select.form-input {
+  font-size: 13px;
+  color: var(--ink);
+  padding: 4px 4px;
+  border: none;
+  border-bottom: 1px solid var(--surface-2);
+  background: transparent;
+  outline: none;
+  width: 100%;
+  font-family: inherit;
+  transition: border-color 0.15s;
+  cursor: text;
+}
+
+select.form-input {
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.form-input:focus {
+  border-bottom-color: var(--brand-blue);
+}
+
+.form-input-error {
+  border-bottom-color: var(--brand-orange);
+}
+
+.form-error {
+  font-size: 10px;
+  color: var(--brand-orange);
+  margin-top: 1px;
+}
+
+.form-input::placeholder {
+  color: var(--ink-muted);
+}
+
+.phone-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.phone-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 1fr;
+  gap: 12px;
+  align-items: end;
+}
+
+.phone-row:has(.phone-actions) {
+  grid-template-columns: 100px 1fr 1fr auto;
+}
+
+.phone-row-alt {
+  margin-top: -2px;
+}
+
+.phone-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-bottom: 4px;
+}
+
+.phone-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.phone-action-btn:hover {
+  background: var(--surface-1);
+  color: var(--ink);
+}
+
+.phone-action-btn.active {
+  color: var(--brand-orange);
+}
+
+.phone-action-btn.danger:hover {
+  color: var(--brand-orange);
+  background: rgba(221,111,38,0.08);
+}
+
+.form-prefs {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.form-pref-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.form-pref-lang {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.section-title-actions {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.section-title-actions .btn-sm-ghost,
+.section-title-actions .btn-sm-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.form-select-sm {
+  border-radius: 8px;
+  border: 1px solid var(--surface-3);
+  background: white;
+  padding: 2px 8px;
+  font-size: 12px;
 }
 
 .appt-item {
