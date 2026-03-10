@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useRef, useState } from "react";
 import { XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -199,10 +200,11 @@ export function PatientPhotoAvatar({
           onMouseLeave={() => setEnlargedPos(null)}
         >
           {photoDataUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={photoDataUrl}
               alt={firstName}
+              width={200}
+              height={200}
               style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
             />
           ) : (
@@ -213,10 +215,11 @@ export function PatientPhotoAvatar({
       </div>
 
       {enlargedPos && photoDataUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <Image
           src={photoDataUrl}
           alt={firstName}
+          width={120}
+          height={120}
           style={{
             position: "fixed",
             top: enlargedPos.y,
@@ -275,9 +278,9 @@ export function PatientPhotoAvatar({
             <>
               {loadingDocs ? (
                 <div className="py-8 text-center text-sm text-ink-muted">Loading documents…</div>
-              ) : docs.length === 0 ? (
-                <div className="py-8 text-center text-sm text-ink-muted">
-                  No image documents found. Upload a driver's license or ID scan first.
+      ) : docs.length === 0 ? (
+        <div className="py-8 text-center text-sm text-ink-muted">
+                  No image documents found. Upload a driver&apos;s license or ID scan first.
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -321,7 +324,6 @@ export function PatientPhotoAvatar({
           {step === "crop" && selectedDocId && (
             <div className="space-y-3">
               <p className="text-xs text-ink-muted">Drag to select the face region.</p>
-              {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
               <div
                 className="relative select-none overflow-hidden rounded-xl border border-surface-2 bg-surface-1"
                 onMouseDown={handleMouseDown}
@@ -330,11 +332,12 @@ export function PatientPhotoAvatar({
                 onMouseLeave={handleMouseUp}
                 style={{ cursor: "crosshair" }}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   ref={imageRef}
                   src={`/api/patients/${patientId}/documents/${selectedDocId}/preview`}
                   alt="ID scan"
+                  width={800}
+                  height={800}
                   crossOrigin="anonymous"
                   draggable={false}
                   onLoad={() => setImageLoaded(true)}

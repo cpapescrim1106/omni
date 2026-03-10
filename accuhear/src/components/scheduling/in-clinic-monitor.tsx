@@ -94,7 +94,7 @@ export function InClinicMonitor() {
       setAppointments(filterActiveMonitorAppointments(normalizedAppointments));
       setError(null);
       setNowMs(Date.now());
-    } catch (_error) {
+    } catch {
       setError("Unable to load in-clinic monitor.");
     } finally {
       setLoading(false);
@@ -142,7 +142,7 @@ export function InClinicMonitor() {
 
       setError(null);
       await loadMonitor();
-    } catch (_error) {
+    } catch {
       setError("Unable to apply monitor action.");
     } finally {
       setPendingAction(null);

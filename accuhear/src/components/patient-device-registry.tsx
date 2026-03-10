@@ -52,6 +52,7 @@ function resolveGroup(status: string): "current" | "inactive" | "backup" {
 }
 
 export function PatientDeviceRegistry({ patientId, devices, inOrderItems }: PatientDeviceRegistryProps) {
+  void patientId;
   const [activeTab, setActiveTab] = useState<SubTab>("Hearing aids");
   const [localDevices, setLocalDevices] = useState(devices);
   const [expandedBackups, setExpandedBackups] = useState<Set<string>>(new Set());

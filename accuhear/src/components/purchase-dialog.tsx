@@ -28,10 +28,6 @@ type DraftLineItem = {
   unitPrice: number;
 };
 
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
-}
-
 function computeGross(items: DraftLineItem[]) {
   return items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
 }

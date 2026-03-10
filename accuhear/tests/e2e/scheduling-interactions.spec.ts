@@ -7,7 +7,7 @@ ensureTestDatabaseUrl();
 const e2eTag = `E2E-INT:${Date.now()}`;
 const DAY_START_HOUR = 8;
 const DAY_STOP_HOUR = 18;
-const SLOT_MINUTES = 30;
+const SLOT_MINUTES = 15;
 
 type MetaPayload = {
   providers: string[];
@@ -27,39 +27,6 @@ function toTimeLabel(date: Date) {
 
 function buildLocalDateTime(date: string, hour: number, minute: number) {
   return new Date(`${date}T${pad2(hour)}:${pad2(minute)}:00`);
-}
-
-function findFreeSlot(appointments: AppointmentRange[], date: string, startAfter?: Date) {
-  const slotMs = SLOT_MINUTES * 60 * 1000;
-  const dayStart = buildLocalDateTime(date, DAY_START_HOUR, 0);
-  const dayEnd = buildLocalDateTime(date, DAY_STOP_HOUR, 0);
-  const slotCount = Math.max(1, Math.floor((dayEnd.getTime() - dayStart.getTime()) / slotMs));
-  const startIndex = startAfter
-    ? Math.max(0, Math.ceil((startAfter.getTime() - dayStart.getTime()) / slotMs))
-    : 0;
-  const ranges = appointments.map((appt) => ({
-    start: new Date(appt.startTime).getTime(),
-    end: new Date(appt.endTime).getTime(),
-  }));
-
-  for (let i = startIndex; i < slotCount; i += 1) {
-    const slotStart = dayStart.getTime() + i * slotMs;
-    const slotEnd = slotStart + slotMs;
-    const overlaps = ranges.some((range) => range.start < slotEnd && range.end > slotStart);
-    if (!overlaps) {
-      return {
-        start: new Date(slotStart),
-        end: new Date(slotEnd),
-        timeLabel: toTimeLabel(new Date(slotStart)),
-      };
-    }
-  }
-
-  return {
-    start: dayStart,
-    end: new Date(dayStart.getTime() + slotMs),
-    timeLabel: toTimeLabel(dayStart),
-  };
 }
 
 function getAvailableSlots(appointments: AppointmentRange[], date: string) {
@@ -294,8 +261,17 @@ test.describe.serial("Scheduling interactions", () => {
 
     await expect(patchResponse).resolves.toBeTruthy();
     await expect(page.getByTestId("schedule-toast")).toBeVisible();
-
-    await expect(source.getByText(dayjs(firstSlot.start).format("h:mm"))).toBeVisible();
+    const verifyResponse = await request.get(
+      `/api/appointments?start=${rangeStart.toISOString()}&end=${rangeEnd.toISOString()}&provider=${encodeURIComponent(
+        provider
+      )}`
+    );
+    expect(verifyResponse.ok()).toBeTruthy();
+    const verifyPayload = await verifyResponse.json();
+    const unchanged = verifyPayload.appointments.find((appt: { id: string; startTime: string; endTime: string }) => appt.id === movingId);
+    expect(unchanged).toBeTruthy();
+    expect(Math.abs(new Date(unchanged.startTime).getTime() - firstSlot.start.getTime())).toBeLessThan(60_000);
+    expect(Math.abs(new Date(unchanged.endTime).getTime() - firstSlot.end.getTime())).toBeLessThan(60_000);
   });
 
   test("resize appointment - updates duration via API", async ({ page, request }) => {
@@ -447,6 +423,17 @@ test.describe.serial("Scheduling interactions", () => {
 
     await expect(patchResponse).resolves.toBeTruthy();
     await expect(page.getByTestId("schedule-toast")).toBeVisible();
-    await expect(eventItem.getByText(dayjs(start).format("h:mm"))).toBeVisible();
+
+    const verifyResponse = await request.get(
+      `/api/appointments?start=${rangeStart.toISOString()}&end=${rangeEnd.toISOString()}&provider=${encodeURIComponent(
+        provider
+      )}`
+    );
+    expect(verifyResponse.ok()).toBeTruthy();
+    const verifyPayload = await verifyResponse.json();
+    const unchanged = verifyPayload.appointments.find((appt: { id: string; startTime: string; endTime: string }) => appt.id === resizingId);
+    expect(unchanged).toBeTruthy();
+    expect(Math.abs(new Date(unchanged.startTime).getTime() - start.getTime())).toBeLessThan(60_000);
+    expect(Math.abs(new Date(unchanged.endTime).getTime() - end.getTime())).toBeLessThan(60_000);
   });
 });

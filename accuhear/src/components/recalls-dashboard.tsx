@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import dayjs from "dayjs";
-import { Badge, type badgeVariants } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import {
   Select,

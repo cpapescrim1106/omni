@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import dayjs from "dayjs";
 import { Badge } from "@/components/ui/badge";
@@ -314,9 +315,11 @@ export function PatientDocuments({ patientId }: { patientId: string }) {
                 {selectedDocument.storageProvider === "local" ? (
                   <div className="grid gap-2 p-3">
                     {selectedDocument.contentType?.startsWith("image/") ? (
-                      <img
+                      <Image
                         src={selectedDocumentUrl}
                         alt={selectedDocument.fileName || selectedDocument.title}
+                        width={1200}
+                        height={900}
                         className="max-h-[360px] w-full rounded-xl object-contain"
                       />
                     ) : (

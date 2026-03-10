@@ -169,14 +169,14 @@ export function PatientDevices({
   const [deliverFittingDate, setDeliverFittingDate] = useState("");
   const [returnReason, setReturnReason] = useState("Returned to manufacturer");
 
-  const trackedCatalog = useMemo(() => catalog, [catalog]);
+  const defaultCatalogItemId = catalog[0]?.id ?? "";
 
   const resetCreateForm = useCallback(() => {
-    setDraftItems([{ catalogItemId: "", side: "Left", quantity: 1 }]);
+    setDraftItems([{ catalogItemId: defaultCatalogItemId, side: "Left", quantity: 1 }]);
     setDraftNotes("");
     setDraftDeposit("");
     setDraftDepositMethod("Patient");
-  }, [trackedCatalog]);
+  }, [defaultCatalogItemId]);
 
   const loadWorkspace = useCallback(async () => {
     setLoading(true);
@@ -214,10 +214,26 @@ export function PatientDevices({
   }, [loadWorkspace]);
 
   useEffect(() => {
-    if (!trackedCatalog.length) return;
+    if (!catalog.length) return;
     if (draftItems.length) return;
     resetCreateForm();
-  }, [draftItems.length, resetCreateForm, trackedCatalog]);
+  }, [catalog.length, draftItems.length, resetCreateForm]);
+
+  useEffect(() => {
+    if (!defaultCatalogItemId) return;
+    setDraftItems((current) => {
+      if (!current.length) return current;
+      let changed = false;
+      const next = current.map((item, index) => {
+        if (index === 0 && !item.catalogItemId) {
+          changed = true;
+          return { ...item, catalogItemId: defaultCatalogItemId };
+        }
+        return item;
+      });
+      return changed ? next : current;
+    });
+  }, [defaultCatalogItemId]);
 
   useEffect(() => {
     if (!autoOpenCreate) return;
@@ -250,12 +266,12 @@ export function PatientDevices({
   }, [resetCreateForm]);
 
   const addDraftItem = useCallback(() => {
-    if (!trackedCatalog.length) return;
+    if (!catalog.length) return;
     setDraftItems((current) => [
       ...current,
-      { catalogItemId: "", side: "Other", quantity: 1 },
+      { catalogItemId: defaultCatalogItemId, side: "Other", quantity: 1 },
     ]);
-  }, [trackedCatalog]);
+  }, [catalog.length, defaultCatalogItemId]);
 
   const createOrder = useCallback(async () => {
     setSubmitting(true);
@@ -311,7 +327,7 @@ export function PatientDevices({
       order.lineItems
         .filter((item) => item.status === "ordered" || item.status === "received")
         .map((item) => {
-          const catalogItem = trackedCatalog.find((candidate) => candidate.id === item.catalogItemId);
+          const catalogItem = catalog.find((candidate) => candidate.id === item.catalogItemId);
           return [
             item.id,
             {
@@ -331,7 +347,7 @@ export function PatientDevices({
     );
     setReceiveForm(defaults);
     setReceiveOrderId(order.id);
-  }, [trackedCatalog]);
+  }, [catalog]);
 
   const submitReceive = useCallback(async () => {
     if (!receiveOrderId) return;
@@ -495,7 +511,7 @@ export function PatientDevices({
           </div>
 
           <div className="mt-4 space-y-3">
-            {!trackedCatalog.length ? (
+            {!catalog.length ? (
               <Alert variant="warning">
                 <AlertDescription>No tracked catalog items are configured. Add one in Settings first.</AlertDescription>
               </Alert>
@@ -518,7 +534,7 @@ export function PatientDevices({
                       <SelectValue placeholder="Select device type" />
                     </SelectTrigger>
                     <SelectContent>
-                      {trackedCatalog.map((catalogItem) => (
+                      {catalog.map((catalogItem) => (
                         <SelectItem key={catalogItem.id} value={catalogItem.id}>
                           {catalogItem.manufacturer ? `${catalogItem.manufacturer} ` : ""}
                           {catalogItem.name}
@@ -602,7 +618,7 @@ export function PatientDevices({
               variant="secondary"
               size="sm"
               onClick={addDraftItem}
-              disabled={!trackedCatalog.length}
+              disabled={!catalog.length}
             >
               Add line
             </Button>
@@ -614,7 +630,7 @@ export function PatientDevices({
                 submitting ||
                 draftItems.length === 0 ||
                 draftItems.some((item) => !item.catalogItemId) ||
-                !trackedCatalog.length
+                !catalog.length
               }
               onClick={() => void createOrder()}
             >
@@ -668,7 +684,7 @@ export function PatientDevices({
             <div className="flex items-center justify-between gap-4">
               <div>
                 <div className="section-title">Outstanding orders</div>
-                <div className="text-xs text-ink-muted">This mirrors Blueprint's flow, but keeps the actions in one card.</div>
+                <div className="text-xs text-ink-muted">This mirrors Blueprint&apos;s flow, but keeps the actions in one card.</div>
               </div>
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[rgba(31,149,184,0.1)] text-brand-ink">
                 {outstandingOrders.length} open

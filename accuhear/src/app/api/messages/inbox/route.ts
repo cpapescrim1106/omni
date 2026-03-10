@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
 export const runtime = "nodejs";
@@ -35,7 +35,7 @@ function snippet(text: string) {
   return oneLine.length > 120 ? `${oneLine.slice(0, 117)}...` : oneLine;
 }
 
-export async function GET(_request: NextRequest) {
+export async function GET() {
   const threads = await prisma.messageThread.findMany({
     where: { channel: "sms" },
     include: {
