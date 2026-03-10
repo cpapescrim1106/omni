@@ -1246,9 +1246,12 @@ export function BigSchedule() {
     const start = dayjs(`${formState.date}T${formState.startTime}`);
     const end = dayjs(`${formState.date}T${formState.endTime}`);
     if (!start.isValid() || !end.isValid() || !end.isAfter(start)) return null;
-    const patientName = formState.patientName || (formState.isNaBlock ? "N/A Block" : "");
-    const typeName = meta?.types.find((t) => t.id === formState.typeId)?.name ?? "";
-    return { start, end, date: formState.date, providerName: formState.providerName, patientName, typeName };
+    const patientName = formState.patientName || (formState.isNaBlock ? "Reserved" : "");
+    const typeName = meta?.types.find((t) => t.id === formState.typeId)?.name ?? "Appointment";
+    const statusName = meta?.statuses.find((s) => s.id === formState.statusId)?.name;
+    const title = `${patientName || "Reserved"} · ${typeName}`;
+    const timeLabel = `${start.format("h:mm A")} – ${end.format("h:mm A")}`;
+    return { start, end, date: formState.date, providerName: formState.providerName, title, statusName, timeLabel };
   }, [isModalOpen, formState, meta]);
 
   const weekGridStyles = weekGrid
@@ -2493,10 +2496,10 @@ export function BigSchedule() {
                       }}
                     >
                       <div className="schedule-day-event-title">
-                        {ghostEvent.patientName && <span className="schedule-event-label text-brand-blue font-semibold">{ghostEvent.patientName}</span>}
-                        {ghostEvent.typeName && <span className="schedule-event-label text-brand-blue">{ghostEvent.typeName}</span>}
-                        <span className="schedule-event-label text-brand-blue opacity-70">{ghostEvent.start.format("h:mm")}–{ghostEvent.end.format("h:mm A")}</span>
+                        {(() => { const { Icon, color } = getStatusIcon(ghostEvent.statusName); return <span className="schedule-status-dot"><Icon size={12} style={{ color }} strokeWidth={2.5} /></span>; })()}
+                        <span className="schedule-event-label">{ghostEvent.title}</span>
                       </div>
+                      <div className="schedule-day-event-time">{ghostEvent.timeLabel}</div>
                     </div>
                   );
                 })()}
@@ -2808,10 +2811,10 @@ export function BigSchedule() {
                       }}
                     >
                       <div className="schedule-week-event-title">
-                        {ghostEvent.patientName && <span className="schedule-event-label text-brand-blue font-semibold">{ghostEvent.patientName}</span>}
-                        {ghostEvent.typeName && <span className="schedule-event-label text-brand-blue">{ghostEvent.typeName}</span>}
-                        <span className="schedule-event-label text-brand-blue opacity-70">{ghostEvent.start.format("h:mm")}–{ghostEvent.end.format("h:mm A")}</span>
+                        {(() => { const { Icon, color } = getStatusIcon(ghostEvent.statusName); return <span className="schedule-status-dot"><Icon size={12} style={{ color }} strokeWidth={2.5} /></span>; })()}
+                        <span className="schedule-event-label">{ghostEvent.title}</span>
                       </div>
+                      <div className="schedule-week-event-time">{ghostEvent.timeLabel}</div>
                     </div>
                   );
                 })()}
