@@ -207,8 +207,8 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
   );
 
   return (
-    <section className="card flex min-h-0 flex-col p-4" style={{ height: "75vh" }}>
-      <div className="flex flex-wrap items-center justify-between gap-4">
+    <section className="card flex min-h-0 flex-col px-4 pt-0 pb-4" style={{ height: "75vh" }}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <div className="section-title">Messaging</div>
           <div className="text-sm text-ink-muted">Patient conversations across channels.</div>

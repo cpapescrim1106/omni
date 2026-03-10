@@ -37,8 +37,8 @@ const RECALLS = [
 
 export function PatientMarketing() {
   return (
-    <section className="card p-4">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+    <section className="card px-4 pt-0 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <div className="section-title">Marketing</div>
           <div className="text-sm text-ink-muted">Communication preferences and outreach history.</div>

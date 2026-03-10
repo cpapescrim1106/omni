@@ -140,6 +140,8 @@ https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700
 | Content area gap | `8px` |
 | Table row padding | `6–7px 8px` |
 | Form grid gap | `8px vertical, 12px horizontal` |
+| Workspace card padding | `0 16px 16px` |
+| Workspace header row gap | `8px` |
 
 ---
 
@@ -478,6 +480,8 @@ input:focus, textarea:focus {
 
 - Context panel cards: `padding: 12px 14px`
 - Record panel: `padding: 12px 16px` for header sections
+- Top-level workspace cards: `padding: 0 16px 16px` to remove dead space above the title row
+- Workspace header rows: no extra bottom margin; use `gap: 8px`
 - Cards stack in context panel with `gap: 8px`
 
 ---
@@ -596,6 +600,7 @@ tr:hover td           { background: rgba(31,149,184,0.04); }
 - Use 10px uppercase labels (not 12px+)
 - Truncate with `text-overflow: ellipsis` + tooltip — never wrap in tables
 - Put quick actions in the header row of a card
+- Remove decorative top insets from page-level cards; titles should sit flush to the top edge
 - Use status dots in tables, not full badge pills
 
 ### Don't ✗

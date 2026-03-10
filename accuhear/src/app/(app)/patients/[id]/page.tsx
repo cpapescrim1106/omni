@@ -66,24 +66,6 @@ export default async function PatientProfilePage({
         { label: "Mobile", number: "(202) 555-0101" },
       ];
 
-  const aidRows = patient.devices.length
-    ? patient.devices.map((device) => ({
-        model: `${device.manufacturer} ${device.model}`.trim(),
-        battery: "Other",
-        notes: device.serial ? `Serial ${device.serial}` : "—",
-        purchase: device.createdAt ? dayjs(device.createdAt).format("MM/DD/YYYY") : "—",
-        status: device.status || "Current",
-      }))
-    : [
-        {
-          model: "Oticon More 3 miniRITE R",
-          battery: "Other",
-          notes: "extended warranty exp 1/15/27",
-          purchase: "01/17/2023",
-          status: "Current",
-        },
-      ];
-
   const deviceRecords = patient.devices.map((d) => ({
     id: d.id,
     ear: d.ear,
@@ -101,10 +83,19 @@ export default async function PatientProfilePage({
     order.lineItems
       .filter((item) => item.status === "ordered" || item.status === "received")
       .map((item) => ({
+        orderId: order.id,
+        lineItemId: item.id,
         itemName: item.itemName,
         side: item.side,
         status: item.status,
         orderedAt: order.createdAt.toISOString(),
+        serialNumber: item.serialNumber ?? null,
+        manufacturerWarrantyEnd: item.manufacturerWarrantyEnd?.toISOString() ?? null,
+        lossDamageWarrantyEnd: item.lossDamageWarrantyEnd?.toISOString() ?? null,
+        color: item.color ?? null,
+        battery: item.battery ?? null,
+        notes: item.notes ?? null,
+        requiresManufacturerOrder: item.requiresManufacturerOrder,
       }))
   );
 
@@ -205,7 +196,6 @@ export default async function PatientProfilePage({
                 ...patient,
                 dateOfBirth: patient.dateOfBirth?.toISOString() ?? null,
               }}
-              aidModels={aidRows.map((a) => a.model)}
             />
           </section>
 

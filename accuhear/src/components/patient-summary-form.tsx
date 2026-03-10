@@ -32,7 +32,6 @@ type PatientSummaryFormProps = {
     phones: Phone[];
     payerPolicies: PayerPolicy[];
   };
-  aidModels: string[];
 };
 
 const PLACEHOLDER_ADDRESS = {
@@ -65,7 +64,7 @@ function computeAge(dob: string | null | undefined): string {
   return String(age);
 }
 
-export function PatientSummaryForm({ patient, aidModels }: PatientSummaryFormProps) {
+export function PatientSummaryForm({ patient }: PatientSummaryFormProps) {
   const [editing, setEditing] = useState(false);
 
   const initialFields = () => ({
@@ -347,13 +346,6 @@ export function PatientSummaryForm({ patient, aidModels }: PatientSummaryFormPro
         </div>
       )}
 
-      {/* Clinical */}
-      <div className="section-title">Clinical</div>
-      <div className="form-grid">
-        {aidModels.map((model, i) => (
-          <Field key={i} label={`Current Aid${aidModels.length > 1 ? ` ${i + 1}` : ""}`} value={model} />
-        ))}
-      </div>
     </form>
   );
 }

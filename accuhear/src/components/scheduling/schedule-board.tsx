@@ -49,13 +49,6 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetFooter,
-} from "@/components/ui/sheet";
 
 const DATE_FORMAT = "YYYY-MM-DD";
 
@@ -1813,22 +1806,20 @@ export function BigSchedule() {
         </div>
       ) : null}
 
-      <Sheet open={isModalOpen} modal={false} onOpenChange={(open) => { if (!open) closeModal(); }}>
-        <SheetContent
-          side="right"
-          data-testid="appointment-modal"
-          className="w-[420px] sm:max-w-[420px] flex flex-col gap-0 p-0 overflow-hidden"
-          showCloseButton={false}
-          showOverlay={false}
-        >
-          <SheetHeader className="px-5 pt-5 pb-4 border-b border-border">
+      <div className="flex flex-row-reverse items-stretch gap-0">
+        {isModalOpen && (
+          <div
+            data-testid="appointment-modal"
+            className="w-[420px] flex-none flex flex-col gap-0 overflow-hidden border-l border-border"
+          >
+          <div className="px-5 pt-5 pb-4 border-b border-border">
             <div className="text-xs uppercase tracking-[0.2em] text-ink-soft">
               {editingId ? "Edit appointment" : "New appointment"}
             </div>
-            <SheetTitle className="text-lg font-semibold text-ink-strong">
+            <div className="text-lg font-semibold text-ink-strong">
               {editingId ? "Update appointment details" : "Schedule a new visit"}
-            </SheetTitle>
-          </SheetHeader>
+            </div>
+          </div>
 
           <div className="flex-1 overflow-y-auto">
             {modalError ? (
@@ -2056,33 +2047,9 @@ export function BigSchedule() {
               </div>
             </div>
 
-            {editingId && editHistory.length > 0 ? (
-              <div className="px-5 pb-3">
-                <div className="grid gap-1.5">
-                  <div className="font-display text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                    Transition history
-                  </div>
-                  <div className="grid gap-1.5">
-                    {editHistory.map((event) => (
-                      <div
-                        key={event.id}
-                        className="grid gap-0.5 rounded-[10px] border border-border bg-muted/40 px-2.5 py-1.5"
-                      >
-                        <div className="text-[11px] font-semibold text-foreground">
-                          {formatTransitionHistoryStatus(event)}
-                        </div>
-                        <div className="text-[10px] text-muted-foreground">
-                          {formatTransitionHistoryMeta(event)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : null}
           </div>
 
-          <SheetFooter className="px-5 py-4 border-t border-border flex-row justify-end gap-2">
+          <div className="px-5 py-4 border-t border-border flex flex-row justify-end gap-2">
             <Button
               type="button"
               data-testid="appointment-cancel"
@@ -2099,11 +2066,34 @@ export function BigSchedule() {
             >
               {editingId ? "Save changes" : "Create appointment"}
             </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </div>
 
-      <div className={cn("schedule-shell", !isSidebarPinned && "is-hoverable")} data-testid="scheduler-root">
+            {editingId && editHistory.length > 0 ? (
+              <div className="px-5 pb-3 flex flex-col min-h-0">
+                <div className="font-display text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-1.5">
+                  Transition history
+                </div>
+                <div className="overflow-y-auto max-h-[220px] grid gap-1.5">
+                  {[...editHistory].reverse().map((event) => (
+                    <div
+                      key={event.id}
+                      className="grid gap-0.5 rounded-[10px] border border-border bg-muted/40 px-2.5 py-1.5"
+                    >
+                      <div className="text-[11px] font-semibold text-foreground">
+                        {formatTransitionHistoryStatus(event)}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {formatTransitionHistoryMeta(event)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+        </div>
+        )}
+
+        <div className={cn("schedule-shell flex-1 min-w-0", !isSidebarPinned && "is-hoverable")} data-testid="scheduler-root">
         <aside className="schedule-sidebar">
           <div className="schedule-sidebar-pin">
             <Tooltip>
@@ -2828,6 +2818,7 @@ export function BigSchedule() {
             </div>
           )}
         </div>
+      </div>
       </div>
     </section>
   );

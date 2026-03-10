@@ -454,8 +454,8 @@ export function PatientDevices({
   }, [loadWorkspace, returnReason]);
 
   return (
-    <section className="card p-4" data-testid="devices-panel">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+    <section className="card px-4 pt-0 pb-4" data-testid="devices-panel">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <div className="section-title">Hearing aids</div>
           <div className="text-sm text-ink-muted">Tracked orders, serial capture, warranty control, and delivery.</div>

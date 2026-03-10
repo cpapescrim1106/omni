@@ -1,10 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
-import { ChevronRightIcon } from "lucide-react";
+import { ChevronRightIcon, PackageIcon, TruckIcon, Undo2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 type DeviceRecord = {
   id: string;
@@ -20,10 +25,19 @@ type DeviceRecord = {
 };
 
 type InOrderDevice = {
+  orderId: string;
+  lineItemId: string;
   itemName: string;
   side: string | null;
   status: string;
   orderedAt: string;
+  serialNumber: string | null;
+  manufacturerWarrantyEnd: string | null;
+  lossDamageWarrantyEnd: string | null;
+  color: string | null;
+  battery: string | null;
+  notes: string | null;
+  requiresManufacturerOrder: boolean;
 };
 
 type PatientDeviceRegistryProps = {
@@ -42,10 +56,23 @@ type DeviceGroup = {
 
 type InOrderGroup = {
   key: string;
+  orderId: string;
   itemName: string;
   status: string;
   orderedAt: string;
   items: InOrderDevice[];
+};
+
+type ReceiveFormItem = {
+  lineItemId: string;
+  itemName: string;
+  side: string | null;
+  serial: string;
+  manufacturerWarrantyEnd: string;
+  lossDamageWarrantyEnd: string;
+  color: string;
+  battery: string;
+  notes: string;
 };
 
 const SUB_TABS = ["Hearing aids", "ALDs/Accessories"] as const;
@@ -54,6 +81,11 @@ type SubTab = (typeof SUB_TABS)[number];
 function fmtDate(value?: string | null) {
   if (!value) return "—";
   return dayjs(value).isValid() ? dayjs(value).format("MM/DD/YY") : "—";
+}
+
+function inputDate(value?: string | null) {
+  if (!value) return "";
+  return dayjs(value).isValid() ? dayjs(value).format("YYYY-MM-DD") : "";
 }
 
 function warrantyColor(value?: string | null) {
@@ -74,10 +106,21 @@ function resolveGroup(status: string): "current" | "inactive" | "backup" {
 
 export function PatientDeviceRegistry({ patientId, devices, inOrderItems }: PatientDeviceRegistryProps) {
   void patientId;
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<SubTab>("Hearing aids");
   const [localDevices, setLocalDevices] = useState(devices);
   const [expandedBackups, setExpandedBackups] = useState<Set<string>>(new Set());
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  // Dialog state
+  const [receiveOpen, setReceiveOpen] = useState(false);
+  const [deliverOpen, setDeliverOpen] = useState(false);
+  const [returnOpen, setReturnOpen] = useState(false);
+  const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
+  const [receiveFormItems, setReceiveFormItems] = useState<ReceiveFormItem[]>([]);
+  const [deliverFittingDate, setDeliverFittingDate] = useState("");
+  const [returnReason, setReturnReason] = useState("Returned to manufacturer");
+  const [submitting, setSubmitting] = useState(false);
 
   const filtered = useMemo(
     () => localDevices.filter((d) => (activeTab === "ALDs/Accessories" ? isAccessory(d) : !isAccessory(d))),
@@ -126,13 +169,14 @@ export function PatientDeviceRegistry({ patientId, devices, inOrderItems }: Pati
       for (const item of inOrderItems.filter((it) =>
         activeTab === "ALDs/Accessories" ? it.side === "Other" || it.side === null : it.side !== "Other"
       )) {
-        const key = `${item.itemName}|${item.status}|${item.orderedAt}`;
+        const key = `${item.orderId}|${item.itemName}|${item.status}|${item.orderedAt}`;
         const existing = map.get(key);
         if (existing) {
           existing.items.push(item);
         } else {
           map.set(key, {
             key,
+            orderId: item.orderId,
             itemName: item.itemName,
             status: item.status,
             orderedAt: item.orderedAt,
@@ -188,6 +232,107 @@ export function PatientDeviceRegistry({ patientId, devices, inOrderItems }: Pati
     return (ear || "—").toUpperCase();
   };
 
+  // --- Order action handlers ---
+
+  const openReceive = useCallback((group: InOrderGroup) => {
+    const orderedItems = group.items.filter((it) => it.status === "ordered");
+    if (!orderedItems.length) return;
+    setActiveOrderId(group.orderId);
+    setReceiveFormItems(
+      orderedItems.map((item) => ({
+        lineItemId: item.lineItemId,
+        itemName: item.itemName,
+        side: item.side,
+        serial: item.serialNumber ?? "",
+        manufacturerWarrantyEnd: inputDate(item.manufacturerWarrantyEnd),
+        lossDamageWarrantyEnd: inputDate(item.lossDamageWarrantyEnd),
+        color: item.color ?? "",
+        battery: item.battery ?? "",
+        notes: item.notes ?? "",
+      }))
+    );
+    setReceiveOpen(true);
+  }, []);
+
+  const openDeliver = useCallback((group: InOrderGroup) => {
+    setActiveOrderId(group.orderId);
+    setDeliverFittingDate("");
+    setDeliverOpen(true);
+  }, []);
+
+  const openReturn = useCallback((group: InOrderGroup) => {
+    setActiveOrderId(group.orderId);
+    setReturnReason("Returned to manufacturer");
+    setReturnOpen(true);
+  }, []);
+
+  const submitReceive = useCallback(async () => {
+    if (!activeOrderId) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/orders/${activeOrderId}/receive`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          items: receiveFormItems.map((item) => ({
+            orderItemId: item.lineItemId,
+            serialNumber: item.serial,
+            manufacturerWarrantyEnd: item.manufacturerWarrantyEnd,
+            lossDamageWarrantyEnd: item.lossDamageWarrantyEnd,
+            color: item.color,
+            battery: item.battery,
+            notes: item.notes,
+          })),
+        }),
+      });
+      if (!res.ok) return;
+      setReceiveOpen(false);
+      router.refresh();
+    } finally {
+      setSubmitting(false);
+    }
+  }, [activeOrderId, receiveFormItems, router]);
+
+  const submitDeliver = useCallback(async () => {
+    if (!activeOrderId) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/orders/${activeOrderId}/deliver`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ fittingDate: deliverFittingDate || null }),
+      });
+      if (!res.ok) return;
+      setDeliverOpen(false);
+      router.refresh();
+    } finally {
+      setSubmitting(false);
+    }
+  }, [activeOrderId, deliverFittingDate, router]);
+
+  const submitReturn = useCallback(async () => {
+    if (!activeOrderId) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/orders/${activeOrderId}/return`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ reason: returnReason }),
+      });
+      if (!res.ok) return;
+      setReturnOpen(false);
+      router.refresh();
+    } finally {
+      setSubmitting(false);
+    }
+  }, [activeOrderId, returnReason, router]);
+
+  const updateReceiveField = (index: number, field: keyof ReceiveFormItem, value: string) => {
+    setReceiveFormItems((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
+    );
+  };
+
   const statusSelect = (d: DeviceRecord) => (
     <Select
       value={d.status === "Active" ? "Current" : d.status}
@@ -208,6 +353,46 @@ export function PatientDeviceRegistry({ patientId, devices, inOrderItems }: Pati
       </SelectContent>
     </Select>
   );
+
+  const orderActionButtons = (group: InOrderGroup) => {
+    const hasOrdered = group.items.some((it) => it.status === "ordered");
+    const hasReceived = group.items.some((it) => it.status === "received");
+
+    return (
+      <div style={{ display: "flex", gap: 2, marginTop: 2 }}>
+        {hasOrdered && (
+          <Tooltip>
+            <TooltipTrigger
+              render={<button type="button" className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-[4px] bg-transparent p-0 text-ink-muted hover:bg-surface-2 hover:text-brand-blue" onClick={() => openReceive(group)} />}
+            >
+              <PackageIcon size={12} />
+            </TooltipTrigger>
+            <TooltipContent>Receive order</TooltipContent>
+          </Tooltip>
+        )}
+        {hasReceived && (
+          <Tooltip>
+            <TooltipTrigger
+              render={<button type="button" className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-[4px] bg-transparent p-0 text-ink-muted hover:bg-surface-2 hover:text-success" onClick={() => openDeliver(group)} />}
+            >
+              <TruckIcon size={12} />
+            </TooltipTrigger>
+            <TooltipContent>Deliver order</TooltipContent>
+          </Tooltip>
+        )}
+        {(hasReceived || hasOrdered) && (
+          <Tooltip>
+            <TooltipTrigger
+              render={<button type="button" className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-[4px] bg-transparent p-0 text-ink-muted hover:bg-surface-2 hover:text-danger" onClick={() => openReturn(group)} />}
+            >
+              <Undo2Icon size={12} />
+            </TooltipTrigger>
+            <TooltipContent>Return to manufacturer</TooltipContent>
+          </Tooltip>
+        )}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -252,6 +437,7 @@ export function PatientDeviceRegistry({ patientId, devices, inOrderItems }: Pati
                 <div className="device-row-main">
                   <span className="device-row-model">{group.itemName}</span>
                 </div>
+                {orderActionButtons(group)}
               </div>
               <div className="device-row">
                 <div className="device-row-main">
@@ -358,6 +544,132 @@ export function PatientDeviceRegistry({ patientId, devices, inOrderItems }: Pati
       {totalCount === 0 && filteredInOrder.length === 0 && (
         <div className="empty-text">No devices recorded.</div>
       )}
+
+      {/* Receive Dialog */}
+      <Dialog open={receiveOpen} onOpenChange={setReceiveOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Receive order</DialogTitle>
+          </DialogHeader>
+          <DialogBody className="space-y-4">
+            {receiveFormItems.map((item, index) => (
+              <div key={item.lineItemId} className="space-y-2 rounded-lg border border-surface-2 bg-surface-0 p-3">
+                <div className="text-[11px] font-semibold text-ink-strong">
+                  {item.itemName} · {formatEar(item.side)}
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <Label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
+                    Serial
+                    <Input
+                      className="mt-1 text-[13px]"
+                      value={item.serial}
+                      onChange={(e) => updateReceiveField(index, "serial", e.target.value)}
+                    />
+                  </Label>
+                  <Label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
+                    Mfr warranty end
+                    <Input
+                      type="date"
+                      className="mt-1 text-[13px]"
+                      value={item.manufacturerWarrantyEnd}
+                      onChange={(e) => updateReceiveField(index, "manufacturerWarrantyEnd", e.target.value)}
+                    />
+                  </Label>
+                  <Label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
+                    L&D warranty end
+                    <Input
+                      type="date"
+                      className="mt-1 text-[13px]"
+                      value={item.lossDamageWarrantyEnd}
+                      onChange={(e) => updateReceiveField(index, "lossDamageWarrantyEnd", e.target.value)}
+                    />
+                  </Label>
+                  <Label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
+                    Notes
+                    <Input
+                      className="mt-1 text-[13px]"
+                      value={item.notes}
+                      onChange={(e) => updateReceiveField(index, "notes", e.target.value)}
+                    />
+                  </Label>
+                </div>
+              </div>
+            ))}
+          </DialogBody>
+          <DialogFooter showCloseButton>
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              disabled={submitting}
+              onClick={() => void submitReceive()}
+            >
+              {submitting ? "Saving..." : "Save received items"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Deliver Dialog */}
+      <Dialog open={deliverOpen} onOpenChange={setDeliverOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Deliver order</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <Label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
+              Fitting date
+              <Input
+                type="date"
+                className="mt-1 text-[13px]"
+                value={deliverFittingDate}
+                onChange={(e) => setDeliverFittingDate(e.target.value)}
+              />
+            </Label>
+          </DialogBody>
+          <DialogFooter showCloseButton>
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              disabled={submitting}
+              onClick={() => void submitDeliver()}
+            >
+              {submitting ? "Saving..." : "Deliver"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Return Dialog */}
+      <Dialog open={returnOpen} onOpenChange={setReturnOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Return to manufacturer</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <Label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
+              Reason
+              <Input
+                className="mt-1 text-[13px]"
+                value={returnReason}
+                onChange={(e) => setReturnReason(e.target.value)}
+              />
+            </Label>
+          </DialogBody>
+          <DialogFooter showCloseButton>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              disabled={submitting}
+              onClick={() => void submitReturn()}
+            >
+              {submitting ? "Saving..." : "Create return"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -608,8 +608,8 @@ export function PatientSales({
   }, [loadSales, orderReturnReason]);
 
   return (
-    <section className="card p-4">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+    <section className="card px-4 pt-0 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <div className="section-title">Sales history</div>
           <div className="text-sm text-ink-muted">Financial ledger only. Click an invoice to review payments, fulfillment, and agreements.</div>

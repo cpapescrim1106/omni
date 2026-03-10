@@ -58,9 +58,10 @@ export async function POST(request: Request) {
       providerName: normalizedProviderName,
       startTime: { lt: end },
       endTime: { gt: start },
-      status: {
-        name: { notIn: ["Completed", "Cancelled", "Canceled"] },
-      },
+      OR: [
+        { patientId: null },
+        { status: { name: { notIn: ["Completed", "Cancelled", "Canceled"] } } },
+      ],
     },
   });
 
