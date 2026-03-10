@@ -338,7 +338,11 @@ export function BigSchedule() {
     types: true,
     calendar: true,
   });
-  const [isSidebarPinned, setIsSidebarPinned] = useState(true);
+  const [isSidebarPinned, setIsSidebarPinned] = useState(() => {
+    if (typeof window === "undefined") return true;
+    const stored = localStorage.getItem("schedule-sidebar-pinned");
+    return stored === null ? true : stored === "true";
+  });
   const [clinicPatients, setClinicPatients] = useState<{ id: string; name: string; arrivedAt: string | null }[]>([]);
   const [clinicNow, setClinicNow] = useState(() => Date.now());
   const [dockedAppointment, setDockedAppointment] = useState<{
@@ -960,7 +964,7 @@ export function BigSchedule() {
       const data = await res.json() as { appointments: Appointment[] };
       const TERMINAL = new Set(["completed", "cancelled", "canceled", "no-show", "no show", "rescheduled"]);
       const active = (data.appointments ?? []).filter(
-        (a) => !TERMINAL.has((a.statusName ?? "").toLowerCase())
+        (a) => !TERMINAL.has((a.status?.name ?? "").toLowerCase())
       );
 
       function isSlotFree(slotStart: dayjs.Dayjs, slotEnd: dayjs.Dayjs) {
@@ -1410,7 +1414,7 @@ export function BigSchedule() {
       const appointmentsList: Appointment[] = data.appointments || [];
       return appointmentsList.some((appt) => {
         if (ignoreId && appt.id === ignoreId) return false;
-        if (TERMINAL_STATUSES.has((appt.statusName ?? "").toLowerCase())) return false;
+        if (TERMINAL_STATUSES.has((appt.status?.name ?? "").toLowerCase())) return false;
         const start = parseAppointmentTime(appt.startTime);
         const end = parseAppointmentTime(appt.endTime);
         return start.isBefore(endTime) && end.isAfter(startTime);
@@ -2033,7 +2037,7 @@ export function BigSchedule() {
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    onClick={() => setIsSidebarPinned((c) => !c)}
+                    onClick={() => setIsSidebarPinned((c) => { const next = !c; localStorage.setItem("schedule-sidebar-pinned", String(next)); return next; })}
                     aria-label={isSidebarPinned ? "Unpin filters" : "Pin filters"}
                   />
                 }
@@ -2304,6 +2308,7 @@ export function BigSchedule() {
                     onOpenChange={(open) => setOpenMenuId(open ? event.id : null)}
                   >
                     <DropdownMenuTrigger
+                      nativeButton={false}
                       render={
                         <div
                           className={`schedule-day-event ${
@@ -2581,6 +2586,7 @@ export function BigSchedule() {
                     onOpenChange={(open) => setOpenMenuId(open ? event.id : null)}
                   >
                     <DropdownMenuTrigger
+                      nativeButton={false}
                       render={
                         <div
                           className={`schedule-week-event ${
@@ -2787,8 +2793,8 @@ function MiniCalendar({
         {monthStart.format("MMMM YYYY")}
       </div>
       <div className="schedule-mini-grid">
-        {["S", "M", "T", "W", "T", "F", "S"].map((label) => (
-          <div key={label} className="schedule-mini-label">
+        {["S", "M", "T", "W", "T", "F", "S"].map((label, i) => (
+          <div key={i} className="schedule-mini-label">
             {label}
           </div>
         ))}
