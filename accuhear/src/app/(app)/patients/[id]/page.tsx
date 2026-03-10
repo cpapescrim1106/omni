@@ -30,6 +30,18 @@ const tabs = [
   "Documents",
 ];
 
+const PLACEHOLDER_ADDRESS = "123 Example St, Washington, DC 20001";
+
+const APPOINTMENTS = [
+  { date: "05/19/2026 10:30 AM - 11:00 AM", type: "Clean and Check", provider: "SHD C + C" },
+  { date: "01/07/2026 01:15 PM - 02:00 PM", type: "Consult", provider: "Chris Pape" },
+];
+
+const LAST_AUDIOGRAM = [
+  { ear: "Right", severity: "Mild", type: "Sensorineural", shape: "Sloping" },
+  { ear: "Left", severity: "Moderately severe", type: "Sensorineural", shape: "Sloping" },
+];
+
 export default async function PatientProfilePage({
   params,
   searchParams,
