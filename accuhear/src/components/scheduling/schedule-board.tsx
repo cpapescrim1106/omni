@@ -10,10 +10,8 @@ import {
   CalendarIcon,
   Check,
   CircleCheckBig,
-  CircleHelp,
   CircleX,
   Clock,
-  FilterIcon,
   HouseIcon,
   ListChecksIcon,
   Lock,
@@ -85,14 +83,6 @@ dayjs.extend(utc);
 dayjs.extend(isoWeek);
 
 type ScheduleView = "day" | "week";
-type StatusFilter = "all" | "confirmed" | "pending" | "cancelled";
-
-const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "confirmed", label: "Confirmed" },
-  { value: "pending", label: "Pending" },
-  { value: "cancelled", label: "Cancelled" },
-];
 
 type InClinicScheduleAction =
   | "Arrived"
@@ -166,11 +156,15 @@ type AppointmentFormState = {
   notes: string;
 };
 
+function QuestionMark({ size, style }: { size?: number; style?: React.CSSProperties }) {
+  return <span style={{ fontSize: size ? size + 2 : 12, lineHeight: 1, fontWeight: 700, display: "inline-block", ...style }}>?</span>;
+}
+
 type StatusIconConfig = { Icon: React.ElementType; color: string };
 
 function getStatusIcon(statusName?: string): StatusIconConfig {
   const n = (statusName ?? "").toLowerCase();
-  if (n === "tentative")                                    return { Icon: CircleHelp,      color: "#9b8ec4" };
+  if (n === "tentative")                                    return { Icon: QuestionMark,    color: "#9b8ec4" };
   if (n === "confirmed")                                    return { Icon: Check,            color: "#2e9e6e" };
   if (n === "left message")                                 return { Icon: PhoneCall,        color: "#c27c1a" };
   if (n === "no answer")                                    return { Icon: PhoneMissed,      color: "#c94646" };
@@ -216,31 +210,6 @@ function normalizeDateParam(value: string | null) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   const parsed = dayjs(value);
   return parsed.isValid() ? parsed.format(DATE_FORMAT) : null;
-}
-
-function normalizeStatusParam(value: string | null): StatusFilter {
-  const normalized = (value || "").toLowerCase();
-  if (normalized === "canceled") return "cancelled";
-  if (normalized === "confirmed" || normalized === "pending" || normalized === "cancelled") {
-    return normalized as StatusFilter;
-  }
-  return "all";
-}
-
-function statusMatches(filter: StatusFilter, statusName?: string | null) {
-  if (filter === "all") return true;
-  const normalized = (statusName || "").toLowerCase();
-  if (!normalized) return false;
-  if (filter === "confirmed") return normalized.includes("confirm");
-  if (filter === "pending") {
-    return (
-      normalized.includes("pending") ||
-      normalized.includes("scheduled") ||
-      normalized.includes("tentative") ||
-      normalized.includes("ready")
-    );
-  }
-  return normalized.includes("cancel") || normalized.includes("no show") || normalized.includes("no-show");
 }
 
 function buildSlots(base: dayjs.Dayjs) {
@@ -323,9 +292,7 @@ export function BigSchedule() {
   const [viewType, setViewType] = useState<ScheduleView>("week");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
-  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-  const [colorByType, setColorByType] = useState(true);
-  const [selectedStatus, setSelectedStatus] = useState<StatusFilter>("all");
+  const colorByType = true;
   const [hasSynced, setHasSynced] = useState(false);
   const [hasExplicitDate, setHasExplicitDate] = useState(false);
   const [hasExplicitProviders, setHasExplicitProviders] = useState(false);
@@ -340,8 +307,6 @@ export function BigSchedule() {
     pendingAction: InClinicScheduleAction | null;
   } | null>(null);
   const [sidebarSections, setSidebarSections] = useState({
-    status: true,
-    types: true,
     calendar: true,
   });
   const [isSidebarPinned, setIsSidebarPinned] = useState(() => {
@@ -366,6 +331,7 @@ export function BigSchedule() {
   const scheduleBoardRef = useRef<HTMLDivElement | null>(null);
   const draggingRef = useRef(false);
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
+  const [isDragOverDock, setIsDragOverDock] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formState, setFormState] = useState<AppointmentFormState | null>(null);
@@ -405,12 +371,10 @@ export function BigSchedule() {
   useEffect(() => {
     if (hasSynced) return;
     const dateParam = normalizeDateParam(searchParams.get("date"));
-    const statusParam = normalizeStatusParam(searchParams.get("status"));
     const providerParams = searchParams.getAll("provider").map(normalizeProviderName);
     setHasExplicitDate(Boolean(dateParam));
     setHasExplicitProviders(providerParams.length > 0);
     if (dateParam) setViewDate(dateParam);
-    setSelectedStatus(statusParam);
     if (providerParams.length) setSelectedProviders(providerParams);
     setHasSynced(true);
   }, [hasSynced, searchParams]);
@@ -450,11 +414,6 @@ export function BigSchedule() {
       return filtered.length ? filtered : providers;
     });
   }, [hasExplicitProviders, providers]);
-
-  useEffect(() => {
-    if (!meta?.types?.length) return;
-    setSelectedTypes((current) => (current.length ? current : meta.types.map((type) => type.id)));
-  }, [meta]);
 
   const typeColors = useTypeColors(meta?.types ?? []);
   const statusByName = useMemo(() => {
@@ -577,12 +536,6 @@ export function BigSchedule() {
       params.delete("date");
     }
 
-    if (selectedStatus !== "all") {
-      params.set("status", selectedStatus);
-    } else {
-      params.delete("status");
-    }
-
     params.delete("provider");
     if (providers.length && selectedProviders.length && selectedProviders.length !== providers.length) {
       selectedProviders.forEach((provider) => params.append("provider", provider));
@@ -593,7 +546,7 @@ export function BigSchedule() {
     if (nextQuery !== currentQuery) {
       router.replace(nextQuery ? `/scheduling?${nextQuery}` : "/scheduling", { scroll: false });
     }
-  }, [hasSynced, providers, router, searchParams, selectedProviders, selectedStatus, viewDate]);
+  }, [hasSynced, providers, router, searchParams, selectedProviders, viewDate]);
 
   const buildDefaultForm = useCallback((): AppointmentFormState => {
     const baseDate = dayjs(viewDate).format("YYYY-MM-DD");
@@ -776,9 +729,7 @@ export function BigSchedule() {
           ? `${appointment.patient.lastName}, ${appointment.patient.firstName}`
           : "Reserved";
         const typeName = appointment.type?.name || "Appointment";
-        const color = colorByType
-          ? typeColors.get(appointment.type?.id || "") || fallbackColor
-          : fallbackColor;
+        const color = typeColors.get(appointment.type?.id || "") || fallbackColor;
         return {
           id: appointment.id,
           providerName: appointment.providerName,
@@ -794,10 +745,8 @@ export function BigSchedule() {
         } as ScheduleEvent;
       })
       .filter((event) => visibleProviders.includes(event.providerName))
-      .filter((event) => (selectedTypes.length ? selectedTypes.includes(event.typeId || "") : true))
-      .filter((event) => statusMatches(selectedStatus, event.statusName))
       .sort((a, b) => a.start.valueOf() - b.start.valueOf());
-  }, [appointments, colorByType, selectedStatus, selectedTypes, typeColors, visibleProviders]);
+  }, [appointments, typeColors, visibleProviders]);
 
   const eventMap = useMemo(() => {
     return new Map(events.map((event) => [event.id, event]));
@@ -822,7 +771,7 @@ export function BigSchedule() {
 
   useEffect(() => {
     setOpenMenuId(null);
-  }, [viewDate, viewType, selectedProviders, selectedTypes, selectedStatus]);
+  }, [viewDate, viewType, selectedProviders]);
 
   const showError = useCallback((message: string) => {
     setToastMessage(message);
@@ -1362,6 +1311,26 @@ export function BigSchedule() {
     dockAppointment(parsed.id);
   }
 
+  function handleGridDragOver(event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const el = (event.target as HTMLElement).closest<HTMLElement>("[data-time][data-provider][data-date]");
+    if (!el) return;
+    const date = el.dataset.date!;
+    const provider = el.dataset.provider!;
+    const rawTime = el.dataset.time!;
+    const [h, m] = rawTime.split(":").map(Number);
+    const slotMinutes = Math.floor(m / SLOT_MINUTES) * SLOT_MINUTES;
+    const time = `${String(h).padStart(2, "0")}:${String(slotMinutes).padStart(2, "0")}`;
+    const key = `cell-${date}-${provider}-${time}`;
+    setDragOverKey((prev) => (prev === key ? prev : key));
+  }
+
+  function handleGridDragLeave(event: React.DragEvent<HTMLDivElement>) {
+    if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+      setDragOverKey(null);
+    }
+  }
+
   async function handleDrop(
     event: React.DragEvent<HTMLDivElement>,
     payload: { date: string; time: string; provider: string }
@@ -1585,7 +1554,6 @@ export function BigSchedule() {
     window.addEventListener("pointerup", handlePointerUp);
   }
 
-  const sidebarTypes = meta?.types ?? [];
   const dayGridHeight = dayGrid ? DAY_HEADER_HEIGHT + dayGrid.slotCount * DAY_ROW_HEIGHT : 0;
   const weekGridHeight = weekGrid
     ? WEEK_HEADER_HEIGHT + WEEK_PROVIDER_HEIGHT + weekGrid.slots.slotCount * DAY_ROW_HEIGHT
@@ -1601,11 +1569,13 @@ export function BigSchedule() {
         <div
           className={cn(
             "flex items-center gap-3 min-h-[28px] px-3 py-0 rounded-xl border-2 border-dashed border-transparent transition-colors duration-150",
-            !dockedAppointment && "hover:border-surface-3 hover:bg-surface-1",
+            !dockedAppointment && !isDragOverDock && "hover:border-surface-3 hover:bg-surface-1",
+            !dockedAppointment && isDragOverDock && "border-brand-blue bg-brand-blue/[0.06]",
             dockedAppointment && "border-solid border-brand-orange bg-brand-orange/[0.06]"
           )}
-          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
-          onDrop={handleDockDrop}
+          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setIsDragOverDock(true); }}
+          onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragOverDock(false); }}
+          onDrop={(e) => { setIsDragOverDock(false); handleDockDrop(e); }}
         >
           {dockedAppointment ? (
             <div
@@ -1880,6 +1850,7 @@ export function BigSchedule() {
                   <input
                     type="time"
                     required
+                    step={900}
                     data-testid="appointment-start-time"
                     className="appointment-input"
                     value={formState?.startTime ?? ""}
@@ -1895,6 +1866,7 @@ export function BigSchedule() {
                   <input
                     type="time"
                     required
+                    step={900}
                     data-testid="appointment-end-time"
                     className="appointment-input"
                     value={formState?.endTime ?? ""}
@@ -2062,11 +2034,8 @@ export function BigSchedule() {
             <UsersIcon size={16} className="text-ink-muted" />
             <span className="sidebar-icon-badge-wrap">
               <UserCheck size={16} className="text-ink-muted" />
-              {clinicPatients.length > 0 && (
-                <span className="sidebar-icon-badge">{clinicPatients.length}</span>
-              )}
+              {clinicPatients.length > 0 ? <span className="sidebar-icon-badge">{clinicPatients.length}</span> : null}
             </span>
-            <FilterIcon size={16} className="text-ink-muted" />
             <ListChecksIcon size={16} className="text-ink-muted" />
             <CalendarIcon size={16} className="text-ink-muted" />
           </div>
@@ -2128,90 +2097,6 @@ export function BigSchedule() {
             )}
           </div>
 
-          <div className={cn("schedule-sidebar-card", !sidebarSections.status && "is-collapsed")}>
-            <Button
-              type="button"
-              variant="ghost"
-              className="schedule-sidebar-toggle"
-              onClick={() => toggleSidebarSection("status")}
-              aria-expanded={sidebarSections.status}
-            >
-              <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">Status</span>
-              <span className={cn("schedule-sidebar-caret", !sidebarSections.status && "is-collapsed")} aria-hidden>
-                ▾
-              </span>
-            </Button>
-            {sidebarSections.status ? (
-              <>
-                <Select
-                  value={selectedStatus}
-                  onValueChange={(value) => setSelectedStatus((value || "all") as StatusFilter)}
-                >
-                  <SelectTrigger className="mt-2 bg-white/80 text-xs" data-testid="status-filter">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STATUS_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <label className="mt-3 flex items-center gap-2 text-xs">
-                  <input
-                    type="checkbox"
-                    checked={colorByType}
-                    onChange={() => setColorByType((value) => !value)}
-                  />
-                  Color by appointment type
-                </label>
-              </>
-            ) : null}
-          </div>
-
-          <div className={cn("schedule-sidebar-card", !sidebarSections.types && "is-collapsed")}>
-            <Button
-              type="button"
-              variant="ghost"
-              className="schedule-sidebar-toggle"
-              onClick={() => toggleSidebarSection("types")}
-              aria-expanded={sidebarSections.types}
-            >
-              <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">
-                Appointment Types
-              </span>
-              <span className={cn("schedule-sidebar-caret", !sidebarSections.types && "is-collapsed")} aria-hidden>
-                ▾
-              </span>
-            </Button>
-            {sidebarSections.types ? (
-              <>
-                <div className="mt-2 space-y-2">
-                  {sidebarTypes.map((type) => (
-                    <label key={type.id} className="flex items-center gap-2 text-xs">
-                      <input
-                        type="checkbox"
-                        checked={selectedTypes.includes(type.id)}
-                        onChange={() => {
-                          setSelectedTypes((current) =>
-                            current.includes(type.id)
-                              ? current.filter((item) => item !== type.id)
-                              : [...current, type.id]
-                          );
-                        }}
-                      />
-                      <span>{type.name}</span>
-                    </label>
-                  ))}
-                </div>
-                <Button className="mt-3" variant="ghost" size="sm" onClick={() => setSelectedTypes(sidebarTypes.map((type) => type.id))} type="button">
-                  Show all
-                </Button>
-              </>
-            ) : null}
-          </div>
-
           <div className={cn("schedule-sidebar-card", !sidebarSections.calendar && "is-collapsed")}>
             <Button
               type="button"
@@ -2226,7 +2111,12 @@ export function BigSchedule() {
               </span>
             </Button>
             {sidebarSections.calendar ? (
-              <MiniCalendar viewDate={viewDate} onSelect={(date) => setViewDate(date)} className="mt-2" />
+              <MiniCalendar
+                viewDate={viewDate}
+                onSelect={(date) => setViewDate(date)}
+                onMonthChange={(month) => setViewDate(month)}
+                className="mt-2"
+              />
             ) : null}
           </div>
 
@@ -2235,7 +2125,7 @@ export function BigSchedule() {
         <div className="schedule-board" ref={scheduleBoardRef}>
           {viewType === "day" && dayGrid ? (
             <div className="schedule-day-scroll" style={{ height: `${dayGridHeight}px`, flex: "0 0 auto" }}>
-              <div className="schedule-day-grid" data-testid="schedule-day-grid" style={dayGridStyles}>
+              <div className="schedule-day-grid" data-testid="schedule-day-grid" style={dayGridStyles} onDragOver={handleGridDragOver} onDragLeave={handleGridDragLeave}>
                 <div className="schedule-day-corner">
                   <div className="schedule-day-corner-label">{dayjs(viewDate).format("ddd, MMM D")}</div>
                 </div>
@@ -2267,15 +2157,12 @@ export function BigSchedule() {
                     const isHour = slot.minute() === 0;
                     return (
                       <div
-                        key={`cell-${provider}-${slot.format("HH:mm")}`}
-                        className={cn(`schedule-day-cell${isHour ? " is-hour" : ""}`, dragOverKey === `cell-${provider}-${slot.format("HH:mm")}` && "bg-brand-blue/10 ring-1 ring-inset ring-brand-blue/40")}
+                        key={`cell-${dayjs(viewDate).format("YYYY-MM-DD")}-${provider}-${slot.format("HH:mm")}`}
+                        className={cn(`schedule-day-cell${isHour ? " is-hour" : ""}`, dragOverKey === `cell-${dayjs(viewDate).format("YYYY-MM-DD")}-${provider}-${slot.format("HH:mm")}` && "!bg-brand-blue/10")}
                         style={{ gridColumn: colIndex + 2, gridRow: rowIndex + 2 }}
                         data-provider={provider}
                         data-date={dayjs(viewDate).format("YYYY-MM-DD")}
                         data-time={slot.format("HH:mm")}
-                        onDragOver={(event) => event.preventDefault()}
-                        onDragEnter={() => setDragOverKey(`cell-${provider}-${slot.format("HH:mm")}`)}
-                        onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOverKey(null); }}
                         onDrop={(event) =>
                           handleDrop(event, {
                             date: dayjs(viewDate).format("YYYY-MM-DD"),
@@ -2335,6 +2222,7 @@ export function BigSchedule() {
                           data-appointment-id={event.id}
                           data-date={event.start.format("YYYY-MM-DD")}
                           data-time={event.start.format("HH:mm")}
+                          data-provider={event.providerName}
                           draggable
                           onDragStart={(dragEvent) => handleDragStart(dragEvent, event.id)}
                           onDragEnd={() => {
@@ -2348,7 +2236,6 @@ export function BigSchedule() {
                             setOpenMenuId(null);
                             openPatientFromAppointment(event.id);
                           }}
-                          onDragOver={(dragEvent) => dragEvent.preventDefault()}
                           onDrop={(dragEvent) =>
                             handleDrop(dragEvent, {
                               date: event.start.format("YYYY-MM-DD"),
@@ -2379,7 +2266,7 @@ export function BigSchedule() {
                               setStatusPicker({ id: event.id, x: rect.left, y: rect.bottom + 6 });
                             }}
                           >
-                            <Icon size={10} style={{ color }} strokeWidth={2.5} />
+                            <Icon size={12} style={{ color }} strokeWidth={2.5} />
                           </button>
                         ); })()}
                         <span className="schedule-event-label">{event.title}</span>
@@ -2494,7 +2381,7 @@ export function BigSchedule() {
             </div>
           ) : weekGrid ? (
             <div className="schedule-week-scroll" style={{ height: `${weekGridHeight}px`, flex: "0 0 auto" }}>
-              <div className="schedule-week-grid" data-testid="schedule-week-grid" style={weekGridStyles}>
+              <div className="schedule-week-grid" data-testid="schedule-week-grid" style={weekGridStyles} onDragOver={handleGridDragOver} onDragLeave={handleGridDragLeave}>
                 <div className="schedule-week-corner" style={{ gridColumn: 1, gridRow: "1 / 3" }} />
                 {weekGrid.weekDays.map((day, index) => (
                   <div
@@ -2546,7 +2433,7 @@ export function BigSchedule() {
                       return (
                         <div
                           key={`cell-${day.format("YYYY-MM-DD")}-${provider}-${slot.format("HH:mm")}`}
-                          className={cn(`schedule-week-cell${isHour ? " is-hour" : ""}`, dragOverKey === `cell-${day.format("YYYY-MM-DD")}-${provider}-${slot.format("HH:mm")}` && "bg-brand-blue/10 ring-1 ring-inset ring-brand-blue/40")}
+                          className={cn(`schedule-week-cell${isHour ? " is-hour" : ""}`, dragOverKey === `cell-${day.format("YYYY-MM-DD")}-${provider}-${slot.format("HH:mm")}` && "!bg-brand-blue/10")}
                           style={{
                             gridColumn: 2 + dayIndex * visibleProviders.length + providerIndex,
                             gridRow: slotIndex + 3,
@@ -2554,9 +2441,6 @@ export function BigSchedule() {
                           data-provider={provider}
                           data-date={day.format("YYYY-MM-DD")}
                           data-time={slot.format("HH:mm")}
-                          onDragOver={(event) => event.preventDefault()}
-                          onDragEnter={() => setDragOverKey(`cell-${day.format("YYYY-MM-DD")}-${provider}-${slot.format("HH:mm")}`)}
-                          onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOverKey(null); }}
                           onDrop={(event) =>
                             handleDrop(event, {
                               date: day.format("YYYY-MM-DD"),
@@ -2617,6 +2501,7 @@ export function BigSchedule() {
                           data-appointment-id={event.id}
                           data-date={event.start.format("YYYY-MM-DD")}
                           data-time={event.start.format("HH:mm")}
+                          data-provider={event.providerName}
                           draggable
                           onDragStart={(dragEvent) => handleDragStart(dragEvent, event.id)}
                           onDragEnd={() => {
@@ -2630,7 +2515,6 @@ export function BigSchedule() {
                             setOpenMenuId(null);
                             openPatientFromAppointment(event.id);
                           }}
-                          onDragOver={(dragEvent) => dragEvent.preventDefault()}
                           onDrop={(dragEvent) =>
                             handleDrop(dragEvent, {
                               date: event.start.format("YYYY-MM-DD"),
@@ -2661,7 +2545,7 @@ export function BigSchedule() {
                               setStatusPicker({ id: event.id, x: rect.left, y: rect.bottom + 6 });
                             }}
                           >
-                            <Icon size={10} style={{ color }} strokeWidth={2.5} />
+                            <Icon size={12} style={{ color }} strokeWidth={2.5} />
                           </button>
                         ); })()}
                         <span className="schedule-event-label">{event.title}</span>
@@ -2788,10 +2672,12 @@ export function BigSchedule() {
 function MiniCalendar({
   viewDate,
   onSelect,
+  onMonthChange,
   className,
 }: {
   viewDate: string;
   onSelect: (date: string) => void;
+  onMonthChange?: (monthStartDate: string) => void;
   className?: string;
 }) {
   const active = dayjs(viewDate);
@@ -2806,10 +2692,26 @@ function MiniCalendar({
     cursor = cursor.add(1, "day");
   }
 
+  const goToPreviousMonth = () => {
+    const prevMonth = monthStart.subtract(1, "month").startOf("month");
+    (onMonthChange ?? onSelect)(prevMonth.format(DATE_FORMAT));
+  };
+
+  const goToNextMonth = () => {
+    const nextMonth = monthStart.add(1, "month").startOf("month");
+    (onMonthChange ?? onSelect)(nextMonth.format(DATE_FORMAT));
+  };
+
   return (
     <div className={cn("schedule-mini-calendar", className)}>
       <div className="schedule-mini-header">
-        {monthStart.format("MMMM YYYY")}
+        <button type="button" className="schedule-mini-nav-button" onClick={goToPreviousMonth} aria-label="Previous month">
+          ‹
+        </button>
+        <span>{monthStart.format("MMMM YYYY")}</span>
+        <button type="button" className="schedule-mini-nav-button" onClick={goToNextMonth} aria-label="Next month">
+          ›
+        </button>
       </div>
       <div className="schedule-mini-grid">
         {["S", "M", "T", "W", "T", "F", "S"].map((label, i) => (

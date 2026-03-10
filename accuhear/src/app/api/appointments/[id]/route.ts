@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { emitEvent } from "@/lib/event-bus";
-import {
-  AppointmentTransitionError,
-  toInClinicTransitionAction,
-  transitionAppointmentStatus,
-} from "@/lib/appointments/status-transition";
 import { normalizeProviderName } from "@/lib/provider-names";
 
 type AppointmentPatchBody = {
@@ -17,29 +12,7 @@ type AppointmentPatchBody = {
   statusId?: string;
   notes?: string | null;
   location?: string;
-  actorId?: string;
 };
-
-function isTerminalStatus(statusName: string) {
-  const normalized = statusName.trim().toLowerCase();
-  return normalized === "completed" || normalized === "cancelled" || normalized === "canceled";
-}
-
-function resolveActorId(request: NextRequest, body: AppointmentPatchBody) {
-  const candidates = [
-    body.actorId,
-    request.headers.get("x-actor-id") ?? undefined,
-    request.headers.get("x-user-id") ?? undefined,
-  ];
-
-  for (const candidate of candidates) {
-    if (typeof candidate === "string" && candidate.trim()) {
-      return candidate.trim();
-    }
-  }
-
-  return "System";
-}
 
 export async function PATCH(
   request: NextRequest,
@@ -92,45 +65,6 @@ export async function PATCH(
     }
   }
 
-  const actorId = resolveActorId(request, body);
-  let statusHandledByTransitionEngine = false;
-
-  if (statusId && statusId !== current.statusId) {
-    if (isTerminalStatus(current.status.name)) {
-      return NextResponse.json(
-        { error: `Appointment is already ${current.status.name} and cannot transition further.` },
-        { status: 409 }
-      );
-    }
-
-    const targetStatus = await prisma.appointmentStatus.findUnique({
-      where: { id: statusId },
-      select: { id: true, name: true },
-    });
-
-    if (!targetStatus) {
-      return NextResponse.json({ error: "Unknown appointment status" }, { status: 400 });
-    }
-
-    const transitionAction = toInClinicTransitionAction(targetStatus.name);
-
-    if (transitionAction) {
-      try {
-        await transitionAppointmentStatus({
-          appointmentId: id,
-          action: transitionAction,
-          actorId,
-        });
-      } catch (error) {
-        if (error instanceof AppointmentTransitionError) {
-          return NextResponse.json({ error: error.message, code: error.code }, { status: error.statusCode });
-        }
-        throw error;
-      }
-      statusHandledByTransitionEngine = true;
-    }
-  }
-
   const appointment = await prisma.appointment.update({
     where: { id },
     data: {
@@ -139,7 +73,7 @@ export async function PATCH(
       endTime: end,
       patientId: patientId === "" ? null : patientId ?? undefined,
       typeId: typeId ?? undefined,
-      statusId: statusHandledByTransitionEngine ? undefined : statusId ?? undefined,
+      statusId: statusId ?? undefined,
       location: location ?? undefined,
       notes: notes ?? undefined,
     },
