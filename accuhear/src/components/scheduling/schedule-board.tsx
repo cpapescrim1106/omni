@@ -45,13 +45,19 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+} from "@/components/ui/sheet";
 
 const DATE_FORMAT = "YYYY-MM-DD";
 
@@ -359,6 +365,7 @@ export function BigSchedule() {
   const isResizingRef = useRef(false);
   const scheduleBoardRef = useRef<HTMLDivElement | null>(null);
   const draggingRef = useRef(false);
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formState, setFormState] = useState<AppointmentFormState | null>(null);
@@ -495,6 +502,13 @@ export function BigSchedule() {
     if (!meta?.types?.length) return "";
     return meta.types[0].id;
   }, [meta]);
+
+  const isEditingTerminalAppt = useMemo(() => {
+    if (!editingId) return false;
+    const appt = appointments.find((a) => a.id === editingId);
+    const n = (appt?.status?.name ?? "").toLowerCase();
+    return n === "completed" || n === "cancelled" || n === "canceled";
+  }, [editingId, appointments]);
 
   useEffect(() => {
     if (!formState) return;
@@ -1017,6 +1031,7 @@ export function BigSchedule() {
         statusId: defaultStatusId,
         notes: "",
       });
+      setViewDate(foundSlot.format("YYYY-MM-DD"));
       setPatientQuery(patientName);
       setPatientResults([]);
       setModalError(null);
@@ -1024,7 +1039,7 @@ export function BigSchedule() {
       setIsModalOpen(true);
       setOpenMenuId(null);
     },
-    [appointmentMap, meta, defaultTypeId, defaultStatusId, loadAppointments, showError]
+    [appointmentMap, meta, defaultTypeId, defaultStatusId, loadAppointments, showError, setViewDate]
   );
 
   const runScheduleContextAction = useCallback(
@@ -1352,6 +1367,7 @@ export function BigSchedule() {
     payload: { date: string; time: string; provider: string }
   ) {
     event.preventDefault();
+    setDragOverKey(null);
     const raw = event.dataTransfer.getData("application/json");
     if (!raw) return;
     const parsed = JSON.parse(raw) as { id: string; fromDock?: boolean };
@@ -1580,11 +1596,11 @@ export function BigSchedule() {
   }
 
   return (
-    <section className="card schedule-card p-4">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-4">
+    <section className="card schedule-card px-4 pt-0 pb-4">
+      <div className="mb-0 flex flex-wrap items-center justify-between gap-2">
         <div
           className={cn(
-            "flex items-center gap-3 min-h-[40px] px-3 py-1.5 rounded-xl border-2 border-dashed border-transparent transition-colors duration-150",
+            "flex items-center gap-3 min-h-[28px] px-3 py-0 rounded-xl border-2 border-dashed border-transparent transition-colors duration-150",
             !dockedAppointment && "hover:border-surface-3 hover:bg-surface-1",
             dockedAppointment && "border-solid border-brand-orange bg-brand-orange/[0.06]"
           )}
@@ -1734,29 +1750,24 @@ export function BigSchedule() {
         </div>
       ) : null}
 
-      {isModalOpen && formState ? (
-        <div className="appointment-modal-overlay" data-testid="appointment-modal" role="dialog" aria-modal="true">
-          <div className="appointment-modal-card">
-            <div className="appointment-modal-header">
-              <div>
-                <div className="text-xs uppercase tracking-[0.2em] text-ink-soft">
-                  {editingId ? "Edit appointment" : "New appointment"}
-                </div>
-                <div className="text-lg font-semibold text-ink-strong">
-                  {editingId ? "Update appointment details" : "Schedule a new visit"}
-                </div>
-              </div>
-              <Button
-                type="button"
-                data-testid="appointment-cancel"
-                variant="outline"
-                size="sm"
-                onClick={closeModal}
-              >
-                Cancel
-              </Button>
+      <Sheet open={isModalOpen} modal={false} onOpenChange={(open) => { if (!open) closeModal(); }}>
+        <SheetContent
+          side="right"
+          data-testid="appointment-modal"
+          className="w-[420px] sm:max-w-[420px] flex flex-col gap-0 p-0 overflow-hidden"
+          showCloseButton={false}
+          showOverlay={false}
+        >
+          <SheetHeader className="px-5 pt-5 pb-4 border-b border-border">
+            <div className="text-xs uppercase tracking-[0.2em] text-ink-soft">
+              {editingId ? "Edit appointment" : "New appointment"}
             </div>
+            <SheetTitle className="text-lg font-semibold text-ink-strong">
+              {editingId ? "Update appointment details" : "Schedule a new visit"}
+            </SheetTitle>
+          </SheetHeader>
 
+          <div className="flex-1 overflow-y-auto">
             {modalError ? (
               <div className="appointment-modal-error" data-testid="appointment-modal-error">
                 {modalError}
@@ -1772,7 +1783,7 @@ export function BigSchedule() {
                       <input
                         type="checkbox"
                         data-testid="appointment-na-block"
-                        checked={formState.isNaBlock}
+                        checked={formState?.isNaBlock ?? false}
                         onChange={(event) => {
                           const checked = event.target.checked;
                           setFormState((current) =>
@@ -1814,17 +1825,17 @@ export function BigSchedule() {
                 <Input
                   data-testid="appointment-patient-search"
                   value={patientQuery}
-                  required={!formState.isNaBlock}
-                  disabled={formState.isNaBlock}
+                  required={!formState?.isNaBlock}
+                  disabled={formState?.isNaBlock}
                   placeholder="Name, phone, DOB (MM/DD/YYYY), serial #"
                   onChange={(event) => handlePatientQueryChange(event.target.value)}
                   className="appointment-input"
                 />
-                {formState.isNaBlock ? (
+                {formState?.isNaBlock ? (
                   <div className="appointment-hint">This slot will be saved without a patient attached.</div>
                 ) : null}
-                {patientLoading && !formState.isNaBlock ? <div className="appointment-hint">Searching…</div> : null}
-                {patientResults.length && !formState.isNaBlock ? (
+                {patientLoading && !formState?.isNaBlock ? <div className="appointment-hint">Searching…</div> : null}
+                {patientResults.length && !formState?.isNaBlock ? (
                   <div className="appointment-patient-results">
                     {patientResults.map((patient) => (
                       <Button
@@ -1841,7 +1852,7 @@ export function BigSchedule() {
                     ))}
                   </div>
                 ) : null}
-                {formState.patientId ? (
+                {formState?.patientId ? (
                   <div className="appointment-selected" data-testid="appointment-patient-selected">
                     Selected: {formState.patientName}
                   </div>
@@ -1856,7 +1867,7 @@ export function BigSchedule() {
                     required
                     data-testid="appointment-date"
                     className="appointment-input"
-                    value={formState.date}
+                    value={formState?.date ?? ""}
                     onChange={(event) =>
                       setFormState((current) =>
                         current ? { ...current, date: event.target.value } : current
@@ -1871,7 +1882,7 @@ export function BigSchedule() {
                     required
                     data-testid="appointment-start-time"
                     className="appointment-input"
-                    value={formState.startTime}
+                    value={formState?.startTime ?? ""}
                     onChange={(event) =>
                       setFormState((current) =>
                         current ? { ...current, startTime: event.target.value } : current
@@ -1886,7 +1897,7 @@ export function BigSchedule() {
                     required
                     data-testid="appointment-end-time"
                     className="appointment-input"
-                    value={formState.endTime}
+                    value={formState?.endTime ?? ""}
                     onChange={(event) =>
                       setFormState((current) =>
                         current ? { ...current, endTime: event.target.value } : current
@@ -1896,7 +1907,7 @@ export function BigSchedule() {
                 </div>
                 <div className="appointment-field">
                   <Label className="appointment-label">Provider</Label>
-                  <Select required value={formState.providerName}
+                  <Select required value={formState?.providerName ?? ""}
                     onValueChange={(value) =>
                       setFormState((current) =>
                         current ? { ...current, providerName: value || "" } : current
@@ -1917,7 +1928,7 @@ export function BigSchedule() {
                 </div>
                 <div className="appointment-field">
                   <Label className="appointment-label">Appointment Type</Label>
-                  <Select required value={formState.typeId}
+                  <Select required value={formState?.typeId ?? ""}
                     onValueChange={(value) =>
                       setFormState((current) =>
                         current ? { ...current, typeId: value || "" } : current
@@ -1926,7 +1937,7 @@ export function BigSchedule() {
                   >
                     <SelectTrigger className="appointment-input" data-testid="appointment-type">
                       <SelectValue placeholder="Select type">
-                        {meta?.types?.find((t) => t.id === formState.typeId)?.name}
+                        {meta?.types?.find((t) => t.id === formState?.typeId)?.name}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
@@ -1940,7 +1951,8 @@ export function BigSchedule() {
                 </div>
                 <div className="appointment-field">
                   <Label className="appointment-label">Status</Label>
-                  <Select required value={formState.statusId}
+                  <Select required value={formState?.statusId ?? ""}
+                    disabled={isEditingTerminalAppt}
                     onValueChange={(value) =>
                       setFormState((current) =>
                         current ? { ...current, statusId: value || "" } : current
@@ -1949,7 +1961,7 @@ export function BigSchedule() {
                   >
                     <SelectTrigger className="appointment-input" data-testid="appointment-status">
                       <SelectValue placeholder="Select status">
-                        {meta?.statuses?.find((s) => s.id === formState.statusId)?.name}
+                        {meta?.statuses?.find((s) => s.id === formState?.statusId)?.name}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
@@ -1968,7 +1980,7 @@ export function BigSchedule() {
                 <textarea
                   data-testid="appointment-notes"
                   className="appointment-textarea"
-                  value={formState.notes}
+                  value={formState?.notes ?? ""}
                   onChange={(event) =>
                     setFormState((current) =>
                       current ? { ...current, notes: event.target.value } : current
@@ -2003,29 +2015,28 @@ export function BigSchedule() {
                 </div>
               </div>
             ) : null}
-
-            <div className="appointment-modal-actions">
-              <Button
-                type="button"
-                data-testid="appointment-cancel"
-                variant="outline"
-                size="sm"
-                onClick={closeModal}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                data-testid="appointment-submit"
-                className="appointment-submit-button"
-                onClick={handleModalSubmit}
-              >
-                {editingId ? "Save changes" : "Create appointment"}
-              </Button>
-            </div>
           </div>
-        </div>
-      ) : null}
+
+          <SheetFooter className="px-5 py-4 border-t border-border flex-row justify-end gap-2">
+            <Button
+              type="button"
+              data-testid="appointment-cancel"
+              variant="outline"
+              size="sm"
+              onClick={closeModal}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              data-testid="appointment-submit"
+              onClick={handleModalSubmit}
+            >
+              {editingId ? "Save changes" : "Create appointment"}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       <div className={cn("schedule-shell", !isSidebarPinned && "is-hoverable")} data-testid="scheduler-root">
         <aside className="schedule-sidebar">
@@ -2257,12 +2268,14 @@ export function BigSchedule() {
                     return (
                       <div
                         key={`cell-${provider}-${slot.format("HH:mm")}`}
-                        className={`schedule-day-cell${isHour ? " is-hour" : ""}`}
+                        className={cn(`schedule-day-cell${isHour ? " is-hour" : ""}`, dragOverKey === `cell-${provider}-${slot.format("HH:mm")}` && "bg-brand-blue/10 ring-1 ring-inset ring-brand-blue/40")}
                         style={{ gridColumn: colIndex + 2, gridRow: rowIndex + 2 }}
                         data-provider={provider}
                         data-date={dayjs(viewDate).format("YYYY-MM-DD")}
                         data-time={slot.format("HH:mm")}
                         onDragOver={(event) => event.preventDefault()}
+                        onDragEnter={() => setDragOverKey(`cell-${provider}-${slot.format("HH:mm")}`)}
+                        onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOverKey(null); }}
                         onDrop={(event) =>
                           handleDrop(event, {
                             date: dayjs(viewDate).format("YYYY-MM-DD"),
@@ -2305,7 +2318,7 @@ export function BigSchedule() {
                   <DropdownMenu
                     key={`event-${event.id}`}
                     open={openMenuId === event.id}
-                    onOpenChange={(open) => setOpenMenuId(open ? event.id : null)}
+                    onOpenChange={(open) => { if (statusPicker) return; setOpenMenuId(open ? event.id : null); }}
                   >
                     <DropdownMenuTrigger
                       nativeButton={false}
@@ -2360,6 +2373,8 @@ export function BigSchedule() {
                             title={event.statusName ?? "Status"}
                             onClick={(e) => {
                               e.stopPropagation();
+                              e.preventDefault();
+                              setOpenMenuId(null);
                               const rect = e.currentTarget.getBoundingClientRect();
                               setStatusPicker({ id: event.id, x: rect.left, y: rect.bottom + 6 });
                             }}
@@ -2387,7 +2402,7 @@ export function BigSchedule() {
                     </DropdownMenuTrigger>
 
                     <DropdownMenuContent side="right" sideOffset={8} className="w-56">
-                      <DropdownMenuLabel className="font-semibold text-[13px]">{event.title}</DropdownMenuLabel>
+                      <div className="px-2 pt-1 text-[13px] font-semibold text-ink-strong">{event.title}</div>
                       <div className="px-1.5 pb-1 text-[11px] text-muted-foreground">{event.timeLabel}</div>
                       <DropdownMenuSeparator />
 
@@ -2531,7 +2546,7 @@ export function BigSchedule() {
                       return (
                         <div
                           key={`cell-${day.format("YYYY-MM-DD")}-${provider}-${slot.format("HH:mm")}`}
-                          className={`schedule-week-cell${isHour ? " is-hour" : ""}`}
+                          className={cn(`schedule-week-cell${isHour ? " is-hour" : ""}`, dragOverKey === `cell-${day.format("YYYY-MM-DD")}-${provider}-${slot.format("HH:mm")}` && "bg-brand-blue/10 ring-1 ring-inset ring-brand-blue/40")}
                           style={{
                             gridColumn: 2 + dayIndex * visibleProviders.length + providerIndex,
                             gridRow: slotIndex + 3,
@@ -2540,6 +2555,8 @@ export function BigSchedule() {
                           data-date={day.format("YYYY-MM-DD")}
                           data-time={slot.format("HH:mm")}
                           onDragOver={(event) => event.preventDefault()}
+                          onDragEnter={() => setDragOverKey(`cell-${day.format("YYYY-MM-DD")}-${provider}-${slot.format("HH:mm")}`)}
+                          onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOverKey(null); }}
                           onDrop={(event) =>
                             handleDrop(event, {
                               date: day.format("YYYY-MM-DD"),
@@ -2583,7 +2600,7 @@ export function BigSchedule() {
                   <DropdownMenu
                     key={`event-${event.id}`}
                     open={openMenuId === event.id}
-                    onOpenChange={(open) => setOpenMenuId(open ? event.id : null)}
+                    onOpenChange={(open) => { if (statusPicker) return; setOpenMenuId(open ? event.id : null); }}
                   >
                     <DropdownMenuTrigger
                       nativeButton={false}
@@ -2638,6 +2655,8 @@ export function BigSchedule() {
                             title={event.statusName ?? "Status"}
                             onClick={(e) => {
                               e.stopPropagation();
+                              e.preventDefault();
+                              setOpenMenuId(null);
                               const rect = e.currentTarget.getBoundingClientRect();
                               setStatusPicker({ id: event.id, x: rect.left, y: rect.bottom + 6 });
                             }}
@@ -2665,7 +2684,7 @@ export function BigSchedule() {
                     </DropdownMenuTrigger>
 
                     <DropdownMenuContent side="right" sideOffset={8} className="w-56">
-                      <DropdownMenuLabel className="font-semibold text-[13px]">{event.title}</DropdownMenuLabel>
+                      <div className="px-2 pt-1 text-[13px] font-semibold text-ink-strong">{event.title}</div>
                       <div className="px-1.5 pb-1 text-[11px] text-muted-foreground">{event.timeLabel}</div>
                       <DropdownMenuSeparator />
 
