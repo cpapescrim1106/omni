@@ -1890,6 +1890,12 @@ export function BigSchedule() {
           </div>
           <div className="schedule-sidebar-icons">
             <UsersIcon size={16} className="text-ink-muted" />
+            <span className="sidebar-icon-badge-wrap">
+              <UserCheck size={16} className="text-ink-muted" />
+              {clinicPatients.length > 0 && (
+                <span className="sidebar-icon-badge">{clinicPatients.length}</span>
+              )}
+            </span>
             <FilterIcon size={16} className="text-ink-muted" />
             <ListChecksIcon size={16} className="text-ink-muted" />
             <CalendarIcon size={16} className="text-ink-muted" />
