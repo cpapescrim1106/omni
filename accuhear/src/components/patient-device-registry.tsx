@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
-import { ChevronRightIcon, PackageIcon, TruckIcon, Undo2Icon } from "lucide-react";
+import { ChevronRightIcon, PackageIcon, TruckIcon, XCircleIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -115,11 +115,11 @@ export function PatientDeviceRegistry({ patientId, devices, inOrderItems }: Pati
   // Dialog state
   const [receiveOpen, setReceiveOpen] = useState(false);
   const [deliverOpen, setDeliverOpen] = useState(false);
-  const [returnOpen, setReturnOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [receiveFormItems, setReceiveFormItems] = useState<ReceiveFormItem[]>([]);
   const [deliverFittingDate, setDeliverFittingDate] = useState("");
-  const [returnReason, setReturnReason] = useState("Returned to manufacturer");
+  const [cancelReason, setCancelReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const filtered = useMemo(
@@ -260,10 +260,10 @@ export function PatientDeviceRegistry({ patientId, devices, inOrderItems }: Pati
     setDeliverOpen(true);
   }, []);
 
-  const openReturn = useCallback((group: InOrderGroup) => {
+  const openCancel = useCallback((group: InOrderGroup) => {
     setActiveOrderId(group.orderId);
-    setReturnReason("Returned to manufacturer");
-    setReturnOpen(true);
+    setCancelReason("");
+    setCancelOpen(true);
   }, []);
 
   const submitReceive = useCallback(async () => {
@@ -310,22 +310,22 @@ export function PatientDeviceRegistry({ patientId, devices, inOrderItems }: Pati
     }
   }, [activeOrderId, deliverFittingDate, router]);
 
-  const submitReturn = useCallback(async () => {
+  const submitCancel = useCallback(async () => {
     if (!activeOrderId) return;
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/orders/${activeOrderId}/return`, {
+      const res = await fetch(`/api/orders/${activeOrderId}/cancel`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ reason: returnReason }),
+        body: JSON.stringify({ reason: cancelReason || null }),
       });
       if (!res.ok) return;
-      setReturnOpen(false);
+      setCancelOpen(false);
       router.refresh();
     } finally {
       setSubmitting(false);
     }
-  }, [activeOrderId, returnReason, router]);
+  }, [activeOrderId, cancelReason, router]);
 
   const updateReceiveField = (index: number, field: keyof ReceiveFormItem, value: string) => {
     setReceiveFormItems((prev) =>
@@ -383,11 +383,11 @@ export function PatientDeviceRegistry({ patientId, devices, inOrderItems }: Pati
         {(hasReceived || hasOrdered) && (
           <Tooltip>
             <TooltipTrigger
-              render={<button type="button" className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-[4px] bg-transparent p-0 text-ink-muted hover:bg-surface-2 hover:text-danger" onClick={() => openReturn(group)} />}
+              render={<button type="button" className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-[4px] bg-transparent p-0 text-ink-muted hover:bg-surface-2 hover:text-danger" onClick={() => openCancel(group)} />}
             >
-              <Undo2Icon size={12} />
+              <XCircleIcon size={12} />
             </TooltipTrigger>
-            <TooltipContent>Return to manufacturer</TooltipContent>
+            <TooltipContent>Cancel order</TooltipContent>
           </Tooltip>
         )}
       </div>
@@ -641,19 +641,20 @@ export function PatientDeviceRegistry({ patientId, devices, inOrderItems }: Pati
         </DialogContent>
       </Dialog>
 
-      {/* Return Dialog */}
-      <Dialog open={returnOpen} onOpenChange={setReturnOpen}>
+      {/* Cancel Order Dialog */}
+      <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Return to manufacturer</DialogTitle>
+            <DialogTitle>Cancel order</DialogTitle>
           </DialogHeader>
           <DialogBody>
             <Label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
-              Reason
+              Reason (optional)
               <Input
                 className="mt-1 text-[13px]"
-                value={returnReason}
-                onChange={(e) => setReturnReason(e.target.value)}
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Why is this order being cancelled?"
               />
             </Label>
           </DialogBody>
@@ -663,9 +664,9 @@ export function PatientDeviceRegistry({ patientId, devices, inOrderItems }: Pati
               variant="destructive"
               size="sm"
               disabled={submitting}
-              onClick={() => void submitReturn()}
+              onClick={() => void submitCancel()}
             >
-              {submitting ? "Saving..." : "Create return"}
+              {submitting ? "Cancelling..." : "Cancel order"}
             </Button>
           </DialogFooter>
         </DialogContent>
