@@ -184,9 +184,9 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
       </Button>
 
       <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) closeDialog(); }}>
-        <DialogContent className="max-w-xl p-0" showCloseButton={false} style={{ maxHeight: "90dvh" }}>
+        <DialogContent className="w-[460px] p-0 overflow-hidden" showCloseButton={false} style={{ maxHeight: "90dvh" }}>
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-surface-2 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-surface-2 px-4 py-3">
           <div className="text-sm font-semibold text-ink-strong">
             {step === "choose" && "New purchase"}
             {step === "devices" && "Tracked order — Devices"}
@@ -212,7 +212,7 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4">
 
           {/* Step: choose type */}
           {step === "choose" && (
@@ -222,14 +222,14 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
                 variant="secondary"
                 size="default"
                 onClick={() => void selectDevices()}
-                className="flex h-auto items-start gap-4 rounded-2xl border border-surface-2 bg-white p-4 text-left"
+                className="flex h-auto items-center justify-start gap-3 rounded-2xl border border-surface-2 bg-white p-3 text-left whitespace-normal"
               >
-                <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-brand-ink/10 text-brand-ink">
-                  <PackageIcon size={16} />
+                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-brand-ink/10 text-brand-ink">
+                  <PackageIcon size={14} />
                 </div>
-                <div>
-                  <div className="text-sm font-semibold text-ink-strong">Devices</div>
-                  <div className="mt-0.5 text-xs text-ink-muted">Tracked order — hearing aids, earmolds, serialized accessories. Invoice created immediately. Serial &amp; warranty captured at delivery.</div>
+                <div className="min-w-0">
+                  <div className="text-[13px] font-semibold text-ink-strong">Devices</div>
+                  <div className="mt-0.5 text-[11px] leading-snug text-ink-muted">Tracked order — hearing aids, earmolds, serialized accessories.</div>
                 </div>
               </Button>
 
@@ -238,14 +238,14 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
                 variant="secondary"
                 size="default"
                 onClick={selectDirectSale}
-                className="flex h-auto items-start gap-4 rounded-2xl border border-surface-2 bg-white p-4 text-left"
+                className="flex h-auto items-center justify-start gap-3 rounded-2xl border border-surface-2 bg-white p-3 text-left whitespace-normal"
               >
-                <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-brand-ink/10 text-brand-ink">
-                  <ShoppingCartIcon size={16} />
+                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-brand-ink/10 text-brand-ink">
+                  <ShoppingCartIcon size={14} />
                 </div>
-                <div>
-                  <div className="text-sm font-semibold text-ink-strong">Supplies / Service</div>
-                  <div className="mt-0.5 text-xs text-ink-muted">Direct sale — batteries, domes, filters, repairs, clean &amp; checks. Billed immediately, no serial tracking.</div>
+                <div className="min-w-0">
+                  <div className="text-[13px] font-semibold text-ink-strong">Supplies / Service</div>
+                  <div className="mt-0.5 text-[11px] leading-snug text-ink-muted">Direct sale — batteries, domes, filters, repairs, office visits.</div>
                 </div>
               </Button>
             </div>
@@ -403,7 +403,7 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
 
         {/* Footer */}
         {step === "devices" && (
-          <div className="flex items-center justify-between border-t border-surface-2 px-6 py-4">
+          <div className="flex items-center justify-between border-t border-surface-2 px-4 py-3">
             <Button
               type="button"
               onClick={() => setStep("choose")}
@@ -431,7 +431,7 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
         )}
 
         {step === "success" && (
-          <div className="flex justify-end border-t border-surface-2 px-6 py-4">
+          <div className="flex justify-end border-t border-surface-2 px-4 py-3">
             <Button
               type="button"
               onClick={closeDialog}
