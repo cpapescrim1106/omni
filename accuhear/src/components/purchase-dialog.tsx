@@ -1,7 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PackageIcon, ShoppingCartIcon, XIcon } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type CatalogItem = {
   id: string;
@@ -30,9 +37,9 @@ function computeGross(items: DraftLineItem[]) {
 }
 
 export function PurchaseButton({ patientId }: { patientId: string }) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
   const router = useRouter();
 
+  const [open, setOpen] = useState(false);
   const [step, setStep] = useState<"choose" | "devices" | "success">("choose");
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
@@ -62,24 +69,12 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
 
   const openDialog = useCallback(() => {
     resetForm();
-    dialogRef.current?.showModal();
+    setOpen(true);
   }, [resetForm]);
 
   const closeDialog = useCallback(() => {
-    dialogRef.current?.close();
     resetForm();
-  }, [resetForm]);
-
-  const handleDialogClick = useCallback((event: React.MouseEvent<HTMLDialogElement>) => {
-    if (event.target === dialogRef.current) closeDialog();
-  }, [closeDialog]);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    const handleClose = () => resetForm();
-    dialog.addEventListener("close", handleClose);
-    return () => dialog.removeEventListener("close", handleClose);
+    setOpen(false);
   }, [resetForm]);
 
   const loadCatalog = useCallback(async () => {
@@ -182,21 +177,18 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
 
   return (
     <>
-      <button
+      <Button
         type="button"
         onClick={openDialog}
-        className="rounded-full bg-success px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(34,197,94,0.22)] transition hover:bg-success/90"
+        variant="default"
+        size="sm"
+        className="bg-success text-white shadow-[0_10px_24px_rgba(34,197,94,0.22)] hover:bg-success/90"
       >
         Purchase
-      </button>
+      </Button>
 
-      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
-      <dialog
-        ref={dialogRef}
-        onClick={handleDialogClick}
-        className="m-auto w-full max-w-xl rounded-3xl border border-surface-2 bg-white p-0 shadow-[0_32px_72px_rgba(24,20,50,0.18)] backdrop:bg-brand-ink/30 backdrop:backdrop-blur-[2px] open:flex open:flex-col"
-        style={{ maxHeight: "90dvh" }}
-      >
+      <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) closeDialog(); }}>
+        <DialogContent className="max-w-xl p-0" showCloseButton={false} style={{ maxHeight: "90dvh" }}>
         {/* Header */}
         <div className="flex items-center justify-between border-b border-surface-2 px-6 py-4">
           <div className="text-sm font-semibold text-ink-strong">
@@ -204,14 +196,23 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
             {step === "devices" && "Tracked order — Devices"}
             {step === "success" && "Order created"}
           </div>
-          <button
-            type="button"
-            onClick={closeDialog}
-            className="flex h-7 w-7 items-center justify-center rounded-full text-ink-muted transition hover:bg-surface-1 hover:text-ink"
-            aria-label="Close"
-          >
-            ✕
-          </button>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  type="button"
+                  onClick={closeDialog}
+                  variant="ghost"
+                  size="icon-sm"
+                  className="h-7 w-7 text-ink-muted"
+                  aria-label="Close"
+                />
+              }
+            >
+              <XIcon size={14} />
+            </TooltipTrigger>
+            <TooltipContent>Close</TooltipContent>
+          </Tooltip>
         </div>
 
         {/* Body */}
@@ -220,33 +221,37 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
           {/* Step: choose type */}
           {step === "choose" && (
             <div className="grid gap-3">
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                size="default"
                 onClick={() => void selectDevices()}
-                className="flex items-start gap-4 rounded-2xl border border-surface-2 bg-white p-4 text-left transition hover:border-brand-blue/30 hover:bg-brand-blue/5"
+                className="flex h-auto items-start gap-4 rounded-2xl border border-surface-2 bg-white p-4 text-left"
               >
-                <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-brand-ink/10 text-lg">
-                  🦻
+                <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-brand-ink/10 text-brand-ink">
+                  <PackageIcon size={16} />
                 </div>
                 <div>
                   <div className="text-sm font-semibold text-ink-strong">Devices</div>
                   <div className="mt-0.5 text-xs text-ink-muted">Tracked order — hearing aids, earmolds, serialized accessories. Invoice created immediately. Serial &amp; warranty captured at delivery.</div>
                 </div>
-              </button>
+              </Button>
 
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                size="default"
                 onClick={selectDirectSale}
-                className="flex items-start gap-4 rounded-2xl border border-surface-2 bg-white p-4 text-left transition hover:border-brand-blue/30 hover:bg-brand-blue/5"
+                className="flex h-auto items-start gap-4 rounded-2xl border border-surface-2 bg-white p-4 text-left"
               >
-                <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-brand-ink/10 text-lg">
-                  🛒
+                <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-brand-ink/10 text-brand-ink">
+                  <ShoppingCartIcon size={16} />
                 </div>
                 <div>
                   <div className="text-sm font-semibold text-ink-strong">Supplies / Service</div>
                   <div className="mt-0.5 text-xs text-ink-muted">Direct sale — batteries, domes, filters, repairs, clean &amp; checks. Billed immediately, no serial tracking.</div>
                 </div>
-              </button>
+              </Button>
             </div>
           )}
 
@@ -254,15 +259,17 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
           {step === "devices" && (
             <div className="space-y-4">
               {error ? (
-                <div className="rounded-2xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</div>
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
               ) : null}
 
               {catalogLoading ? (
                 <div className="py-6 text-center text-sm text-ink-muted">Loading catalog…</div>
               ) : !catalog.length ? (
-                <div className="rounded-2xl bg-warning/10 px-4 py-3 text-sm text-warning">
-                  No tracked catalog items configured. Add items in Settings first.
-                </div>
+                <Alert variant="warning">
+                  <AlertDescription>No tracked catalog items configured. Add items in Settings first.</AlertDescription>
+                </Alert>
               ) : (
                 <>
                   {/* Line items */}
@@ -272,68 +279,81 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
                         key={`line-${index}`}
                         className="flex items-center gap-2 rounded-2xl border border-surface-2 bg-surface-1/40 p-3"
                       >
-                        <select
-                          className="min-w-0 flex-1 rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
-                          value={item.catalogItemId}
-                          onChange={(e) => updateItem(index, { catalogItemId: e.target.value })}
-                        >
+                        <Select value={item.catalogItemId} onValueChange={(value) => updateItem(index, { catalogItemId: value ?? item.catalogItemId })}>
+                          <SelectTrigger className="min-w-0 flex-1 bg-white text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
                           {catalog.map((c) => (
-                            <option key={c.id} value={c.id}>
+                            <SelectItem key={c.id} value={c.id}>
                               {c.manufacturer ? `${c.manufacturer} ` : ""}{c.name}
-                            </option>
+                            </SelectItem>
                           ))}
-                        </select>
-                        <select
-                          className="w-20 flex-none rounded-xl border border-surface-3 bg-white px-2 py-2 text-sm"
-                          value={item.side}
-                          onChange={(e) => updateItem(index, { side: e.target.value })}
-                        >
-                          <option>Left</option>
-                          <option>Right</option>
-                          <option>Other</option>
-                        </select>
-                        <input
+                          </SelectContent>
+                        </Select>
+                        <Select value={item.side} onValueChange={(value) => updateItem(index, { side: value ?? item.side })}>
+                          <SelectTrigger className="w-20 flex-none bg-white px-2 text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Left">Left</SelectItem>
+                            <SelectItem value="Right">Right</SelectItem>
+                            <SelectItem value="Other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Input
                           type="number"
                           min={1}
-                          className="w-12 flex-none rounded-xl border border-surface-3 bg-white px-2 py-2 text-center text-sm"
+                          className="w-12 flex-none px-2 text-center text-sm"
                           value={item.quantity}
                           onChange={(e) => updateItem(index, { quantity: Math.max(1, Number(e.target.value) || 1) })}
                         />
-                        <button
-                          type="button"
-                          onClick={() => removeLine(index)}
-                          disabled={draftItems.length === 1}
-                          className="flex h-8 w-8 flex-none items-center justify-center rounded-lg text-ink-muted transition hover:bg-surface-1 disabled:opacity-30"
-                        >
-                          ✕
-                        </button>
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={
+                              <Button
+                                type="button"
+                                onClick={() => removeLine(index)}
+                                disabled={draftItems.length === 1}
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 flex-none rounded-lg text-ink-muted"
+                              />
+                            }
+                          >
+                            <XIcon size={14} />
+                          </TooltipTrigger>
+                          <TooltipContent>Remove line</TooltipContent>
+                        </Tooltip>
                       </div>
                     ))}
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={addLine}
-                      className="text-xs text-brand-blue hover:underline"
+                      className="w-fit text-brand-blue"
                     >
                       + Add line
-                    </button>
+                    </Button>
                   </div>
 
                   {/* Discount + Total */}
                   <div className="space-y-2 rounded-2xl border border-surface-2 bg-surface-1/40 p-4">
                     <div className="flex items-center gap-2">
-                      <input
-                        className="min-w-0 flex-1 rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm placeholder:text-ink-soft"
+                      <Input
+                        className="min-w-0 flex-1 text-sm placeholder:text-ink-soft"
                         placeholder="Discount reason (optional)"
                         value={discountReason}
                         onChange={(e) => setDiscountReason(e.target.value)}
                       />
                       <div className="relative flex-none">
                         <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-ink-muted">$</span>
-                        <input
+                        <Input
                           type="number"
                           min={0}
                           step={0.01}
-                          className="w-24 rounded-xl border border-surface-3 bg-white py-2 pl-7 pr-3 text-right text-sm"
+                          className="w-24 py-2 pl-7 pr-3 text-right text-sm"
                           placeholder="0"
                           value={discountAmount}
                           onChange={(e) => setDiscountAmount(e.target.value)}
@@ -345,11 +365,11 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
                       <span className="text-xs text-ink-muted">Total</span>
                       <div className="relative">
                         <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-ink-muted">$</span>
-                        <input
+                        <Input
                           type="number"
                           min={0}
                           step={0.01}
-                          className="w-32 rounded-xl border border-surface-3 bg-white py-2 pl-7 pr-3 text-right text-sm font-semibold text-ink-strong"
+                          className="w-32 py-2 pl-7 pr-3 text-right text-sm font-semibold text-ink-strong"
                           value={displayTotal}
                           onChange={(e) => setOverrideTotal(e.target.value)}
                           onBlur={(e) => {
@@ -375,11 +395,11 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
                 Serial numbers and warranty dates are captured when you receive the items from the manufacturer.
               </p>
               <a
-                href={`/patients/${patientId}?tab=${encodeURIComponent("Hearing aids")}`}
+                href={`/patients/${patientId}?tab=${encodeURIComponent("Sales history")}`}
                 className="inline-block rounded-full bg-brand-blue/10 px-4 py-2 text-sm font-semibold text-brand-ink hover:bg-brand-blue/20"
                 onClick={closeDialog}
               >
-                View in Hearing aids →
+                View in Sales history →
               </a>
             </div>
           )}
@@ -388,14 +408,15 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
         {/* Footer */}
         {step === "devices" && (
           <div className="flex items-center justify-between border-t border-surface-2 px-6 py-4">
-            <button
+            <Button
               type="button"
               onClick={() => setStep("choose")}
-              className="rounded-full px-4 py-2 text-sm text-ink-muted transition hover:bg-surface-1"
+              variant="ghost"
+              size="sm"
             >
               ← Back
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               disabled={
                 submitting ||
@@ -404,25 +425,29 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
                 draftItems.some((item) => !item.catalogItemId)
               }
               onClick={() => void createOrder()}
-              className="rounded-full bg-brand-ink px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand-ink/90 disabled:opacity-50"
+              variant="default"
+              size="sm"
+              className="bg-brand-ink hover:bg-brand-ink/90"
             >
               {submitting ? "Creating…" : "Create order + invoice"}
-            </button>
+            </Button>
           </div>
         )}
 
         {step === "success" && (
           <div className="flex justify-end border-t border-surface-2 px-6 py-4">
-            <button
+            <Button
               type="button"
               onClick={closeDialog}
-              className="rounded-full bg-surface-1 px-4 py-2 text-sm font-semibold text-ink transition hover:bg-surface-2"
+              variant="secondary"
+              size="sm"
             >
               Close
-            </button>
+            </Button>
           </div>
         )}
-      </dialog>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

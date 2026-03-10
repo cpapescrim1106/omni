@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/button";
+
 const sales = [
   { date: "01/07/2026", id: "5403", item: "Extended warranty", type: "Payment", debit: "$99.00" },
   { date: "01/07/2026", id: "16899", item: "Extended warranty", type: "Sale", debit: "$99.00" },
@@ -14,9 +16,9 @@ export default function SalesPage() {
             <div className="section-title text-xs text-brand-ink">Sales History</div>
             <div className="text-sm text-ink-muted">Read-only ledger view.</div>
           </div>
-          <button className="rounded-full border border-transparent bg-brand-blue/10 px-4 py-2 text-xs font-semibold text-brand-ink">
+          <Button variant="secondary" size="sm">
             Export
-          </button>
+          </Button>
         </div>
         <div className="mt-4 overflow-hidden rounded-2xl border border-surface-2">
           <table className="table">

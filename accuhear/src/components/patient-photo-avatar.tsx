@@ -1,6 +1,10 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { XIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type ImageDoc = {
   id: string;
@@ -20,9 +24,9 @@ export function PatientPhotoAvatar({
   firstName: string;
   initialPhotoDataUrl: string | null;
 }) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
+  const [open, setOpen] = useState(false);
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(initialPhotoDataUrl);
   const [step, setStep] = useState<"pick" | "crop">("pick");
   const [docs, setDocs] = useState<ImageDoc[]>([]);
@@ -44,7 +48,7 @@ export function PatientPhotoAvatar({
     setCropRect(null);
     setError(null);
     setLoadingDocs(true);
-    dialogRef.current?.showModal();
+    setOpen(true);
     try {
       const res = await fetch(`/api/patients/${patientId}/documents`);
       const payload = await res.json();
@@ -63,7 +67,7 @@ export function PatientPhotoAvatar({
   }, [patientId]);
 
   const closeDialog = useCallback(() => {
-    dialogRef.current?.close();
+    setOpen(false);
   }, []);
 
   const getRelativeCoords = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -230,27 +234,36 @@ export function PatientPhotoAvatar({
         />
       )}
 
-      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
-      <dialog
-        ref={dialogRef}
-        onClick={(e) => {
-          if (e.target === dialogRef.current) closeDialog();
+      <Dialog
+        open={open}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            closeDialog();
+          }
         }}
-        className="m-auto w-full max-w-lg rounded-3xl border border-surface-2 bg-white p-0 shadow-[0_32px_72px_rgba(24,20,50,0.18)] backdrop:bg-brand-ink/30 backdrop:backdrop-blur-[2px] open:flex open:flex-col"
-        style={{ maxHeight: "90dvh" }}
       >
+        <DialogContent className="max-w-lg p-0" showCloseButton={false} style={{ maxHeight: "90dvh" }}>
         <div className="flex items-center justify-between border-b border-surface-2 px-5 py-3">
           <span className="text-sm font-semibold text-ink-strong">
             {step === "pick" ? "Choose a document" : "Crop photo"}
           </span>
-          <button
-            type="button"
-            onClick={closeDialog}
-            className="flex h-7 w-7 items-center justify-center rounded-full text-ink-muted transition hover:bg-surface-1"
-            aria-label="Close"
-          >
-            ✕
-          </button>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  type="button"
+                  onClick={closeDialog}
+                  variant="ghost"
+                  size="icon-sm"
+                  className="h-7 w-7 text-ink-muted"
+                  aria-label="Close"
+                />
+              }
+            >
+              <XIcon size={14} />
+            </TooltipTrigger>
+            <TooltipContent>Close</TooltipContent>
+          </Tooltip>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
@@ -269,9 +282,11 @@ export function PatientPhotoAvatar({
               ) : (
                 <div className="space-y-2">
                   {docs.map((doc) => (
-                    <button
+                    <Button
                       key={doc.id}
                       type="button"
+                      variant="secondary"
+                      size="default"
                       onClick={() => {
                         setSelectedDocId(doc.id);
                         setImageLoaded(false);
@@ -279,24 +294,25 @@ export function PatientPhotoAvatar({
                         setCropRect(null);
                         setStep("crop");
                       }}
-                      className="flex w-full items-center gap-3 rounded-xl border border-surface-2 bg-surface-1/40 px-3 py-2.5 text-left transition hover:border-brand-blue/30 hover:bg-brand-blue/5"
+                      className="flex h-auto w-full items-center gap-3 rounded-xl border border-surface-2 bg-surface-1/40 px-3 py-2.5 text-left"
                     >
                       <span className="flex-1 text-sm font-medium text-ink-strong">{doc.title}</span>
                       <span className="text-xs text-ink-muted">{doc.category}</span>
-                    </button>
+                    </Button>
                   ))}
                 </div>
               )}
 
               {photoDataUrl && (
                 <div className="mt-4 border-t border-surface-2 pt-4">
-                  <button
+                  <Button
                     type="button"
                     onClick={() => void clearPhoto().then(closeDialog)}
-                    className="text-xs text-danger hover:underline"
+                    variant="destructive"
+                    size="sm"
                   >
                     Remove current photo
-                  </button>
+                  </Button>
                 </div>
               )}
             </>
@@ -359,24 +375,27 @@ export function PatientPhotoAvatar({
 
         {step === "crop" && (
           <div className="flex items-center justify-between border-t border-surface-2 px-5 py-3">
-            <button
+            <Button
               type="button"
               onClick={() => setStep("pick")}
-              className="rounded-full px-4 py-1.5 text-sm text-ink-muted transition hover:bg-surface-1"
+              variant="ghost"
+              size="sm"
             >
               ← Back
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               disabled={saving || !cropRect || cropRect.w < 10 || imageError}
               onClick={() => void cropAndSave()}
-              className="rounded-full bg-brand-blue px-5 py-1.5 text-sm font-semibold text-white transition hover:bg-brand-blue/90 disabled:cursor-not-allowed disabled:opacity-40"
+              variant="default"
+              size="sm"
             >
               {saving ? "Saving…" : "Set as photo"}
-            </button>
+            </Button>
           </div>
         )}
-      </dialog>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

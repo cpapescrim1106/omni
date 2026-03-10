@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 
 type OrderRecord = {
   id: string;
@@ -74,12 +76,16 @@ export default function OrdersPage() {
             <div className="section-title text-xs text-brand-ink">Outstanding orders</div>
             <div className="text-sm text-ink-muted">Global pipeline for anything still awaiting receipt or delivery.</div>
           </div>
-          <button type="button" className="tab-pill bg-surface-2 text-xs" onClick={loadOrders}>
+          <Button type="button" variant="secondary" size="sm" onClick={loadOrders}>
             Refresh
-          </button>
+          </Button>
         </div>
 
-        {error ? <div className="mt-4 rounded-2xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</div> : null}
+        {error ? (
+          <Alert variant="destructive" className="mt-4">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        ) : null}
 
         <div className="mt-6 overflow-hidden rounded-3xl border border-surface-2 bg-white/80">
           {loading ? (

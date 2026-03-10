@@ -80,7 +80,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           await tx.device.update({
             where: { id: device.id },
             data: {
-              status: "Active",
+              status: "Current",
               deliveryDate: new Date(),
               fittingDate,
               purchaseDate: invoice?.date ?? existingOrder.createdAt,
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           await tx.deviceStatusHistory.create({
             data: {
               deviceId: device.id,
-              status: "Active",
+              status: "Current",
               notes: "Item delivered to patient.",
             },
           });

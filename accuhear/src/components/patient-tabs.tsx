@@ -4,6 +4,10 @@ import type { ReactNode } from "react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { XIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type PatientTab = {
   id: string;
@@ -212,14 +216,23 @@ export function PatientTabsBar({
                   ) : null}
                 </div>
               </Link>
-              <button
-                type="button"
-                onClick={() => handleClose(tab.id)}
-                aria-label={`Close ${tab.label}`}
-                className="patient-tab-close"
-              >
-                ×
-              </button>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => handleClose(tab.id)}
+                      aria-label={`Close ${tab.label}`}
+                      className="patient-tab-close h-4 w-4"
+                    />
+                  }
+                >
+                  <XIcon size={14} />
+                </TooltipTrigger>
+                <TooltipContent>Close</TooltipContent>
+              </Tooltip>
             </div>
           );
         })}
@@ -245,19 +258,26 @@ export function PatientTabsBar({
               >
                 <span className="max-w-[200px] truncate">{tab.label}</span>
                 {statusLabel ? (
-                  <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[10px] text-ink-muted">
-                    {statusLabel}
-                  </span>
+                  <Badge variant="neutral">{statusLabel}</Badge>
                 ) : null}
               </Link>
-              <button
-                type="button"
-                onClick={() => handleClose(tab.id)}
-                aria-label={`Close ${tab.label}`}
-                className="rounded-full border border-transparent px-2 py-1 text-xs text-ink-soft transition hover:border-surface-3 hover:text-ink-strong"
-              >
-                ×
-              </button>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => handleClose(tab.id)}
+                      aria-label={`Close ${tab.label}`}
+                      className="h-6 w-6 text-ink-soft hover:border-surface-3 hover:text-ink-strong"
+                    />
+                  }
+                >
+                  <XIcon size={14} />
+                </TooltipTrigger>
+                <TooltipContent>Close</TooltipContent>
+              </Tooltip>
             </div>
           );
         })}

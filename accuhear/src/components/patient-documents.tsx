@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import dayjs from "dayjs";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type PatientDocument = {
   id: string;
@@ -226,16 +230,16 @@ export function PatientDocuments({ patientId }: { patientId: string }) {
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-2 text-xs text-ink-muted">
+        <Label className="flex items-center gap-2 font-body text-xs font-normal normal-case tracking-normal text-ink-muted">
           Quick Find:
-          <input
+          <Input
             type="search"
-            className="rounded-xl border border-surface-3 bg-white px-3 py-2 text-xs"
+            className="w-[180px] text-xs"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             placeholder="Search"
           />
-        </label>
+        </Label>
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[220px_1.4fr_1fr]">
@@ -243,17 +247,17 @@ export function PatientDocuments({ patientId }: { patientId: string }) {
           <div className="text-xs font-semibold text-ink-muted">Categories</div>
           <div className="mt-3 grid gap-2">
             {categorySidebar.map((category) => (
-              <button
+              <Button
                 key={category.label}
                 type="button"
-                className="flex items-center justify-between rounded-xl bg-white px-3 py-2 text-xs text-ink-muted"
+                variant="secondary"
+                size="sm"
+                className="flex h-auto items-center justify-between rounded-xl bg-white px-3 py-2 text-xs font-normal text-ink-muted"
                 onClick={() => setCategoryFilter(category.label)}
               >
                 <span>{category.label}</span>
-                <span className="rounded-full bg-brand-blue/10 px-2 py-1 text-[10px] text-brand-ink">
-                  {category.count}
-                </span>
-              </button>
+                <Badge variant="blue">{category.count}</Badge>
+              </Button>
             ))}
           </div>
         </div>
@@ -277,10 +281,12 @@ export function PatientDocuments({ patientId }: { patientId: string }) {
                 <span>Added by</span>
               </div>
               {filteredDocuments.map((doc) => (
-                <button
+                <Button
                   key={doc.id}
                   type="button"
-                  className="grid w-full grid-cols-[120px_1.2fr_1fr_0.6fr_0.8fr] gap-3 px-3 py-[7px] text-left text-[12px] border-t border-[var(--surface-1)] hover:bg-[rgba(31,149,184,0.04)] [&:nth-child(even)]:bg-[rgba(243,239,232,0.4)]"
+                  variant="ghost"
+                  size="default"
+                  className="grid h-auto w-full grid-cols-[120px_1.2fr_1fr_0.6fr_0.8fr] gap-3 rounded-none border-t border-[var(--surface-1)] px-3 py-[7px] text-left text-[12px] hover:bg-[rgba(31,149,184,0.04)] [&:nth-child(even)]:bg-[rgba(243,239,232,0.4)]"
                   onClick={() => setSelectedId(doc.id)}
                   data-testid="documents-row"
                   data-category={doc.category}
@@ -290,7 +296,7 @@ export function PatientDocuments({ patientId }: { patientId: string }) {
                   <span className="text-ink-muted">{doc.category}</span>
                   <span className="text-ink-muted">{documentKindLabel(doc.contentType)}</span>
                   <span className="text-ink-muted">{doc.addedBy || "-"}</span>
-                </button>
+                </Button>
               ))}
             </div>
           )}
@@ -351,27 +357,29 @@ export function PatientDocuments({ patientId }: { patientId: string }) {
       />
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <button
+        <Button
           type="button"
-          className="tab-pill bg-surface-2 text-xs"
+          variant="secondary"
+          size="sm"
           onClick={() => void requestDirectScan("id")}
           disabled={scanPending}
           data-testid="documents-scan-id"
         >
           {scanPending && pendingScanType === "id" ? "Scanning..." : "Scan ID"}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
-          className="tab-pill bg-surface-2 text-xs"
+          variant="secondary"
+          size="sm"
           onClick={() => void requestDirectScan("insurance")}
           disabled={scanPending}
           data-testid="documents-scan-insurance"
         >
           {scanPending && pendingScanType === "insurance" ? "Scanning..." : "Scan Insurance"}
-        </button>
-        <button type="button" className="tab-pill bg-surface-2 text-xs" onClick={() => void loadDocuments()}>
+        </Button>
+        <Button type="button" variant="secondary" size="sm" onClick={() => void loadDocuments()}>
           Refresh
-        </button>
+        </Button>
         {scanError ? <span className="text-xs text-danger">{scanError}</span> : null}
       </div>
     </section>

@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import dayjs from "dayjs";
 import { MessageResponseBar } from "@/components/message-response-bar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type Message = {
   id: string;
@@ -29,11 +33,11 @@ const STATUS_LABELS: Record<Message["status"], string> = {
 };
 
 const STATUS_STYLES: Record<Message["status"], string> = {
-  queued: "bg-surface-2 text-ink-muted",
-  sent: "bg-brand-blue/10 text-brand-ink",
-  delivered: "bg-success/10 text-success",
-  failed: "bg-danger/10 text-danger",
-  received: "bg-brand-orange/10 text-brand-ink",
+  queued: "neutral",
+  sent: "blue",
+  delivered: "success",
+  failed: "danger",
+  received: "orange",
 };
 
 const FOLDERS = [
@@ -215,16 +219,21 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
         <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] overflow-hidden p-4">
           <div className="text-xs font-semibold text-ink-muted">Quick find</div>
           <div className="mt-2 flex items-center gap-2">
-            <input
+            <Input
               type="search"
-              className="w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-xs"
+              className="w-full text-xs"
               placeholder="Search"
             />
           </div>
           <div className="mt-3 text-xs text-ink-muted">Location</div>
-          <select className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-xs">
-            <option>&lt;All&gt;</option>
-          </select>
+          <Select defaultValue="all">
+            <SelectTrigger className="mt-1 w-full bg-white text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">&lt;All&gt;</SelectItem>
+            </SelectContent>
+          </Select>
           <div className="mt-4 grid gap-2">
             {FOLDERS.map((folder) => (
               <div key={folder.label} className="rounded-xl bg-white px-3 py-2 text-xs text-ink-muted">
@@ -258,7 +267,7 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
                   <div key={thread.id} data-testid="messaging-thread" data-channel={thread.channel}>
                     <div className="flex items-center justify-between border-b border-surface-2 px-4 py-3">
                       <div className="text-sm font-semibold text-ink-strong">{thread.channel.toUpperCase()} thread</div>
-                      <span className="badge bg-surface-2 text-ink-muted">{thread.status}</span>
+                      <Badge variant="neutral">{thread.status}</Badge>
                     </div>
                     <div className="grid gap-4 px-4 py-4">
                       {thread.messages.map((message) => {
@@ -294,7 +303,9 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
                                 <span>·</span>
                                 <span>{dayjs(message.sentAt).format("MMM D, YYYY h:mm A")}</span>
                                 <span>·</span>
-                                <span className={`badge ${STATUS_STYLES[message.status]}`}>{STATUS_LABELS[message.status]}</span>
+                                <Badge variant={STATUS_STYLES[message.status] as "neutral" | "blue" | "success" | "danger" | "orange"}>
+                                  {STATUS_LABELS[message.status]}
+                                </Badge>
                               </div>
                               {isFailed ? (
                                 <div className="mt-2 text-xs text-danger">
@@ -333,17 +344,19 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
         <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] overflow-hidden p-4">
           <div className="text-xs font-semibold text-ink-muted">Text snippets</div>
           <div className="mt-3 grid gap-2">
-            {SNIPPETS.map((snippet) => (
-              <button
+              {SNIPPETS.map((snippet) => (
+              <Button
                 key={snippet}
                 type="button"
-                className="rounded-xl bg-white px-3 py-2 text-left text-xs text-ink-muted transition hover:bg-surface-1"
+                variant="secondary"
+                size="sm"
+                className="justify-start rounded-xl bg-white px-3 py-2 text-left text-xs font-normal text-ink-muted"
                 onClick={() => {
                   setMessageBody((current) => (current.trim().length ? `${current.trimEnd()} ${snippet}` : snippet));
                 }}
               >
                 {snippet}
-              </button>
+              </Button>
             ))}
           </div>
         </div>

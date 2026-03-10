@@ -3,6 +3,12 @@
 import { FormEvent, ReactNode, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type FormState = {
   legacyId: string;
@@ -167,28 +173,29 @@ export function PatientIntakeForm({ initialQuery }: { initialQuery?: string | nu
               Draft the intake experience in Omni’s UI style first. The underlying patient create flow can be refined after the layout settles.
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
-              <span className="badge">Current UI</span>
-              <span className="badge bg-brand-orange/10 text-brand-ink">Form Draft</span>
+              <Badge variant="neutral">Current UI</Badge>
+              <Badge variant="orange">Form Draft</Badge>
             </div>
           </div>
           <div className="flex gap-2">
             <Link href="/patients" className="tab-pill bg-surface-2 text-xs">
               Cancel
             </Link>
-            <button
+            <Button
               type="submit"
+              variant="secondary"
+              size="sm"
               disabled={submitting}
-              className="rounded-full border border-transparent bg-brand-orange/10 px-4 py-2 text-xs font-semibold text-brand-ink disabled:opacity-60"
             >
               {submitting ? "Creating..." : "Create patient"}
-            </button>
+            </Button>
           </div>
         </div>
 
         {error ? (
-          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
+          <Alert variant="destructive" className="mt-4">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         ) : null}
       </section>
 
@@ -206,26 +213,35 @@ export function PatientIntakeForm({ initialQuery }: { initialQuery?: string | nu
 
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
           <Field label="Reference #">
-            <input value={formState.legacyId} onChange={(e) => updateField("legacyId", e.target.value)} className="input" />
+            <Input value={formState.legacyId} onChange={(e) => updateField("legacyId", e.target.value)} className="input" />
           </Field>
           <Field label="Title">
-            <select value={formState.title} onChange={(e) => updateField("title", e.target.value)} className="input">
-              <option value="">Select title</option>
-              <option value="Mr.">Mr.</option>
-              <option value="Mrs.">Mrs.</option>
-              <option value="Ms.">Ms.</option>
-              <option value="Dr.">Dr.</option>
-            </select>
+            <Select value={formState.title} onValueChange={(value) => updateField("title", value ?? "")}>
+              <SelectTrigger className="input">
+                <SelectValue placeholder="Select title" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Mr.">Mr.</SelectItem>
+                <SelectItem value="Mrs.">Mrs.</SelectItem>
+                <SelectItem value="Ms.">Ms.</SelectItem>
+                <SelectItem value="Dr.">Dr.</SelectItem>
+              </SelectContent>
+            </Select>
           </Field>
           <Field label="Gender">
-            <select value={formState.gender} onChange={(e) => updateField("gender", e.target.value)} className="input">
-              <option value="U">U</option>
-              <option value="F">F</option>
-              <option value="M">M</option>
-            </select>
+            <Select value={formState.gender} onValueChange={(value) => updateField("gender", value ?? "U")}>
+              <SelectTrigger className="input">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="U">U</SelectItem>
+                <SelectItem value="F">F</SelectItem>
+                <SelectItem value="M">M</SelectItem>
+              </SelectContent>
+            </Select>
           </Field>
           <Field label="First name" required>
-            <input
+            <Input
               value={formState.firstName}
               onChange={(e) => updateField("firstName", e.target.value)}
               className="input"
@@ -234,7 +250,7 @@ export function PatientIntakeForm({ initialQuery }: { initialQuery?: string | nu
             />
           </Field>
           <Field label="Initial">
-            <input
+            <Input
               value={formState.initial}
               onChange={(e) => updateField("initial", e.target.value.slice(0, 1))}
               className="input"
@@ -242,7 +258,7 @@ export function PatientIntakeForm({ initialQuery }: { initialQuery?: string | nu
             />
           </Field>
           <Field label="Last name" required>
-            <input
+            <Input
               value={formState.lastName}
               onChange={(e) => updateField("lastName", e.target.value)}
               className="input"
@@ -254,23 +270,28 @@ export function PatientIntakeForm({ initialQuery }: { initialQuery?: string | nu
 
         <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <Field label="Preferred name">
-            <input value={formState.preferredName} onChange={(e) => updateField("preferredName", e.target.value)} className="input" />
+            <Input value={formState.preferredName} onChange={(e) => updateField("preferredName", e.target.value)} className="input" />
           </Field>
           <Field label="Date of birth">
             <input value={formState.dateOfBirth} onChange={(e) => updateField("dateOfBirth", e.target.value)} className="input" type="date" />
           </Field>
           <Field label="SS#">
-            <input value={formState.ssn} onChange={(e) => updateField("ssn", e.target.value)} className="input" />
+            <Input value={formState.ssn} onChange={(e) => updateField("ssn", e.target.value)} className="input" />
           </Field>
           <Field label="Provider">
-            <input value={formState.providerName} onChange={(e) => updateField("providerName", e.target.value)} className="input" />
+            <Input value={formState.providerName} onChange={(e) => updateField("providerName", e.target.value)} className="input" />
           </Field>
           <Field label="Status">
-            <select value={formState.status} onChange={(e) => updateField("status", e.target.value)} className="input">
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-              <option value="Deceased">Deceased</option>
-            </select>
+            <Select value={formState.status} onValueChange={(value) => updateField("status", value ?? "Active")}>
+              <SelectTrigger className="input">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Active">Active</SelectItem>
+                <SelectItem value="Inactive">Inactive</SelectItem>
+                <SelectItem value="Deceased">Deceased</SelectItem>
+              </SelectContent>
+            </Select>
           </Field>
         </div>
 
@@ -280,9 +301,9 @@ export function PatientIntakeForm({ initialQuery }: { initialQuery?: string | nu
               <div className="text-sm font-semibold text-ink-strong">Healthcare providers</div>
               <div className="text-xs text-ink-muted">Provider associations will be fleshed out once the intake workflow is finalized.</div>
             </div>
-            <button type="button" className="tab-pill bg-white text-xs">
+            <Button type="button" variant="secondary" size="sm" className="bg-white">
               Edit providers
-            </button>
+            </Button>
           </div>
         </div>
       </section>
@@ -295,37 +316,42 @@ export function PatientIntakeForm({ initialQuery }: { initialQuery?: string | nu
 
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Field label="Apt / Unit">
-            <input value={formState.aptUnit} onChange={(e) => updateField("aptUnit", e.target.value)} className="input" />
+            <Input value={formState.aptUnit} onChange={(e) => updateField("aptUnit", e.target.value)} className="input" />
           </Field>
           <Field label="Street #">
-            <input value={formState.streetNumber} onChange={(e) => updateField("streetNumber", e.target.value)} className="input" />
+            <Input value={formState.streetNumber} onChange={(e) => updateField("streetNumber", e.target.value)} className="input" />
           </Field>
           <Field label="Street" className="xl:col-span-2">
-            <input value={formState.street} onChange={(e) => updateField("street", e.target.value)} className="input" />
+            <Input value={formState.street} onChange={(e) => updateField("street", e.target.value)} className="input" />
           </Field>
         </div>
 
         <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
           <Field label="City">
-            <input value={formState.city} onChange={(e) => updateField("city", e.target.value)} className="input" />
+            <Input value={formState.city} onChange={(e) => updateField("city", e.target.value)} className="input" />
           </Field>
           <Field label="Country">
-            <select value={formState.country} onChange={(e) => updateField("country", e.target.value)} className="input">
-              <option value="USA">USA</option>
-              <option value="Canada">Canada</option>
-            </select>
+            <Select value={formState.country} onValueChange={(value) => updateField("country", value ?? "USA")}>
+              <SelectTrigger className="input">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="USA">USA</SelectItem>
+                <SelectItem value="Canada">Canada</SelectItem>
+              </SelectContent>
+            </Select>
           </Field>
           <Field label="State">
-            <input value={formState.state} onChange={(e) => updateField("state", e.target.value)} className="input" />
+            <Input value={formState.state} onChange={(e) => updateField("state", e.target.value)} className="input" />
           </Field>
           <Field label="Zip">
-            <input value={formState.zip} onChange={(e) => updateField("zip", e.target.value)} className="input" />
+            <Input value={formState.zip} onChange={(e) => updateField("zip", e.target.value)} className="input" />
           </Field>
           <Field label="Location">
-            <input value={formState.location} onChange={(e) => updateField("location", e.target.value)} className="input" />
+            <Input value={formState.location} onChange={(e) => updateField("location", e.target.value)} className="input" />
           </Field>
           <Field label="Email address">
-            <input value={formState.email} onChange={(e) => updateField("email", e.target.value)} className="input" type="email" autoComplete="email" />
+            <Input value={formState.email} onChange={(e) => updateField("email", e.target.value)} className="input" type="email" autoComplete="email" />
           </Field>
         </div>
 
@@ -395,13 +421,13 @@ function Field({
   children: ReactNode;
 }) {
   return (
-    <label className={`grid gap-2 ${className ?? ""}`}>
+    <Label className={`grid gap-2 font-body ${className ?? ""}`}>
       <span className="text-[11px] uppercase tracking-[0.2em] text-ink-soft">
         {label}
         {required ? " *" : ""}
       </span>
       {children}
-    </label>
+    </Label>
   );
 }
 
@@ -441,13 +467,13 @@ function PhoneRow({
     <div className={`rounded-3xl border border-surface-2 p-4 ${highlight ? "bg-brand-blue/8" : "bg-white/70"}`}>
       <div className="grid gap-4 md:grid-cols-[120px_minmax(0,1fr)_180px]">
         <div className="flex items-center">
-          <span className={`badge ${highlight ? "bg-brand-orange/10 text-brand-ink" : ""}`}>{type}</span>
+          <Badge variant={highlight ? "orange" : "neutral"}>{type}</Badge>
         </div>
         <Field label="Telephone">
-          <input value={phone} onChange={(event) => onPhoneChange(event.target.value)} className="input" type="tel" />
+          <Input value={phone} onChange={(event) => onPhoneChange(event.target.value)} className="input" type="tel" />
         </Field>
         <Field label="Extension">
-          <input value={extension} onChange={(event) => onExtensionChange(event.target.value)} className="input" />
+          <Input value={extension} onChange={(event) => onExtensionChange(event.target.value)} className="input" />
         </Field>
       </div>
     </div>

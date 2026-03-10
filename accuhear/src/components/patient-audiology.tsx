@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const MIN_FREQUENCY_HZ = 125;
 const MAX_FREQUENCY_HZ = 8000;
@@ -111,14 +114,16 @@ export function PatientAudiology({ patientId }: { patientId: string }) {
       <div className="mt-4">
         <div className="seg-tabs-inner">
           {TABS.map((tab) => (
-            <button
+            <Button
               key={tab}
               type="button"
-              className={`seg-tab${activeTab === tab ? " active" : ""}`}
+              variant="ghost"
+              size="micro"
+              className={cn("seg-tab", activeTab === tab && "active")}
               onClick={() => setActiveTab(tab)}
             >
               {tab}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -150,8 +155,8 @@ export function PatientAudiology({ patientId }: { patientId: string }) {
               )}
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
-              <button type="button" className="tab-pill bg-surface-2 text-xs">Hide documents</button>
-              <button type="button" className="tab-pill bg-surface-2 text-xs">Hide journal entries</button>
+              <Button type="button" variant="secondary" size="sm">Hide documents</Button>
+              <Button type="button" variant="secondary" size="sm">Hide journal entries</Button>
             </div>
           </div>
 
@@ -176,12 +181,12 @@ export function PatientAudiology({ patientId }: { patientId: string }) {
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-2 text-xs">
-                <div className="rounded-full bg-brand-orange/10 px-3 py-1 text-brand-ink">Right: Mild</div>
-                <div className="rounded-full bg-brand-orange/10 px-3 py-1 text-brand-ink">Sensorineural</div>
-                <div className="rounded-full bg-brand-orange/10 px-3 py-1 text-brand-ink">Sloping</div>
-                <div className="rounded-full bg-brand-blue/10 px-3 py-1 text-brand-ink">Left: Moderately severe</div>
-                <div className="rounded-full bg-brand-blue/10 px-3 py-1 text-brand-ink">Sensorineural</div>
-                <div className="rounded-full bg-brand-blue/10 px-3 py-1 text-brand-ink">Sloping</div>
+                <Badge variant="orange">Right: Mild</Badge>
+                <Badge variant="orange">Sensorineural</Badge>
+                <Badge variant="orange">Sloping</Badge>
+                <Badge variant="blue">Left: Moderately severe</Badge>
+                <Badge variant="blue">Sensorineural</Badge>
+                <Badge variant="blue">Sloping</Badge>
               </div>
             </div>
 
@@ -249,11 +254,11 @@ export function PatientAudiology({ patientId }: { patientId: string }) {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <button type="button" className="tab-pill bg-surface-2 text-xs">Create new</button>
-              <button type="button" className="tab-pill bg-surface-2 text-xs">Edit</button>
-              <button type="button" className="tab-pill bg-surface-2 text-xs">Delete</button>
-              <button type="button" className="tab-pill bg-surface-2 text-xs">Refresh</button>
-              <button type="button" className="tab-pill bg-surface-2 text-xs">Reports</button>
+              <Button type="button" variant="secondary" size="sm">Create new</Button>
+              <Button type="button" variant="secondary" size="sm">Edit</Button>
+              <Button type="button" variant="secondary" size="sm">Delete</Button>
+              <Button type="button" variant="secondary" size="sm">Refresh</Button>
+              <Button type="button" variant="secondary" size="sm">Reports</Button>
             </div>
           </div>
         </div>

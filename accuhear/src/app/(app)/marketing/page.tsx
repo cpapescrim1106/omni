@@ -2,6 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const OUTCOME_OPTIONS = [
   { value: "all", label: "All outcomes" },
@@ -22,6 +31,21 @@ const CHANNEL_OPTIONS = [
 
 const OUTCOME_LABELS = new Map(OUTCOME_OPTIONS.map((option) => [option.value, option.label]));
 const CHANNEL_LABELS = new Map(CHANNEL_OPTIONS.map((option) => [option.value, option.label]));
+
+function outcomeBadgeVariant(outcome: string): NonNullable<Parameters<typeof Badge>[0]["variant"]> {
+  switch (outcome) {
+    case "scheduled":
+      return "success";
+    case "callback":
+      return "blue";
+    case "no_answer":
+      return "warning";
+    case "not_interested":
+      return "neutral";
+    default:
+      return "neutral";
+  }
+}
 
 type MarketingContact = {
   id: string;
@@ -102,37 +126,37 @@ export default function MarketingPage() {
         </div>
         <div className="mt-4 grid gap-3 rounded-2xl border border-surface-2 bg-white/80 p-4">
           <div className="flex flex-wrap items-center gap-3 text-xs text-ink-muted">
-            <label className="flex items-center gap-2">
+            <Label className="flex items-center gap-2 font-body text-xs font-normal normal-case tracking-normal text-ink-muted">
               <span>Outcome</span>
-              <select
-                className="rounded-xl border border-surface-3 bg-white px-3 py-2 text-xs"
-                value={outcomeFilter}
-                data-testid="marketing-filter-outcome"
-                onChange={(event) => setOutcomeFilter(event.target.value)}
-              >
+              <Select value={outcomeFilter} onValueChange={(value) => value && setOutcomeFilter(value)}>
+                <SelectTrigger className="w-[160px] bg-white text-xs" data-testid="marketing-filter-outcome">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
                 {OUTCOME_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
+                  <SelectItem key={option.value} value={option.value}>
                     {option.label}
-                  </option>
+                  </SelectItem>
                 ))}
-              </select>
-            </label>
-            <label className="flex items-center gap-2">
+                </SelectContent>
+              </Select>
+            </Label>
+            <Label className="flex items-center gap-2 font-body text-xs font-normal normal-case tracking-normal text-ink-muted">
               <span>Channel</span>
-              <select
-                className="rounded-xl border border-surface-3 bg-white px-3 py-2 text-xs"
-                value={channelFilter}
-                data-testid="marketing-filter-channel"
-                onChange={(event) => setChannelFilter(event.target.value)}
-              >
+              <Select value={channelFilter} onValueChange={(value) => value && setChannelFilter(value)}>
+                <SelectTrigger className="w-[160px] bg-white text-xs" data-testid="marketing-filter-channel">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
                 {CHANNEL_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
+                  <SelectItem key={option.value} value={option.value}>
                     {option.label}
-                  </option>
+                  </SelectItem>
                 ))}
-              </select>
-            </label>
-            <label className="flex items-center gap-2">
+                </SelectContent>
+              </Select>
+            </Label>
+            <Label className="flex items-center gap-2 font-body text-xs font-normal normal-case tracking-normal text-ink-muted">
               <span>From</span>
               <input
                 type="date"
@@ -141,8 +165,8 @@ export default function MarketingPage() {
                 data-testid="marketing-filter-start"
                 onChange={(event) => setStartDate(event.target.value)}
               />
-            </label>
-            <label className="flex items-center gap-2">
+            </Label>
+            <Label className="flex items-center gap-2 font-body text-xs font-normal normal-case tracking-normal text-ink-muted">
               <span>To</span>
               <input
                 type="date"
@@ -151,7 +175,7 @@ export default function MarketingPage() {
                 data-testid="marketing-filter-end"
                 onChange={(event) => setEndDate(event.target.value)}
               />
-            </label>
+            </Label>
           </div>
         </div>
         <div className="mt-4 overflow-hidden rounded-2xl border border-surface-2">
@@ -183,7 +207,9 @@ export default function MarketingPage() {
                       <td>{contact.campaignName}</td>
                       <td>{dayjs(contact.contactDate).format("MMM D, YYYY")}</td>
                       <td>
-                        <span className="badge">{OUTCOME_LABELS.get(contact.outcome) ?? contact.outcome}</span>
+                        <Badge variant={outcomeBadgeVariant(contact.outcome)}>
+                          {OUTCOME_LABELS.get(contact.outcome) ?? contact.outcome}
+                        </Badge>
                       </td>
                     </tr>
                   );

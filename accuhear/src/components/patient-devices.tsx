@@ -3,6 +3,12 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 type CatalogItem = {
   id: string;
@@ -439,32 +445,42 @@ export function PatientDevices({
           <div className="text-sm text-ink-muted">Tracked orders, serial capture, warranty control, and delivery.</div>
         </div>
         <div className="flex gap-2">
-          <button type="button" className="tab-pill bg-surface-2 text-xs" onClick={loadWorkspace}>
+          <Button type="button" variant="secondary" size="sm" onClick={loadWorkspace}>
             Refresh
-          </button>
-          <button type="button" className="tab-pill bg-brand-blue/10 text-xs text-brand-ink" onClick={startCreate}>
+          </Button>
+          <Button type="button" variant="default" size="sm" onClick={startCreate}>
             New tracked order
-          </button>
+          </Button>
         </div>
       </div>
 
       <div className="mt-4">
         <div className="seg-tabs-inner">
           {TABS.map((tab) => (
-            <button
+            <Button
               key={tab}
               type="button"
-              className={`seg-tab${activeTab === tab ? " active" : ""}`}
+              variant="ghost"
+              size="micro"
+              className={cn("seg-tab", activeTab === tab && "active")}
               onClick={() => setActiveTab(tab)}
             >
               {tab}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
 
-      {message ? <div className="mt-4 rounded-2xl bg-success/10 px-4 py-3 text-sm text-success">{message}</div> : null}
-      {error ? <div className="mt-4 rounded-2xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</div> : null}
+      {message ? (
+        <Alert className="mt-4 border-success/20 bg-success/10 text-success">
+          <AlertDescription>{message}</AlertDescription>
+        </Alert>
+      ) : null}
+      {error ? (
+        <Alert variant="destructive" className="mt-4">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
 
       {creating ? (
         <div className="mt-6 rounded-[18px] border border-[rgba(31,149,184,0.15)] bg-[rgba(31,149,184,0.04)] p-4" data-testid="order-create-panel">
@@ -473,67 +489,72 @@ export function PatientDevices({
               <div className="section-title">Create tracked order</div>
               <div className="text-xs text-ink-muted">Invoice is created immediately. Manufacturer docs stay skippable.</div>
             </div>
-            <button type="button" className="text-ink-muted rounded-full px-3 py-[6px] text-[11px] font-semibold hover:bg-[var(--surface-2)]" onClick={() => setCreating(false)}>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setCreating(false)}>
               Close
-            </button>
+            </Button>
           </div>
 
           <div className="mt-4 space-y-3">
             {!trackedCatalog.length ? (
-              <div className="rounded-2xl bg-warning/10 px-4 py-3 text-sm text-warning">
-                No tracked catalog items are configured. Add one in Settings first.
-              </div>
+              <Alert variant="warning">
+                <AlertDescription>No tracked catalog items are configured. Add one in Settings first.</AlertDescription>
+              </Alert>
             ) : null}
             {draftItems.map((item, index) => (
               <div key={`draft-${index}`} className="grid gap-3 rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] p-4 lg:grid-cols-[1.5fr_0.8fr_0.6fr_auto]">
-                <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
+                <Label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
                   Item
-                  <select
-                    className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]"
+                  <Select
                     value={item.catalogItemId}
-                    onChange={(event) =>
+                    onValueChange={(value) =>
                       setDraftItems((current) =>
                         current.map((entry, entryIndex) =>
-                          entryIndex === index ? { ...entry, catalogItemId: event.target.value } : entry
+                          entryIndex === index ? { ...entry, catalogItemId: value ?? entry.catalogItemId } : entry
                         )
                       )
                     }
                   >
-                    <option value="" disabled>
-                      Select device type
-                    </option>
-                    {trackedCatalog.map((catalogItem) => (
-                      <option key={catalogItem.id} value={catalogItem.id}>
-                        {catalogItem.manufacturer ? `${catalogItem.manufacturer} ` : ""}
-                        {catalogItem.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
+                    <SelectTrigger className="mt-1 w-full bg-white text-[13px]">
+                      <SelectValue placeholder="Select device type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {trackedCatalog.map((catalogItem) => (
+                        <SelectItem key={catalogItem.id} value={catalogItem.id}>
+                          {catalogItem.manufacturer ? `${catalogItem.manufacturer} ` : ""}
+                          {catalogItem.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Label>
+                <Label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
                   Side
-                  <select
-                    className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]"
+                  <Select
                     value={item.side}
-                    onChange={(event) =>
+                    onValueChange={(value) =>
                       setDraftItems((current) =>
                         current.map((entry, entryIndex) =>
-                          entryIndex === index ? { ...entry, side: event.target.value } : entry
+                          entryIndex === index ? { ...entry, side: value ?? entry.side } : entry
                         )
                       )
                     }
                   >
-                    <option>Left</option>
-                    <option>Right</option>
-                    <option>Other</option>
-                  </select>
-                </label>
-                <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
+                    <SelectTrigger className="mt-1 w-full bg-white text-[13px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Left">Left</SelectItem>
+                      <SelectItem value="Right">Right</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Label>
+                <Label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
                   Qty
-                  <input
+                  <Input
                     type="number"
                     min={1}
-                    className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]"
+                    className="mt-1 w-full text-[13px]"
                     value={item.quantity}
                     onChange={(event) =>
                       setDraftItems((current) =>
@@ -545,46 +566,50 @@ export function PatientDevices({
                       )
                     }
                   />
-                </label>
-                <button
+                </Label>
+                <Button
                   type="button"
-                  className="self-end text-ink-muted rounded-full px-3 py-[6px] text-[11px] font-semibold hover:bg-[var(--surface-2)]"
+                  variant="ghost"
+                  size="sm"
+                  className="self-end"
                   onClick={() => setDraftItems((current) => current.filter((_, entryIndex) => entryIndex !== index))}
                   disabled={draftItems.length === 1}
                 >
                   Remove
-                </button>
+                </Button>
               </div>
             ))}
           </div>
 
           <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_1fr_2fr]">
-            <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
+            <Label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
               Initial deposit
-              <input className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]" value={draftDeposit} onChange={(event) => setDraftDeposit(event.target.value)} placeholder="Optional" />
-            </label>
-            <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
+              <Input className="mt-1 w-full text-[13px]" value={draftDeposit} onChange={(event) => setDraftDeposit(event.target.value)} placeholder="Optional" />
+            </Label>
+            <Label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
               Deposit method
-              <input className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]" value={draftDepositMethod} onChange={(event) => setDraftDepositMethod(event.target.value)} />
-            </label>
-            <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
+              <Input className="mt-1 w-full text-[13px]" value={draftDepositMethod} onChange={(event) => setDraftDepositMethod(event.target.value)} />
+            </Label>
+            <Label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
               Notes
-              <input className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]" value={draftNotes} onChange={(event) => setDraftNotes(event.target.value)} />
-            </label>
+              <Input className="mt-1 w-full text-[13px]" value={draftNotes} onChange={(event) => setDraftNotes(event.target.value)} />
+            </Label>
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
-            <button
+            <Button
               type="button"
-              className="tab-pill bg-surface-2 text-xs"
+              variant="secondary"
+              size="sm"
               onClick={addDraftItem}
               disabled={!trackedCatalog.length}
             >
               Add line
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className="bg-[var(--brand-blue)] text-white rounded-full px-4 py-[6px] text-[11px] font-semibold hover:bg-[#1a829f]"
+              variant="default"
+              size="sm"
               disabled={
                 submitting ||
                 draftItems.length === 0 ||
@@ -594,7 +619,7 @@ export function PatientDevices({
               onClick={() => void createOrder()}
             >
               {submitting ? "Creating..." : "Create order + invoice"}
-            </button>
+            </Button>
           </div>
         </div>
       ) : null}
@@ -657,10 +682,12 @@ export function PatientDevices({
                 </div>
               ) : (
                 outstandingOrders.map((order) => (
-                  <button
+                  <Button
                     key={order.id}
                     type="button"
-                    className="w-full rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] px-4 py-4 text-left shadow-sm"
+                    variant="ghost"
+                    size="default"
+                    className="h-auto w-full rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] px-4 py-4 text-left shadow-sm"
                     data-active={selectedOrder?.id === order.id}
                     onClick={() => setSelectedOrderId(order.id)}
                   >
@@ -678,7 +705,7 @@ export function PatientDevices({
                         <div>{formatCurrency(order.invoice?.balance)}</div>
                       </div>
                     </div>
-                  </button>
+                  </Button>
                 ))
               )}
             </div>
@@ -761,33 +788,33 @@ export function PatientDevices({
                             <div>{item.side ?? "Other"}</div>
                           </div>
                           <div className="grid gap-3 md:grid-cols-2">
-                            <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
+                            <Label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
                               Serial
-                              <input className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]" value={receiveForm[item.id]?.serial ?? ""} onChange={(event) => setReceiveForm((current) => ({ ...current, [item.id]: { ...current[item.id], serial: event.target.value } }))} />
-                            </label>
-                            <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
+                              <Input className="mt-1 w-full text-[13px]" value={receiveForm[item.id]?.serial ?? ""} onChange={(event) => setReceiveForm((current) => ({ ...current, [item.id]: { ...current[item.id], serial: event.target.value } }))} />
+                            </Label>
+                            <Label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
                               Manufacturer warranty
                               <input type="date" className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]" value={receiveForm[item.id]?.manufacturerWarrantyEnd ?? ""} onChange={(event) => setReceiveForm((current) => ({ ...current, [item.id]: { ...current[item.id], manufacturerWarrantyEnd: event.target.value } }))} />
-                            </label>
-                            <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
+                            </Label>
+                            <Label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
                               L&D warranty
                               <input type="date" className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]" value={receiveForm[item.id]?.lossDamageWarrantyEnd ?? ""} onChange={(event) => setReceiveForm((current) => ({ ...current, [item.id]: { ...current[item.id], lossDamageWarrantyEnd: event.target.value } }))} />
-                            </label>
-                            <label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
+                            </Label>
+                            <Label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
                               Notes
-                              <input className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]" value={receiveForm[item.id]?.notes ?? ""} onChange={(event) => setReceiveForm((current) => ({ ...current, [item.id]: { ...current[item.id], notes: event.target.value } }))} />
-                            </label>
+                              <Input className="mt-1 w-full text-[13px]" value={receiveForm[item.id]?.notes ?? ""} onChange={(event) => setReceiveForm((current) => ({ ...current, [item.id]: { ...current[item.id], notes: event.target.value } }))} />
+                            </Label>
                           </div>
                         </div>
                       ))}
                   </div>
                   <div className="mt-4 flex gap-2">
-                    <button type="button" className="text-ink-muted rounded-full px-3 py-[6px] text-[11px] font-semibold hover:bg-[var(--surface-2)]" onClick={() => setReceiveOrderId(null)}>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setReceiveOrderId(null)}>
                       Cancel
-                    </button>
-                    <button type="button" className="bg-[var(--brand-blue)] text-white rounded-full px-4 py-[6px] text-[11px] font-semibold hover:bg-[#1a829f]" disabled={submitting} onClick={() => void submitReceive()}>
+                    </Button>
+                    <Button type="button" variant="default" size="sm" disabled={submitting} onClick={() => void submitReceive()}>
                       {submitting ? "Saving..." : "Save received items"}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ) : null}
@@ -795,17 +822,17 @@ export function PatientDevices({
               {deliverOrderId === selectedOrder.id ? (
                 <div className="rounded-[18px] border border-success/20 bg-success/5 p-4">
                   <div className="section-title">Deliver order</div>
-                  <label className="mt-3 block text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
+                  <Label className="mt-3 block text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
                     Fitting date
                     <input type="date" className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]" value={deliverFittingDate} onChange={(event) => setDeliverFittingDate(event.target.value)} />
-                  </label>
+                  </Label>
                   <div className="mt-4 flex gap-2">
-                    <button type="button" className="text-ink-muted rounded-full px-3 py-[6px] text-[11px] font-semibold hover:bg-[var(--surface-2)]" onClick={() => setDeliverOrderId(null)}>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setDeliverOrderId(null)}>
                       Cancel
-                    </button>
-                    <button type="button" className="tab-pill bg-success/10 text-xs text-success" disabled={submitting} onClick={() => void submitDeliver(selectedOrder.id)}>
+                    </Button>
+                    <Button type="button" variant="secondary" size="sm" className="bg-success/10 text-success hover:bg-success/20" disabled={submitting} onClick={() => void submitDeliver(selectedOrder.id)}>
                       {submitting ? "Saving..." : "Deliver received items"}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ) : null}
@@ -813,41 +840,41 @@ export function PatientDevices({
               {returnOrderId === selectedOrder.id ? (
                 <div className="rounded-[18px] border border-danger/20 bg-danger/5 p-4">
                   <div className="section-title">Return to manufacturer</div>
-                  <label className="mt-3 block text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
+                  <Label className="mt-3 block text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
                     Reason
-                    <input className="mt-1 w-full rounded-[8px] border border-[rgba(38,34,96,0.12)] bg-white px-3 py-2 text-[13px] text-ink outline-none focus:border-[rgba(31,149,184,0.45)] focus:shadow-[0_0_0_3px_rgba(31,149,184,0.1)]" value={returnReason} onChange={(event) => setReturnReason(event.target.value)} />
-                  </label>
+                    <Input className="mt-1 w-full text-[13px]" value={returnReason} onChange={(event) => setReturnReason(event.target.value)} />
+                  </Label>
                   <div className="mt-4 flex gap-2">
-                    <button type="button" className="text-ink-muted rounded-full px-3 py-[6px] text-[11px] font-semibold hover:bg-[var(--surface-2)]" onClick={() => setReturnOrderId(null)}>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setReturnOrderId(null)}>
                       Cancel
-                    </button>
-                    <button type="button" className="tab-pill bg-danger/10 text-xs text-danger" disabled={submitting} onClick={() => void submitReturn(selectedOrder.id)}>
+                    </Button>
+                    <Button type="button" variant="destructive" size="sm" disabled={submitting} onClick={() => void submitReturn(selectedOrder.id)}>
                       {submitting ? "Saving..." : "Create return"}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ) : null}
 
               <div className="flex flex-wrap gap-2">
                 {selectedOrder.lineItems.some((item) => item.requiresManufacturerOrder) ? (
-                  <button type="button" className="tab-pill bg-surface-2 text-xs" onClick={() => void createManufacturerDoc(selectedOrder.id)}>
+                  <Button type="button" variant="secondary" size="sm" onClick={() => void createManufacturerDoc(selectedOrder.id)}>
                     Generate manufacturer doc
-                  </button>
+                  </Button>
                 ) : null}
                 {selectedOrder.lineItems.some((item) => item.status === "ordered") ? (
-                  <button type="button" className="tab-pill bg-surface-2 text-xs" onClick={() => openReceiveForm(selectedOrder)}>
+                  <Button type="button" variant="secondary" size="sm" onClick={() => openReceiveForm(selectedOrder)}>
                     Receive order
-                  </button>
+                  </Button>
                 ) : null}
                 {selectedOrder.lineItems.some((item) => item.status === "received") ? (
-                  <button type="button" className="tab-pill bg-surface-2 text-xs" onClick={() => setDeliverOrderId(selectedOrder.id)}>
+                  <Button type="button" variant="secondary" size="sm" onClick={() => setDeliverOrderId(selectedOrder.id)}>
                     Deliver order
-                  </button>
+                  </Button>
                 ) : null}
                 {selectedOrder.lineItems.some((item) => item.status === "received" || item.status === "delivered") ? (
-                  <button type="button" className="tab-pill bg-surface-2 text-xs" onClick={() => setReturnOrderId(selectedOrder.id)}>
+                  <Button type="button" variant="secondary" size="sm" onClick={() => setReturnOrderId(selectedOrder.id)}>
                     Return to manufacturer
-                  </button>
+                  </Button>
                 ) : null}
               </div>
 

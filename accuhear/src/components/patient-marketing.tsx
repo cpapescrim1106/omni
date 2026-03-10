@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+
 const CONTACT_HISTORY = [
   { date: "01/17/2026", description: "Hearing aid 3 years old" },
   { date: "11/16/2025", description: "Warranty expiration message #5 - 60 days" },
@@ -55,9 +57,9 @@ export function PatientMarketing() {
                 <input type="checkbox" /> Do not request online review
               </label>
             </div>
-            <button type="button" className="tab-pill mt-3 w-fit bg-surface-2 text-xs">
+            <Button type="button" variant="secondary" size="sm" className="mt-3 w-fit">
               Update
-            </button>
+            </Button>
           </div>
 
           <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] p-4">
@@ -76,9 +78,9 @@ export function PatientMarketing() {
                 </div>
               ))}
             </div>
-            <button type="button" className="tab-pill mt-3 w-fit bg-surface-2 text-xs">
+            <Button type="button" variant="secondary" size="sm" className="mt-3 w-fit">
               Show complete history
-            </button>
+            </Button>
           </div>
 
           <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] p-4">
@@ -91,8 +93,8 @@ export function PatientMarketing() {
               ))}
             </div>
             <div className="mt-3 flex gap-2">
-              <button type="button" className="tab-pill bg-surface-2 text-xs">Add</button>
-              <button type="button" className="tab-pill bg-surface-2 text-xs">Delete</button>
+              <Button type="button" variant="secondary" size="sm">Add</Button>
+              <Button type="button" variant="secondary" size="sm">Delete</Button>
             </div>
           </div>
         </div>
@@ -112,9 +114,9 @@ export function PatientMarketing() {
                 </div>
               ))}
             </div>
-            <button type="button" className="tab-pill mt-3 w-fit bg-surface-2 text-xs">
+            <Button type="button" variant="secondary" size="sm" className="mt-3 w-fit">
               View content
-            </button>
+            </Button>
           </div>
 
           <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] p-4">
@@ -140,9 +142,9 @@ export function PatientMarketing() {
               ))}
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              <button type="button" className="tab-pill bg-surface-2 text-xs">Add recall</button>
-              <button type="button" className="tab-pill bg-surface-2 text-xs">Edit details</button>
-              <button type="button" className="tab-pill bg-surface-2 text-xs">Refresh</button>
+              <Button type="button" variant="secondary" size="sm">Add recall</Button>
+              <Button type="button" variant="secondary" size="sm">Edit details</Button>
+              <Button type="button" variant="secondary" size="sm">Refresh</Button>
             </div>
           </div>
         </div>

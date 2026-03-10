@@ -1,6 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
+import { SendHorizontalIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type Props = {
   value: string;
@@ -73,21 +76,24 @@ export function MessageResponseBar({
             />
           </div>
           {showSendButton ? (
-            <button
-              type="button"
-              aria-label="Send message"
-              className="grid h-8 w-8 place-items-center rounded-full bg-brand-blue text-white shadow-sm transition hover:bg-brand-blue/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/40 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={!canSend}
-              onClick={onSend}
-              title={sendLabel}
-            >
-              <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
-                <path
-                  fill="currentColor"
-                  d="M12 4l6 6-1.41 1.41L13 7.83V20h-2V7.83L7.41 11.41 6 10l6-6z"
-                />
-              </svg>
-            </button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    aria-label="Send message"
+                    variant="default"
+                    size="icon"
+                    className="h-8 w-8 shadow-sm"
+                    disabled={!canSend}
+                    onClick={onSend}
+                  />
+                }
+              >
+                <SendHorizontalIcon size={16} />
+              </TooltipTrigger>
+              <TooltipContent>{sendLabel}</TooltipContent>
+            </Tooltip>
           ) : null}
         </div>
         {hint ? <div className="px-3 pb-1 pt-1 text-[11px] text-ink-soft">{hint}</div> : null}

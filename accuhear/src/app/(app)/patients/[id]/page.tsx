@@ -3,12 +3,13 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import dayjs from "dayjs";
 import { getPatientById } from "@/lib/patient-data";
+import { Button } from "@/components/ui/button";
 import { PatientJournal } from "@/components/patient-journal";
 import { PatientMessaging } from "@/components/patient-messaging";
 import { PatientDocuments } from "@/components/patient-documents";
 import { PatientSales } from "@/components/patient-sales";
 import { PatientAudiology } from "@/components/patient-audiology";
-import { PatientDevices } from "@/components/patient-devices";
+import { PatientDeviceRegistry } from "@/components/patient-device-registry";
 import { PatientPayers } from "@/components/patient-payers";
 import { PatientMarketing } from "@/components/patient-marketing";
 import { PatientSummaryForm } from "@/components/patient-summary-form";
@@ -18,7 +19,6 @@ import { PatientPhotoAvatar } from "@/components/patient-photo-avatar";
 
 const tabs = [
   "Summary",
-  "Hearing aids",
   "Audiology",
   "Journal",
   "3rd party payers",
@@ -69,7 +69,7 @@ export default async function PatientProfilePage({
         battery: "Other",
         notes: device.serial ? `Serial ${device.serial}` : "—",
         purchase: device.createdAt ? dayjs(device.createdAt).format("MM/DD/YYYY") : "—",
-        status: device.status || "Active",
+        status: device.status || "Current",
       }))
     : [
         {
@@ -77,9 +77,33 @@ export default async function PatientProfilePage({
           battery: "Other",
           notes: "extended warranty exp 1/15/27",
           purchase: "01/17/2023",
-          status: "Active",
+          status: "Current",
         },
       ];
+
+  const deviceRecords = patient.devices.map((d) => ({
+    id: d.id,
+    ear: d.ear,
+    manufacturer: d.manufacturer,
+    model: d.model,
+    serial: d.serial,
+    warrantyEnd: d.warrantyEnd?.toISOString() ?? null,
+    lossDamageWarrantyEnd: d.lossDamageWarrantyEnd?.toISOString() ?? null,
+    status: d.status || "Current",
+    purchaseDate: d.purchaseDate?.toISOString() ?? null,
+    createdAt: d.createdAt.toISOString(),
+  }));
+
+  const inOrderItems = (patient.purchaseOrders ?? []).flatMap((order) =>
+    order.lineItems
+      .filter((item) => item.status === "ordered" || item.status === "received")
+      .map((item) => ({
+        itemName: item.itemName,
+        side: item.side,
+        status: item.status,
+        orderedAt: order.createdAt.toISOString(),
+      }))
+  );
 
   return (
     <div className="flex flex-col gap-2">
@@ -155,8 +179,6 @@ export default async function PatientProfilePage({
 
       {activeTab === "Audiology" ? (
         <PatientAudiology patientId={patient.id} />
-      ) : activeTab === "Devices" || activeTab === "Hearing aids" ? (
-        <PatientDevices patientId={patient.id} autoOpenCreate={purchaseMode === "tracked"} />
       ) : activeTab === "Journal" ? (
         <PatientJournal patientId={patient.id} />
       ) : activeTab === "Insurance/Payers" || activeTab === "3rd party payers" ? (
@@ -164,7 +186,7 @@ export default async function PatientProfilePage({
       ) : activeTab === "Messaging" ? (
         <PatientMessaging patientId={patient.id} />
       ) : activeTab === "Sales history" ? (
-        <PatientSales patientId={patient.id} autoOpenCreate={purchaseMode === "direct"} />
+        <PatientSales patientId={patient.id} autoOpenCreate={purchaseMode === "direct" || purchaseMode === "tracked"} />
       ) : activeTab === "Documents" ? (
         <PatientDocuments patientId={patient.id} />
       ) : activeTab === "Marketing" ? (
@@ -213,39 +235,22 @@ export default async function PatientProfilePage({
               )}
             </div>
 
-            {/* Current Aids */}
+            {/* Device Registry */}
             <div className="ctx-card">
-              <div className="ctx-card-title">
-                <span>Current Aids</span>
-                <span className="ctx-card-count">
-                  {aidRows.length} device{aidRows.length !== 1 ? "s" : ""}
-                </span>
-              </div>
-              <table className="mini-table">
-                <thead>
-                  <tr>
-                    <th>Model</th>
-                    <th>Status</th>
-                    <th>Purchase</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {aidRows.map((row, i) => (
-                    <tr key={i}>
-                      <td className="mini-table-strong">{row.model}</td>
-                      <td>{row.status}</td>
-                      <td>{row.purchase}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <PatientDeviceRegistry
+                patientId={patient.id}
+                devices={deviceRecords}
+                inOrderItems={inOrderItems}
+              />
             </div>
 
             {/* Recent Notes */}
             <div className="ctx-card">
               <div className="ctx-card-title">
                 <span>Recent Notes</span>
-                <button className="btn-sm-ghost">+ Note</button>
+                <Button variant="ghost" size="sm" className="btn-sm-ghost">
+                  + Note
+                </Button>
               </div>
               {patient.journalEntries.length > 0 ? (
                 patient.journalEntries.map((entry) => (

@@ -1,3 +1,6 @@
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+
 const documents = [
   { title: "HIPAA Consent", category: "Other", date: "01/07/2026", addedBy: "Rodeo, Amy" },
   { title: "Insurance Card", category: "Insurance", date: "01/07/2026", addedBy: "Rodeo, Amy" },
@@ -13,19 +16,19 @@ export default function DocumentsPage() {
         <div className="mt-4 space-y-2 text-xs text-ink-muted">
           <div className="flex items-center justify-between rounded-2xl bg-white/80 px-3 py-2">
             <span>All</span>
-            <span className="badge">12</span>
+            <Badge variant="neutral">12</Badge>
           </div>
           <div className="flex items-center justify-between rounded-2xl bg-white/60 px-3 py-2">
             <span>Driver&apos;s license</span>
-            <span className="badge">3</span>
+            <Badge variant="neutral">3</Badge>
           </div>
           <div className="flex items-center justify-between rounded-2xl bg-white/60 px-3 py-2">
             <span>Insurance</span>
-            <span className="badge">4</span>
+            <Badge variant="neutral">4</Badge>
           </div>
           <div className="flex items-center justify-between rounded-2xl bg-white/60 px-3 py-2">
             <span>Purchase</span>
-            <span className="badge">1</span>
+            <Badge variant="neutral">1</Badge>
           </div>
         </div>
       </aside>
@@ -36,9 +39,9 @@ export default function DocumentsPage() {
             <div className="section-title text-xs text-brand-ink">Documents</div>
             <div className="text-sm text-ink-muted">Preview inline or open full record.</div>
           </div>
-          <button className="rounded-full border border-transparent bg-brand-blue/10 px-4 py-2 text-xs font-semibold text-brand-ink">
+          <Button variant="secondary" size="sm">
             Upload
-          </button>
+          </Button>
         </div>
         <div className="mt-4 grid gap-3">
           {documents.map((doc) => (

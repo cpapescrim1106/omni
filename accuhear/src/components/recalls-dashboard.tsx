@@ -2,6 +2,15 @@
 
 import { useEffect, useState } from "react";
 import dayjs from "dayjs";
+import { Badge, type badgeVariants } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const STATUS_OPTIONS = [
   { value: "pending", label: "Pending" },
@@ -12,6 +21,22 @@ const STATUS_OPTIONS = [
 ];
 
 const STATUS_LABELS = new Map(STATUS_OPTIONS.map((option) => [option.value, option.label]));
+
+function recallStatusVariant(status: string): NonNullable<Parameters<typeof Badge>[0]["variant"]> {
+  switch (status) {
+    case "completed":
+      return "success";
+    case "cancelled":
+      return "danger";
+    case "pending":
+      return "warning";
+    case "scheduled":
+    case "sent":
+      return "blue";
+    default:
+      return "neutral";
+  }
+}
 
 type RecallRow = {
   id: string;
@@ -85,22 +110,22 @@ export function RecallsDashboard() {
 
       <div className="mt-4 grid gap-3 rounded-2xl border border-surface-2 bg-white/80 p-4">
         <div className="flex flex-wrap items-center gap-3 text-xs text-ink-muted">
-          <label className="flex items-center gap-2">
+          <Label className="flex items-center gap-2 font-body text-xs font-normal normal-case tracking-normal text-ink-muted">
             <span>Status</span>
-            <select
-              className="rounded-xl border border-surface-3 bg-white px-3 py-2 text-xs"
-              value={statusFilter}
-              data-testid="recalls-filter-status"
-              onChange={(event) => setStatusFilter(event.target.value)}
-            >
+            <Select value={statusFilter} onValueChange={(value) => value && setStatusFilter(value)}>
+              <SelectTrigger className="w-[160px] bg-white text-xs" data-testid="recalls-filter-status">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
               {STATUS_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
+                <SelectItem key={option.value} value={option.value}>
                   {option.label}
-                </option>
+                </SelectItem>
               ))}
-            </select>
-          </label>
-          <label className="flex items-center gap-2">
+              </SelectContent>
+            </Select>
+          </Label>
+          <Label className="flex items-center gap-2 font-body text-xs font-normal normal-case tracking-normal text-ink-muted">
             <span>From</span>
             <input
               type="date"
@@ -109,8 +134,8 @@ export function RecallsDashboard() {
               data-testid="recalls-filter-start"
               onChange={(event) => setStartDate(event.target.value)}
             />
-          </label>
-          <label className="flex items-center gap-2">
+          </Label>
+          <Label className="flex items-center gap-2 font-body text-xs font-normal normal-case tracking-normal text-ink-muted">
             <span>To</span>
             <input
               type="date"
@@ -119,7 +144,7 @@ export function RecallsDashboard() {
               data-testid="recalls-filter-end"
               onChange={(event) => setEndDate(event.target.value)}
             />
-          </label>
+          </Label>
         </div>
       </div>
 
@@ -150,7 +175,9 @@ export function RecallsDashboard() {
                     <td>{dayjs(recall.dueDate).format("MMM D, YYYY")}</td>
                     <td>{recall.recallRule?.name ?? "—"}</td>
                     <td>
-                      <span className="badge">{STATUS_LABELS.get(recall.status) ?? recall.status}</span>
+                      <Badge variant={recallStatusVariant(recall.status)}>
+                        {STATUS_LABELS.get(recall.status) ?? recall.status}
+                      </Badge>
                     </td>
                   </tr>
                 );
@@ -168,4 +195,3 @@ export function RecallsDashboard() {
     </section>
   );
 }
-

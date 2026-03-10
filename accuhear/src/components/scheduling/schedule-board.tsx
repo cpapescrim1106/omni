@@ -5,12 +5,19 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import isoWeek from "dayjs/plugin/isoWeek";
 import type { OpUnitType } from "dayjs";
+import { HouseIcon } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   formatTransitionHistoryMeta,
   formatTransitionHistoryStatus,
   type AppointmentTransitionHistoryItem,
 } from "@/lib/appointments/transition-history";
+import { cn } from "@/lib/utils";
 import { normalizeProviderName } from "@/lib/provider-names";
 
 const DATE_FORMAT = "YYYY-MM-DD";
@@ -1355,83 +1362,80 @@ export function BigSchedule() {
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
           <div className="flex items-center gap-2">
-            <button
+            <Button
               onClick={prevClick}
               data-testid="schedule-prev"
               aria-label="Previous"
-              className="tab-pill bg-surface-2"
+              variant="secondary"
+              size="sm"
             >
               {"<"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewDate(dayjs().format(DATE_FORMAT))}
-              data-testid="schedule-home"
-              className="tab-pill bg-surface-2"
-              aria-label="Go to today"
-              title="Go to today"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-                focusable="false"
-                className="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M3 10.5L12 3l9 7.5" />
-                <path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9" />
-              </svg>
-            </button>
-            <button
+            </Button>
+            <Tooltip>
+              <TooltipTrigger render={
+                <Button
+                  type="button"
+                  onClick={() => setViewDate(dayjs().format(DATE_FORMAT))}
+                  data-testid="schedule-home"
+                  variant="secondary"
+                  size="icon-sm"
+                  aria-label="Go to today"
+                >
+                  <HouseIcon className="size-4" />
+                </Button>
+              } />
+              <TooltipContent>Go to today</TooltipContent>
+            </Tooltip>
+            <Button
               onClick={nextClick}
               data-testid="schedule-next"
               aria-label="Next"
-              className="tab-pill bg-surface-2"
+              variant="secondary"
+              size="sm"
             >
               {">"}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={() => {
                 const nextDate = dayjs(viewDate).add(6, "month");
                 setViewDate(nextDate.format(DATE_FORMAT));
               }}
               data-testid="schedule-six-months"
-              className="tab-pill bg-surface-2"
+              variant="secondary"
+              size="sm"
               aria-label="Jump ahead 6 months"
-              title="Jump ahead 6 months"
             >
               +6mo
-            </button>
+            </Button>
           </div>
           <div className="flex items-center gap-2">
-            <button
+            <Button
               onClick={() => setViewType("day")}
               data-testid="schedule-day"
-              className={`tab-pill ${viewType === "day" ? "" : "bg-surface-2"}`}
+              variant={viewType === "day" ? "default" : "secondary"}
+              size="sm"
             >
               Day
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => setViewType("week")}
               data-testid="schedule-week"
-              className={`tab-pill ${viewType === "week" ? "" : "bg-surface-2"}`}
+              variant={viewType === "week" ? "default" : "secondary"}
+              size="sm"
             >
               5-day
-            </button>
+            </Button>
           </div>
-          <button
+          <Button
             type="button"
-            className="tab-pill bg-surface-2"
+            variant="secondary"
+            size="sm"
             onClick={() => setIsSidebarCollapsed((current) => !current)}
             data-testid="schedule-toggle-filters"
           >
             {isSidebarCollapsed ? "Show filters" : "Hide filters"}
-          </button>
+          </Button>
           <div data-testid="schedule-date" className="rounded-full bg-surface-2 px-3 py-2">
             {dayjs(viewDate).format("MMM D, YYYY")}
           </div>
@@ -1460,14 +1464,15 @@ export function BigSchedule() {
                   {editingId ? "Update appointment details" : "Schedule a new visit"}
                 </div>
               </div>
-              <button
+              <Button
                 type="button"
                 data-testid="appointment-cancel"
-                className="rounded-full border border-surface-3 px-4 py-2 text-xs text-ink-soft"
+                variant="outline"
+                size="sm"
                 onClick={closeModal}
               >
                 Cancel
-              </button>
+              </Button>
             </div>
 
             {modalError ? (
@@ -1479,7 +1484,7 @@ export function BigSchedule() {
             <div className="appointment-modal-body">
               <div className="appointment-field">
                 <div className="flex items-center justify-between gap-3">
-                  <label className="appointment-label">Patient</label>
+                  <Label className="appointment-label">Patient</Label>
                   <div className="flex items-center gap-3 text-xs text-ink-muted">
                     <label className="flex items-center gap-2 whitespace-nowrap">
                       <input
@@ -1506,23 +1511,25 @@ export function BigSchedule() {
                       />
                       N/A block
                     </label>
-                    <button
+                    <Button
                       type="button"
                       onClick={() => setPatientStatusFilter("active")}
-                      className={`tab-pill ${patientStatusFilter === "active" ? "" : "bg-surface-2"}`}
+                      variant={patientStatusFilter === "active" ? "default" : "secondary"}
+                      size="sm"
                     >
                       Active
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
                       onClick={() => setPatientStatusFilter("inactive")}
-                      className={`tab-pill ${patientStatusFilter === "inactive" ? "" : "bg-surface-2"}`}
+                      variant={patientStatusFilter === "inactive" ? "default" : "secondary"}
+                      size="sm"
                     >
                       Inactive
-                    </button>
+                    </Button>
                   </div>
                 </div>
-                <input
+                <Input
                   data-testid="appointment-patient-search"
                   value={patientQuery}
                   required={!formState.isNaBlock}
@@ -1538,16 +1545,17 @@ export function BigSchedule() {
                 {patientResults.length && !formState.isNaBlock ? (
                   <div className="appointment-patient-results">
                     {patientResults.map((patient) => (
-                      <button
+                      <Button
                         key={patient.id}
                         type="button"
                         data-testid="appointment-patient-option"
+                        variant="ghost"
                         className="appointment-patient-option"
                         onClick={() => handlePatientSelect(patient)}
                       >
                         {patient.lastName}, {patient.firstName}
                         {patient.dob ? ` · DOB ${patient.dob}` : ""}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 ) : null}
@@ -1560,7 +1568,7 @@ export function BigSchedule() {
 
               <div className="appointment-grid">
                 <div className="appointment-field">
-                  <label className="appointment-label">Date</label>
+                  <Label className="appointment-label">Date</Label>
                   <input
                     type="date"
                     required
@@ -1575,7 +1583,7 @@ export function BigSchedule() {
                   />
                 </div>
                 <div className="appointment-field">
-                  <label className="appointment-label">Start</label>
+                  <Label className="appointment-label">Start</Label>
                   <input
                     type="time"
                     required
@@ -1590,7 +1598,7 @@ export function BigSchedule() {
                   />
                 </div>
                 <div className="appointment-field">
-                  <label className="appointment-label">End</label>
+                  <Label className="appointment-label">End</Label>
                   <input
                     type="time"
                     required
@@ -1605,69 +1613,81 @@ export function BigSchedule() {
                   />
                 </div>
                 <div className="appointment-field">
-                  <label className="appointment-label">Provider</label>
-                  <select
+                  <Label className="appointment-label">Provider</Label>
+                  <Select
                     required
                     data-testid="appointment-provider"
-                    className="appointment-input"
                     value={formState.providerName}
-                    onChange={(event) =>
+                    onValueChange={(value) =>
                       setFormState((current) =>
-                        current ? { ...current, providerName: event.target.value } : current
+                        current ? { ...current, providerName: value || "" } : current
                       )
                     }
                   >
-                    {providers.map((provider) => (
-                      <option key={provider} value={provider}>
-                        {provider}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="appointment-input">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {providers.map((provider) => (
+                        <SelectItem key={provider} value={provider}>
+                          {provider}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="appointment-field">
-                  <label className="appointment-label">Appointment Type</label>
-                  <select
+                  <Label className="appointment-label">Appointment Type</Label>
+                  <Select
                     required
                     data-testid="appointment-type"
-                    className="appointment-input"
                     value={formState.typeId}
-                    onChange={(event) =>
+                    onValueChange={(value) =>
                       setFormState((current) =>
-                        current ? { ...current, typeId: event.target.value } : current
+                        current ? { ...current, typeId: value || "" } : current
                       )
                     }
                   >
-                    {meta?.types?.map((type) => (
-                      <option key={type.id} value={type.id}>
-                        {type.name}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="appointment-input">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {meta?.types?.map((type) => (
+                        <SelectItem key={type.id} value={type.id}>
+                          {type.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="appointment-field">
-                  <label className="appointment-label">Status</label>
-                  <select
+                  <Label className="appointment-label">Status</Label>
+                  <Select
                     required
                     data-testid="appointment-status"
-                    className="appointment-input"
                     value={formState.statusId}
-                    onChange={(event) =>
+                    onValueChange={(value) =>
                       setFormState((current) =>
-                        current ? { ...current, statusId: event.target.value } : current
+                        current ? { ...current, statusId: value || "" } : current
                       )
                     }
                   >
-                    {meta?.statuses?.map((status) => (
-                      <option key={status.id} value={status.id}>
-                        {status.name}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="appointment-input">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {meta?.statuses?.map((status) => (
+                        <SelectItem key={status.id} value={status.id}>
+                          {status.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
               <div className="appointment-field">
-                <label className="appointment-label">Notes</label>
+                <Label className="appointment-label">Notes</Label>
                 <textarea
                   data-testid="appointment-notes"
                   className="appointment-textarea"
@@ -1683,37 +1703,40 @@ export function BigSchedule() {
             </div>
 
             <div className="appointment-modal-actions">
-              <button
+              <Button
                 type="button"
                 data-testid="appointment-cancel"
-                className="rounded-full border border-surface-3 px-4 py-2 text-xs text-ink-soft"
+                variant="outline"
+                size="sm"
                 onClick={closeModal}
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 data-testid="appointment-submit"
                 className="appointment-submit-button"
                 onClick={handleModalSubmit}
               >
                 {editingId ? "Save changes" : "Create appointment"}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       ) : null}
 
-      <div
-        className={`schedule-shell${isSidebarCollapsed ? " is-collapsed" : ""}`}
-        data-testid="scheduler-root"
-      >
+      <div className={cn("schedule-shell", isSidebarCollapsed && "is-collapsed")} data-testid="scheduler-root">
         <aside className="schedule-sidebar">
           <div className="schedule-sidebar-card">
             <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">Filter by</div>
-            <select className="mt-2 w-full rounded-xl border border-surface-3 bg-white/80 px-3 py-2 text-xs">
-              <option>People</option>
-            </select>
+            <Select defaultValue="people">
+              <SelectTrigger className="mt-2 bg-white/80 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="people">People</SelectItem>
+              </SelectContent>
+            </Select>
             <div className="mt-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">Providers</div>
             <div className="mt-2 space-y-2">
               {providers.map((provider) => (
@@ -1734,41 +1757,42 @@ export function BigSchedule() {
                 </label>
               ))}
             </div>
-            <button
-              className="mt-3 text-xs text-brand-ink"
-              onClick={() => setSelectedProviders(providers)}
-              type="button"
-            >
+            <Button className="mt-3" variant="ghost" size="sm" onClick={() => setSelectedProviders(providers)} type="button">
               Select all
-            </button>
+            </Button>
           </div>
 
-          <div className={`schedule-sidebar-card${sidebarSections.status ? "" : " is-collapsed"}`}>
-            <button
+          <div className={cn("schedule-sidebar-card", !sidebarSections.status && "is-collapsed")}>
+            <Button
               type="button"
+              variant="ghost"
               className="schedule-sidebar-toggle"
               onClick={() => toggleSidebarSection("status")}
               aria-expanded={sidebarSections.status}
             >
               <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">Status</span>
-              <span className={`schedule-sidebar-caret${sidebarSections.status ? "" : " is-collapsed"}`} aria-hidden>
+              <span className={cn("schedule-sidebar-caret", !sidebarSections.status && "is-collapsed")} aria-hidden>
                 ▾
               </span>
-            </button>
+            </Button>
             {sidebarSections.status ? (
               <>
-                <select
-                  className="mt-2 w-full rounded-xl border border-surface-3 bg-white/80 px-3 py-2 text-xs"
+                <Select
                   value={selectedStatus}
                   data-testid="status-filter"
-                  onChange={(event) => setSelectedStatus(event.target.value as StatusFilter)}
+                  onValueChange={(value) => setSelectedStatus((value || "all") as StatusFilter)}
                 >
-                  {STATUS_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className="mt-2 bg-white/80 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STATUS_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <label className="mt-3 flex items-center gap-2 text-xs">
                   <input
                     type="checkbox"
@@ -1781,9 +1805,10 @@ export function BigSchedule() {
             ) : null}
           </div>
 
-          <div className={`schedule-sidebar-card${sidebarSections.types ? "" : " is-collapsed"}`}>
-            <button
+          <div className={cn("schedule-sidebar-card", !sidebarSections.types && "is-collapsed")}>
+            <Button
               type="button"
+              variant="ghost"
               className="schedule-sidebar-toggle"
               onClick={() => toggleSidebarSection("types")}
               aria-expanded={sidebarSections.types}
@@ -1791,10 +1816,10 @@ export function BigSchedule() {
               <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">
                 Appointment Types
               </span>
-              <span className={`schedule-sidebar-caret${sidebarSections.types ? "" : " is-collapsed"}`} aria-hidden>
+              <span className={cn("schedule-sidebar-caret", !sidebarSections.types && "is-collapsed")} aria-hidden>
                 ▾
               </span>
-            </button>
+            </Button>
             {sidebarSections.types ? (
               <>
                 <div className="mt-2 space-y-2">
@@ -1815,32 +1840,26 @@ export function BigSchedule() {
                     </label>
                   ))}
                 </div>
-                <button
-                  className="mt-3 text-xs text-brand-ink"
-                  onClick={() => setSelectedTypes(sidebarTypes.map((type) => type.id))}
-                  type="button"
-                >
+                <Button className="mt-3" variant="ghost" size="sm" onClick={() => setSelectedTypes(sidebarTypes.map((type) => type.id))} type="button">
                   Show all
-                </button>
+                </Button>
               </>
             ) : null}
           </div>
 
-          <div className={`schedule-sidebar-card${sidebarSections.calendar ? "" : " is-collapsed"}`}>
-            <button
+          <div className={cn("schedule-sidebar-card", !sidebarSections.calendar && "is-collapsed")}>
+            <Button
               type="button"
+              variant="ghost"
               className="schedule-sidebar-toggle"
               onClick={() => toggleSidebarSection("calendar")}
               aria-expanded={sidebarSections.calendar}
             >
               <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">Calendar</span>
-              <span
-                className={`schedule-sidebar-caret${sidebarSections.calendar ? "" : " is-collapsed"}`}
-                aria-hidden
-              >
+              <span className={cn("schedule-sidebar-caret", !sidebarSections.calendar && "is-collapsed")} aria-hidden>
                 ▾
               </span>
-            </button>
+            </Button>
             {sidebarSections.calendar ? (
               <MiniCalendar viewDate={viewDate} onSelect={(date) => setViewDate(date)} className="mt-2" />
             ) : null}
@@ -1869,9 +1888,10 @@ export function BigSchedule() {
                   {!scheduleContextState?.isLoading && scheduleContextState?.isToday && scheduleContextActions.length ? (
                     <>
                       {scheduleContextActions.map((action) => (
-                        <button
+                        <Button
                           key={action}
                           type="button"
+                          variant="ghost"
                           className="schedule-action-menu-item"
                           role="menuitem"
                           data-testid={`schedule-in-clinic-action-${toInClinicActionTestId(action)}`}
@@ -1881,7 +1901,7 @@ export function BigSchedule() {
                           }}
                         >
                           {action}
-                        </button>
+                        </Button>
                       ))}
                       <div className="schedule-action-menu-divider" />
                     </>
@@ -1908,8 +1928,9 @@ export function BigSchedule() {
                     </div>
                   ) : null}
                   <div className="schedule-action-menu-divider" />
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
                     className="schedule-action-menu-item"
                     role="menuitem"
                     onClick={() => {
@@ -1918,17 +1939,19 @@ export function BigSchedule() {
                     }}
                   >
                     Edit
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant="ghost"
                     className="schedule-action-menu-item"
                     role="menuitem"
                     onClick={() => setActionMenuView("status")}
                   >
                     Change Status →
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant="ghost"
                     className="schedule-action-menu-item"
                     role="menuitem"
                     onClick={() => {
@@ -1937,9 +1960,10 @@ export function BigSchedule() {
                     }}
                   >
                     {pinnedAppointmentId === actionMenu.id ? "Unpin for rescheduling" : "Pin for rescheduling"}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant="ghost"
                     className="schedule-action-menu-item"
                     role="menuitem"
                     onClick={() => {
@@ -1948,9 +1972,10 @@ export function BigSchedule() {
                     }}
                   >
                     Create a journal entry
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant="ghost"
                     className="schedule-action-menu-item"
                     role="menuitem"
                     onClick={() => {
@@ -1959,9 +1984,10 @@ export function BigSchedule() {
                     }}
                   >
                     Patient Details
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant="ghost"
                     className="schedule-action-menu-item"
                     role="menuitem"
                     data-testid="schedule-delete-appointment"
@@ -1970,30 +1996,33 @@ export function BigSchedule() {
                     }}
                   >
                     Delete appointment
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant="ghost"
                     className="schedule-action-menu-item"
                     role="menuitem"
                     onClick={() => setActionMenu(null)}
                   >
                     Close
-                  </button>
+                  </Button>
                 </>
               ) : (
                 <>
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
                     className="schedule-action-menu-item"
                     role="menuitem"
                     onClick={() => setActionMenuView("main")}
                   >
                     ← Back
-                  </button>
+                  </Button>
                   {orderedStatusOptions.map((status) => (
-                    <button
+                    <Button
                       key={status.id}
                       type="button"
+                      variant="ghost"
                       className="schedule-action-menu-item"
                       role="menuitem"
                       onClick={() => {
@@ -2002,7 +2031,7 @@ export function BigSchedule() {
                       }}
                     >
                       {status.name}
-                    </button>
+                    </Button>
                   ))}
                 </>
               )}
@@ -2340,7 +2369,7 @@ function MiniCalendar({
   }
 
   return (
-    <div className={`schedule-mini-calendar ${className || ""}`.trim()}>
+    <div className={cn("schedule-mini-calendar", className)}>
       <div className="schedule-mini-header">
         {monthStart.format("MMMM YYYY")}
       </div>
@@ -2354,16 +2383,17 @@ function MiniCalendar({
           const isCurrentMonth = day.month() === monthStart.month();
           const isSelected = day.isSame(active, "day");
           return (
-            <button
+            <Button
               key={day.format("YYYY-MM-DD")}
               type="button"
-              className={`schedule-mini-day ${isCurrentMonth ? "" : "is-out"} ${isSelected ? "is-active" : ""}`}
+              variant="ghost"
+              className={cn("schedule-mini-day", !isCurrentMonth && "is-out", isSelected && "is-active")}
               data-date={day.format(DATE_FORMAT)}
               data-testid={`mini-calendar-day-${day.format(DATE_FORMAT)}`}
               onClick={() => onSelect(day.format(DATE_FORMAT))}
             >
               {day.date()}
-            </button>
+            </Button>
           );
         })}
       </div>

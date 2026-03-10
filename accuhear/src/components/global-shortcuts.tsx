@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
 const SEQUENCE_TIMEOUT_MS = 800;
 const PATIENT_SEARCH_FOCUS_KEY = "accuhear:patient-search-focus";
@@ -159,16 +160,17 @@ export function GlobalShortcuts() {
                 <div className="section-title text-xs text-brand-ink">Keyboard shortcuts</div>
                 <div className="text-sm text-ink-muted">Press ? then ? to open this menu.</div>
               </div>
-              <button
+              <Button
                 type="button"
-                className="tab-pill bg-surface-2"
+                variant="secondary"
+                size="sm"
                 onClick={() => {
                   setIsShortcutMenuOpen(false);
                   lastKeyRef.current = null;
                 }}
               >
                 Close
-              </button>
+              </Button>
             </div>
             <div className="shortcut-modal-list">
               {shortcuts.map((shortcut) => (

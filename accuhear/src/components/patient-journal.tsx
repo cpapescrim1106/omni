@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
+import { Button } from "@/components/ui/button";
 
 type JournalEntry = {
   id: string;
@@ -71,7 +72,7 @@ export function PatientJournal({ patientId }: { patientId: string }) {
           <div className="section-title">Journal entries</div>
           <div className="text-sm text-ink-muted">All patient activity in a single timeline.</div>
         </div>
-        <button type="button" className="tab-pill bg-surface-2 text-xs">Summarize</button>
+        <Button type="button" variant="secondary" size="sm">Summarize</Button>
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.6fr_0.9fr]">
@@ -91,17 +92,19 @@ export function PatientJournal({ patientId }: { patientId: string }) {
                 <span>Text</span>
               </div>
               {entries.map((entry) => (
-                <button
+                <Button
                   key={entry.id}
                   type="button"
-                  className="grid w-full grid-cols-[180px_140px_160px_1fr] px-3 py-[7px] text-left text-[12px] border-t border-[var(--surface-1)] hover:bg-[rgba(31,149,184,0.04)] [&:nth-child(even)]:bg-[rgba(243,239,232,0.4)]"
+                  variant="ghost"
+                  size="default"
+                  className="grid h-auto w-full grid-cols-[180px_140px_160px_1fr] rounded-none border-t border-[var(--surface-1)] px-3 py-[7px] text-left text-[12px] hover:bg-[rgba(31,149,184,0.04)] [&:nth-child(even)]:bg-[rgba(243,239,232,0.4)]"
                   onClick={() => setSelectedEntryId(entry.id)}
                 >
                   <span className="text-ink-muted">{dayjs(entry.createdAt).format("MM/DD/YYYY h:mm A")}</span>
                   <span className="font-semibold text-ink-strong">{entry.type}</span>
                   <span className="text-ink-muted">{entry.createdBy}</span>
                   <span className="text-ink-strong">{entry.content}</span>
-                </button>
+                </Button>
               ))}
             </div>
           )}
@@ -120,8 +123,8 @@ export function PatientJournal({ patientId }: { patientId: string }) {
                 ))}
               </div>
               <div className="mt-2 flex gap-2">
-                <button type="button" className="tab-pill bg-surface-2 text-xs">Include all</button>
-                <button type="button" className="tab-pill bg-surface-2 text-xs">Exclude all</button>
+                <Button type="button" variant="secondary" size="sm">Include all</Button>
+                <Button type="button" variant="secondary" size="sm">Exclude all</Button>
               </div>
             </div>
 
@@ -135,8 +138,8 @@ export function PatientJournal({ patientId }: { patientId: string }) {
                 ))}
               </div>
               <div className="mt-2 flex gap-2">
-                <button type="button" className="tab-pill bg-surface-2 text-xs">Include all</button>
-                <button type="button" className="tab-pill bg-surface-2 text-xs">Exclude all</button>
+                <Button type="button" variant="secondary" size="sm">Include all</Button>
+                <Button type="button" variant="secondary" size="sm">Exclude all</Button>
               </div>
             </div>
 

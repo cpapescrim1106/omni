@@ -1,6 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type PayerPolicy = {
   id: string;
@@ -75,19 +84,29 @@ export function PatientPayers({ patientId }: { patientId: string }) {
       </div>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-[1fr_1fr_auto]">
-        <label className="grid gap-2 text-xs text-ink-muted">
+        <Label className="grid gap-2 font-body text-xs font-normal normal-case tracking-normal text-ink-muted">
           Marital status
-          <select className="rounded-[8px] border border-[var(--surface-3)] bg-white px-3 py-1 text-[12px]">
-            <option>&lt;Please select&gt;</option>
-          </select>
-        </label>
-        <label className="grid gap-2 text-xs text-ink-muted">
+          <Select defaultValue="placeholder">
+            <SelectTrigger className="bg-white text-[12px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="placeholder">&lt;Please select&gt;</SelectItem>
+            </SelectContent>
+          </Select>
+        </Label>
+        <Label className="grid gap-2 font-body text-xs font-normal normal-case tracking-normal text-ink-muted">
           Employment status
-          <select className="rounded-[8px] border border-[var(--surface-3)] bg-white px-3 py-1 text-[12px]">
-            <option>&lt;Please select&gt;</option>
-          </select>
-        </label>
-        <button type="button" className="tab-pill h-fit bg-surface-2 text-xs">Update</button>
+          <Select defaultValue="placeholder">
+            <SelectTrigger className="bg-white text-[12px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="placeholder">&lt;Please select&gt;</SelectItem>
+            </SelectContent>
+          </Select>
+        </Label>
+        <Button type="button" variant="secondary" size="sm" className="h-fit">Update</Button>
       </div>
 
       <div className="mt-4 rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] overflow-hidden">
@@ -119,7 +138,7 @@ export function PatientPayers({ patientId }: { patientId: string }) {
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <button type="button" className="tab-pill bg-surface-2 text-xs">Show inactive items</button>
+        <Button type="button" variant="secondary" size="sm">Show inactive items</Button>
       </div>
 
       <div className="mt-6 rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] overflow-hidden">
@@ -151,7 +170,7 @@ export function PatientPayers({ patientId }: { patientId: string }) {
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <button type="button" className="tab-pill bg-surface-2 text-xs">Refresh</button>
+        <Button type="button" variant="secondary" size="sm">Refresh</Button>
       </div>
     </section>
   );

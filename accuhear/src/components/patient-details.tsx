@@ -2,6 +2,16 @@
 
 import { useMemo, useState } from "react";
 import dayjs from "dayjs";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 type PatientDetailsProps = {
   patient: {
@@ -49,20 +59,24 @@ export function PatientDetails({ patient }: PatientDetailsProps) {
     <section className="card p-4">
       <div className="flex items-center gap-4">
         <div className="seg-tabs-inner">
-          <button
+          <Button
             type="button"
-            className={`seg-tab${activeTab === "contact" ? " active" : ""}`}
+            variant="ghost"
+            size="micro"
+            className={cn("seg-tab", activeTab === "contact" && "active")}
             onClick={() => setActiveTab("contact")}
           >
             Contact details
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className={`seg-tab${activeTab === "alternate" ? " active" : ""}`}
+            variant="ghost"
+            size="micro"
+            className={cn("seg-tab", activeTab === "alternate" && "active")}
             onClick={() => setActiveTab("alternate")}
           >
             Alternate contact
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -133,11 +147,18 @@ export function PatientDetails({ patient }: PatientDetailsProps) {
               </label>
             </div>
             <div className="flex items-center gap-2">
-              <span>Preferred language:</span>
-              <select className="rounded-[8px] border border-[var(--surface-3)] bg-white px-3 py-1 text-[12px]">
-                <option>English</option>
-                <option>Spanish</option>
-              </select>
+              <Label className="font-body text-[12px] font-normal normal-case tracking-normal text-ink-muted">
+                Preferred language:
+              </Label>
+              <Select defaultValue="English">
+                <SelectTrigger className="w-[120px] bg-white text-[12px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="English">English</SelectItem>
+                  <SelectItem value="Spanish">Spanish</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

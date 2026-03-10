@@ -1,6 +1,18 @@
 "use client";
 
 import { Fragment, useState } from "react";
+import { CheckIcon, PencilIcon, StarIcon, Trash2Icon, XIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 type Phone = { id: string; type: string; number: string; normalized: string };
 type PayerPolicy = { id: string; payerName: string; memberId: string | null; groupId: string | null };
@@ -52,39 +64,6 @@ function computeAge(dob: string | null | undefined): string {
   if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < d.getDate())) age--;
   return String(age);
 }
-
-const PencilIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-    <path d="m15 5 4 4" />
-  </svg>
-);
-
-const CheckIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12" />
-  </svg>
-);
-
-const XIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M18 6 6 18" />
-    <path d="m6 6 12 12" />
-  </svg>
-);
-
-const StarIcon = ({ filled }: { filled: boolean }) => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-  </svg>
-);
-
-const TrashIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="3 6 5 6 21 6" />
-    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-  </svg>
-);
 
 export function PatientSummaryForm({ patient, aidModels }: PatientSummaryFormProps) {
   const [editing, setEditing] = useState(false);
@@ -192,11 +171,32 @@ export function PatientSummaryForm({ patient, aidModels }: PatientSummaryFormPro
         <span className="section-title-actions">
           {editing ? (
             <>
-              <button type="button" className="btn-sm-ghost" onClick={handleCancel}><XIcon /> Cancel</button>
-              <button type="button" className="btn-sm-primary" onClick={handleSave}><CheckIcon /> Save</button>
+              <Button type="button" variant="ghost" size="sm" className="btn-sm-ghost" onClick={handleCancel}>
+                <XIcon size={14} />
+                Cancel
+              </Button>
+              <Button type="button" variant="default" size="sm" className="btn-sm-primary" onClick={handleSave}>
+                <CheckIcon size={14} />
+                Save
+              </Button>
             </>
           ) : (
-            <button type="button" className="btn-sm-ghost" onClick={() => setEditing(true)}><PencilIcon /></button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="btn-sm-ghost"
+                    onClick={() => setEditing(true)}
+                  />
+                }
+              >
+                <PencilIcon size={14} />
+              </TooltipTrigger>
+              <TooltipContent>Edit</TooltipContent>
+            </Tooltip>
           )}
         </span>
       </div>
@@ -246,15 +246,16 @@ export function PatientSummaryForm({ patient, aidModels }: PatientSummaryFormPro
               <div className="form-field">
                 {i === 0 && <span className="form-label">Type</span>}
                 {editing ? (
-                  <select
-                    className="form-input"
-                    value={phone.type}
-                    onChange={(e) => updatePhone(i, "type", e.target.value)}
-                  >
-                    <option value="Mobile">Mobile</option>
-                    <option value="Home">Home</option>
-                    <option value="Alternate">Alternate</option>
-                  </select>
+                  <Select value={phone.type} onValueChange={(value) => updatePhone(i, "type", value ?? phone.type)}>
+                    <SelectTrigger className="form-input">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Mobile">Mobile</SelectItem>
+                      <SelectItem value="Home">Home</SelectItem>
+                      <SelectItem value="Alternate">Alternate</SelectItem>
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <span className="form-value">{phone.type || "—"}</span>
                 )}
@@ -263,23 +264,39 @@ export function PatientSummaryForm({ patient, aidModels }: PatientSummaryFormPro
               <Field label={i === 0 ? "Email" : ""} value={i === 0 ? fields.email : ""} editing={i === 0 ? editing : false} error={i === 0 ? errors.email : undefined} onChange={i === 0 ? (v) => updateField("email", v) : undefined} />
               {editing && (
                 <div className="phone-actions">
-                  <button
-                    type="button"
-                    className={`phone-action-btn${phone.primary ? " active" : ""}`}
-                    title={phone.primary ? "Primary" : "Set as primary"}
-                    onClick={() => setPrimaryPhone(i)}
-                  >
-                    <StarIcon filled={phone.primary} />
-                  </button>
-                  {!phone.primary && phones.length > 1 && (
-                    <button
-                      type="button"
-                      className="phone-action-btn danger"
-                      title="Remove"
-                      onClick={() => removePhone(i)}
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          type="button"
+                          variant={phone.primary ? "secondary" : "ghost"}
+                          size="icon-sm"
+                          className={cn("phone-action-btn", phone.primary && "active")}
+                          onClick={() => setPrimaryPhone(i)}
+                        />
+                      }
                     >
-                      <TrashIcon />
-                    </button>
+                      <StarIcon size={14} fill={phone.primary ? "currentColor" : "none"} />
+                    </TooltipTrigger>
+                    <TooltipContent>{phone.primary ? "Primary" : "Set as primary"}</TooltipContent>
+                  </Tooltip>
+                  {!phone.primary && phones.length > 1 && (
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon-sm"
+                            className="phone-action-btn danger"
+                            onClick={() => removePhone(i)}
+                          />
+                        }
+                      >
+                        <Trash2Icon size={14} />
+                      </TooltipTrigger>
+                      <TooltipContent>Remove</TooltipContent>
+                    </Tooltip>
                   )}
                 </div>
               )}
@@ -294,13 +311,15 @@ export function PatientSummaryForm({ patient, aidModels }: PatientSummaryFormPro
           </Fragment>
         ))}
         {editing && (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             className="btn-sm-ghost"
             onClick={() => setPhones((prev) => [...prev, { type: "Mobile", number: "", altName: "", altRelation: "", primary: false }])}
           >
             + Phone
-          </button>
+          </Button>
         )}
       </div>
       <div className="form-prefs">
@@ -360,8 +379,8 @@ function Field({
       <span className="form-label">{label}</span>
       {editable ? (
         <>
-          <input
-            className={`form-input${error ? " form-input-error" : ""}`}
+          <Input
+            className={cn("form-input", error && "form-input-error")}
             type={type}
             name={`_xf${Array.from(label).reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0).toString(36)}`}
             value={value}
@@ -370,6 +389,7 @@ function Field({
             data-lpignore="true"
             data-form-type="other"
             data-1p-ignore
+            aria-invalid={Boolean(error)}
             onChange={(e) => onChange?.(e.target.value)}
           />
           {error && <span className="form-error">{error}</span>}

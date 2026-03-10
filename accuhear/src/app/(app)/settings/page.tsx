@@ -1,6 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type CatalogItemCategory =
   | "hearing_aid"
@@ -527,47 +532,53 @@ export default function SettingsPage() {
   ) => (
     <div className="space-y-2">
       <div className="flex gap-2">
-        <select
-          className="w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
-          value={form.manufacturer}
-          onChange={(event) => setForm((current) => ({ ...current, manufacturer: event.target.value }))}
+        <Select
+          value={form.manufacturer || "__none__"}
+          onValueChange={(value) =>
+            setForm((current) => ({ ...current, manufacturer: value === "__none__" ? "" : value || "" }))
+          }
         >
-          <option value="">No manufacturer</option>
-          {manufacturers
-            .filter((item) => item.active)
-            .map((item) => (
-              <option key={item.id} value={item.name}>
-                {item.name}
-              </option>
-            ))}
-        </select>
-        <button
+          <SelectTrigger>
+            <SelectValue placeholder="No manufacturer" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">No manufacturer</SelectItem>
+            {manufacturers
+              .filter((item) => item.active)
+              .map((item) => (
+                <SelectItem key={item.id} value={item.name}>
+                  {item.name}
+                </SelectItem>
+              ))}
+          </SelectContent>
+        </Select>
+        <Button
           type="button"
-          className="rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm font-semibold text-brand-ink"
+          variant="outline"
+          size="default"
           onClick={() => {
             setManufacturerTarget(target);
             setManufacturerDraft("");
           }}
         >
           +
-        </button>
+        </Button>
       </div>
       {manufacturerTarget === target ? (
         <div className="flex gap-2">
-          <input
-            className="w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+          <Input
             placeholder="Add manufacturer"
             value={manufacturerDraft}
             onChange={(event) => setManufacturerDraft(event.target.value)}
           />
-          <button
+          <Button
             type="button"
-            className="rounded-xl bg-success px-3 py-2 text-sm font-semibold text-white"
+            variant="secondary"
             onClick={() => void createManufacturer()}
             disabled={submitting === "manufacturer"}
           >
             {submitting === "manufacturer" ? "Saving..." : "Add"}
-          </button>
+          </Button>
         </div>
       ) : null}
     </div>
@@ -580,185 +591,191 @@ export default function SettingsPage() {
   ) => (
     <>
       <div className="grid gap-3 lg:grid-cols-2">
-        <label className="text-xs text-ink-muted">
+        <Label className="text-xs text-ink-muted">
           Name
-          <input
-            className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+          <Input
+            className="mt-1"
             value={form.name}
             onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
           />
-        </label>
-        <label className="text-xs text-ink-muted">
+        </Label>
+        <Label className="text-xs text-ink-muted">
           Family
-          <input
-            className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+          <Input
+            className="mt-1"
             value={form.family}
             onChange={(event) => setForm((current) => ({ ...current, family: event.target.value }))}
           />
-        </label>
-        <label className="text-xs text-ink-muted">
+        </Label>
+        <Label className="text-xs text-ink-muted">
           Technology level
-          <input
+          <Input
             type="number"
             min={1}
             step="1"
-            className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+            className="mt-1"
             value={form.technologyLevel}
             onChange={(event) => setForm((current) => ({ ...current, technologyLevel: event.target.value }))}
           />
-        </label>
-        <label className="text-xs text-ink-muted">
+        </Label>
+        <Label className="text-xs text-ink-muted">
           Manufacturer
           <div className="mt-1">{manufacturerSelect(form, setForm, target)}</div>
-        </label>
-        <label className="text-xs text-ink-muted">
+        </Label>
+        <Label className="text-xs text-ink-muted">
           Category
-          <select
-            className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+          <Select
             value={form.category}
-            onChange={(event) => setForm((current) => ({ ...current, category: event.target.value as CatalogItemCategory }))}
+            onValueChange={(value) =>
+              setForm((current) => ({ ...current, category: (value || "hearing_aid") as CatalogItemCategory }))
+            }
           >
-            {CATEGORIES.map((category) => (
-              <option key={category.value} value={category.value}>
-                {category.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-xs text-ink-muted">
+            <SelectTrigger className="mt-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CATEGORIES.map((category) => (
+                <SelectItem key={category.value} value={category.value}>
+                  {category.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Label>
+        <Label className="text-xs text-ink-muted">
           CPT/HCPCS code
-          <input
-            className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+          <Input
+            className="mt-1"
             value={form.cptHcpcsCode}
             onChange={(event) => setForm((current) => ({ ...current, cptHcpcsCode: event.target.value }))}
           />
-        </label>
-        <label className="text-xs text-ink-muted">
+        </Label>
+        <Label className="text-xs text-ink-muted">
           Technology
-          <input
-            className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+          <Input
+            className="mt-1"
             value={form.technology}
             onChange={(event) => setForm((current) => ({ ...current, technology: event.target.value }))}
           />
-        </label>
-        <label className="text-xs text-ink-muted">
+        </Label>
+        <Label className="text-xs text-ink-muted">
           Style
-          <input
-            className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+          <Input
+            className="mt-1"
             value={form.style}
             onChange={(event) => setForm((current) => ({ ...current, style: event.target.value }))}
           />
-        </label>
-        <label className="text-xs text-ink-muted">
+        </Label>
+        <Label className="text-xs text-ink-muted">
           Accessory category
-          <input
-            className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+          <Input
+            className="mt-1"
             value={form.accessoryCategory}
             onChange={(event) => setForm((current) => ({ ...current, accessoryCategory: event.target.value }))}
           />
-        </label>
-        <label className="text-xs text-ink-muted">
+        </Label>
+        <Label className="text-xs text-ink-muted">
           Service group
-          <input
-            className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+          <Input
+            className="mt-1"
             value={form.serviceGroup}
             onChange={(event) => setForm((current) => ({ ...current, serviceGroup: event.target.value }))}
           />
-        </label>
-        <label className="text-xs text-ink-muted">
+        </Label>
+        <Label className="text-xs text-ink-muted">
           Battery cell size
-          <input
-            className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+          <Input
+            className="mt-1"
             value={form.batteryCellSize}
             onChange={(event) => setForm((current) => ({ ...current, batteryCellSize: event.target.value }))}
           />
-        </label>
-        <label className="text-xs text-ink-muted">
+        </Label>
+        <Label className="text-xs text-ink-muted">
           Battery cell quantity
-          <input
+          <Input
             type="number"
             min={1}
-            className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+            className="mt-1"
             value={form.batteryCellQuantity}
             onChange={(event) => setForm((current) => ({ ...current, batteryCellQuantity: event.target.value }))}
           />
-        </label>
-        <label className="text-xs text-ink-muted">
+        </Label>
+        <Label className="text-xs text-ink-muted">
           Unit price
-          <input
+          <Input
             type="number"
             min={0}
             step="0.01"
-            className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+            className="mt-1"
             value={form.unitPrice}
             onChange={(event) => setForm((current) => ({ ...current, unitPrice: event.target.value }))}
           />
-        </label>
-        <label className="text-xs text-ink-muted">
+        </Label>
+        <Label className="text-xs text-ink-muted">
           Purchase cost
-          <input
+          <Input
             type="number"
             min={0}
             step="0.01"
-            className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+            className="mt-1"
             value={form.purchaseCost}
             onChange={(event) => setForm((current) => ({ ...current, purchaseCost: event.target.value }))}
           />
-        </label>
-        <label className="text-xs text-ink-muted">
+        </Label>
+        <Label className="text-xs text-ink-muted">
           Manufacturer warranty years
-          <input
+          <Input
             type="number"
             min={0}
             step="0.5"
-            className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+            className="mt-1"
             value={form.defaultManufacturerWarrantyYears}
             onChange={(event) => setForm((current) => ({ ...current, defaultManufacturerWarrantyYears: event.target.value }))}
           />
-        </label>
-        <label className="text-xs text-ink-muted">
+        </Label>
+        <Label className="text-xs text-ink-muted">
           L&D warranty years
-          <input
+          <Input
             type="number"
             min={0}
             step="0.5"
-            className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+            className="mt-1"
             value={form.defaultLossDamageWarrantyYears}
             onChange={(event) => setForm((current) => ({ ...current, defaultLossDamageWarrantyYears: event.target.value }))}
           />
-        </label>
-        <label className="text-xs text-ink-muted">
+        </Label>
+        <Label className="text-xs text-ink-muted">
           Expense account
-          <input
-            className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+          <Input
+            className="mt-1"
             value={form.expenseAccount}
             onChange={(event) => setForm((current) => ({ ...current, expenseAccount: event.target.value }))}
           />
-        </label>
-        <label className="text-xs text-ink-muted">
+        </Label>
+        <Label className="text-xs text-ink-muted">
           Income account
-          <input
-            className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+          <Input
+            className="mt-1"
             value={form.incomeAccount}
             onChange={(event) => setForm((current) => ({ ...current, incomeAccount: event.target.value }))}
           />
-        </label>
-        <label className="text-xs text-ink-muted">
+        </Label>
+        <Label className="text-xs text-ink-muted">
           Tax on purchases
-          <input
-            className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+          <Input
+            className="mt-1"
             value={form.taxOnPurchases}
             onChange={(event) => setForm((current) => ({ ...current, taxOnPurchases: event.target.value }))}
           />
-        </label>
-        <label className="text-xs text-ink-muted">
+        </Label>
+        <Label className="text-xs text-ink-muted">
           Tax on sales
-          <input
-            className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+          <Input
+            className="mt-1"
             value={form.taxOnSales}
             onChange={(event) => setForm((current) => ({ ...current, taxOnSales: event.target.value }))}
           />
-        </label>
+        </Label>
       </div>
 
       <div className="mt-4 grid gap-3 lg:grid-cols-3">
@@ -787,26 +804,27 @@ export default function SettingsPage() {
         <div className="mt-4 rounded-3xl border border-surface-2 bg-surface-1/45 p-4">
           <div className="flex items-center justify-between gap-3">
             <div className="text-sm font-semibold text-ink-strong">Add new catalog item</div>
-            <button
+            <Button
               type="button"
-              className="tab-pill bg-surface-2 text-xs"
+              variant="secondary"
+              size="sm"
               onClick={() => setShowNewCatalogItemForm((current) => !current)}
             >
               {showNewCatalogItemForm ? "Collapse" : "Expand"}
-            </button>
+            </Button>
           </div>
           {showNewCatalogItemForm ? (
             <>
               <div className="mt-3">{formGrid(newForm, setNewForm, "new")}</div>
               <div className="mt-4">
-                <button
+                <Button
                   type="button"
-                  className="tab-pill bg-brand-blue/10 text-xs text-brand-ink"
+                  size="sm"
                   onClick={() => void createItem()}
                   disabled={submitting === "new"}
                 >
                   {submitting === "new" ? "Saving..." : "Create catalog item"}
-                </button>
+                </Button>
               </div>
             </>
           ) : null}
@@ -819,15 +837,15 @@ export default function SettingsPage() {
           <div className="text-xs text-ink-muted">{sortedCatalog.length} shown</div>
         </div>
         <div className="mt-4 grid gap-3 lg:grid-cols-[1.5fr_0.8fr_0.8fr_0.8fr]">
-          <label className="text-xs text-ink-muted">
+          <Label className="text-xs text-ink-muted">
             Search
-            <input
-              className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+            <Input
+              className="mt-1"
               placeholder="Model, manufacturer, category, style, code"
               value={catalogQuery}
               onChange={(event) => setCatalogQuery(event.target.value)}
             />
-          </label>
+          </Label>
           <label className="flex items-end pb-2 text-xs text-ink-muted">
             <span className="inline-flex items-center gap-2">
               <input
@@ -838,32 +856,40 @@ export default function SettingsPage() {
               Show inactive
             </span>
           </label>
-          <label className="text-xs text-ink-muted">
+          <Label className="text-xs text-ink-muted">
             Category
-            <select
-              className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+            <Select
               value={catalogCategoryFilter}
-              onChange={(event) => setCatalogCategoryFilter(event.target.value as "all" | CatalogItemCategory)}
+              onValueChange={(value) => setCatalogCategoryFilter((value || "all") as "all" | CatalogItemCategory)}
             >
-              <option value="all">All</option>
-              {CATEGORIES.map((category) => (
-                <option key={category.value} value={category.value}>
-                  {category.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="text-xs text-ink-muted">
+              <SelectTrigger className="mt-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                {CATEGORIES.map((category) => (
+                  <SelectItem key={category.value} value={category.value}>
+                    {category.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Label>
+          <Label className="text-xs text-ink-muted">
             Favorites
-            <select
-              className="mt-1 w-full rounded-xl border border-surface-3 bg-white px-3 py-2 text-sm"
+            <Select
               value={catalogFavoriteFilter}
-              onChange={(event) => setCatalogFavoriteFilter(event.target.value as "all" | "favorites")}
+              onValueChange={(value) => setCatalogFavoriteFilter((value || "all") as "all" | "favorites")}
             >
-              <option value="all">All</option>
-              <option value="favorites">Favorites only</option>
-            </select>
-          </label>
+              <SelectTrigger className="mt-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="favorites">Favorites only</SelectItem>
+              </SelectContent>
+            </Select>
+          </Label>
         </div>
         <div className="mt-4 space-y-3">
           {loading ? (
@@ -887,41 +913,44 @@ export default function SettingsPage() {
                       {itemMeta(item) ? <div className="mt-1 text-xs text-ink-muted">{itemMeta(item)}</div> : null}
                     </div>
                     <div className="flex gap-2">
-                      <button
+                      <Button
                         type="button"
-                        className="tab-pill bg-surface-2 text-xs"
+                        variant="secondary"
+                        size="sm"
                         onClick={() => (isEditing ? cancelEdit() : beginEdit(item))}
                       >
                         {isEditing ? "Cancel" : "Edit"}
-                      </button>
+                      </Button>
                       {!isEditing ? (
-                        <button
+                        <Button
                           type="button"
-                          className="tab-pill bg-brand-blue/10 text-xs text-brand-ink"
+                          variant="secondary"
+                          size="sm"
                           onClick={() => void togglePinned(item)}
                           disabled={submitting === item.id}
                         >
                           {item.isPinned ? "Unfavorite" : "Favorite"}
-                        </button>
+                        </Button>
                       ) : null}
                       {isEditing ? (
-                        <button
+                        <Button
                           type="button"
-                          className="tab-pill bg-success/10 text-xs text-success"
+                          size="sm"
                           onClick={() => void saveItem(item.id)}
                           disabled={submitting === item.id}
                         >
                           {submitting === item.id ? "Saving..." : "Save"}
-                        </button>
+                        </Button>
                       ) : (
-                        <button
+                        <Button
                           type="button"
-                          className="tab-pill bg-danger/10 text-xs text-danger"
+                          variant="destructive"
+                          size="sm"
                           onClick={() => void setItemActiveState(item.id, !item.active)}
                           disabled={submitting === item.id}
                         >
                           {item.active ? "Set inactive" : "Set active"}
-                        </button>
+                        </Button>
                       )}
                     </div>
                   </div>
@@ -945,10 +974,14 @@ export default function SettingsPage() {
         className="pointer-events-none fixed bottom-4 right-4 z-50 flex w-full max-w-sm justify-end px-4"
       >
         {message ? (
-          <div className="rounded-2xl bg-success px-4 py-3 text-sm text-white shadow-lg">{message}</div>
+          <Alert className="pointer-events-auto shadow-lg">
+            <AlertDescription>{message}</AlertDescription>
+          </Alert>
         ) : null}
         {!message && error ? (
-          <div className="rounded-2xl bg-danger px-4 py-3 text-sm text-white shadow-lg">{error}</div>
+          <Alert variant="destructive" className="pointer-events-auto shadow-lg">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         ) : null}
       </div>
     </div>

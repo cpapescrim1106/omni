@@ -630,4 +630,93 @@ tr:hover td           { background: rgba(31,149,184,0.04); }
 
 ---
 
+## Developer Stack
+
+### Component Library — shadcn/ui
+
+UI primitives come from shadcn/ui (built on Base UI / Radix). Components are **owned source code** — copied into `src/components/ui/` and calibrated to Omni spec. They are not a dependency you're locked into.
+
+**Adding a component:**
+```bash
+npx shadcn@latest add [component-name]
+# Calibrate to Omni spec before use — remove dark: classes, adjust sizing
+```
+
+**Core components (pre-calibrated):**
+
+| Component | File | Key Omni changes |
+|---|---|---|
+| Button | `ui/button.tsx` | Pill radius, 32/26/22px sizes, 13px/11px font |
+| Badge | `ui/badge.tsx` | 10px Space Grotesk, 18px height, semantic variants |
+| Input | `ui/input.tsx` | 34px height, 8px radius, rgba(255,255,255,0.88) bg |
+| Card | `ui/card.tsx` | 18px radius, 12/14px padding, no decorative shadow |
+| Label | `ui/label.tsx` | 10px uppercase Space Grotesk 600, ink-soft |
+| Alert | `ui/alert.tsx` | 12px radius, compact padding, warning variant added |
+| Select | `ui/select.tsx` | Matches Input exactly — 34px, 8px radius, 13px |
+| Dialog | `ui/dialog.tsx` | 18px radius, Omni overlay, Space Grotesk title |
+| Tooltip | `ui/tooltip.tsx` | ink-strong bg, 11px, 400ms delay |
+| Separator | `ui/separator.tsx` | surface-2 color |
+
+### Theming — How One Change Updates Everything
+
+shadcn components read CSS variables. The chain is:
+
+```
+globals.css          →  shadcn mapping          →  Tailwind utility  →  component
+--brand-blue: #1f95b8  --primary: var(--brand-blue)  bg-primary         Button default bg
+```
+
+**To change the primary brand color across the entire app:** edit `--brand-blue` in `:root`. Done.
+
+**shadcn variable → Omni token mapping** (in `globals.css`):
+
+| shadcn variable | Omni token | Used on |
+|---|---|---|
+| `--primary` | `--brand-blue` | Primary buttons, focus rings, active states |
+| `--secondary` | `--surface-2` | Secondary buttons, muted actions |
+| `--destructive` | `--danger` | Delete, error, critical actions |
+| `--muted` | `--surface-1` | Ghost backgrounds, alert fills |
+| `--muted-foreground` | `--ink-muted` | Placeholder text, descriptions |
+| `--border` / `--input` | brand-ink 12% | Input and card borders |
+| `--ring` | brand-blue 30% | Focus rings on all interactive elements |
+| `--card` | `--card-bg` | Card backgrounds |
+| `--radius` | `999px` (pill) | Base radius — overridden per component |
+
+### cn() Utility
+
+Always use `cn()` from `@/lib/utils` to compose class names. It merges Tailwind classes correctly and resolves conflicts.
+
+```tsx
+import { cn } from '@/lib/utils'
+
+// Correct
+<div className={cn('text-ink px-3', isActive && 'text-brand-blue')} />
+
+// Wrong — string concatenation breaks Tailwind conflict resolution
+<div className={`text-ink px-3 ${isActive ? 'text-brand-blue' : ''}`} />
+```
+
+### Icons — lucide-react
+
+All icons use `lucide-react`. Never use emoji or inline SVG for UI icons.
+
+| Context | Size |
+|---|---|
+| Inline with text, badge icons | `size={14}` |
+| Standard UI (buttons, table actions) | `size={16}` |
+| Nav icons | `size={18}` |
+
+Always pair icon-only buttons (`size: icon` or `icon-sm`) with a `<Tooltip>`.
+
+### Rules for New Screens
+
+1. **Never use raw HTML elements** — always use `@/components/ui/` imports
+2. **One `<Button variant="default">` per panel** — all others are secondary, ghost, or icon
+3. **No `dark:` variant classes** — Omni is light-only
+4. **No inline styles for colors** — always use Tailwind utility classes or CSS tokens
+5. **Record panel cards:** override CardContent padding to `px-4` (16px horizontal)
+6. **Context panel cards:** use default CardContent padding (`px-[14px]`, 14px horizontal)
+
+---
+
 *Omni UI Guide · March 2026*

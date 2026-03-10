@@ -3,7 +3,12 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { SearchIcon } from "lucide-react";
 import { consumePatientSearchFocusFlag } from "@/components/global-shortcuts";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 export type PatientSearchResult = {
   id: string;
@@ -151,8 +156,8 @@ export function PatientSearch() {
 
       <div className="mt-6 flex flex-wrap items-center gap-4">
         <div className="flex flex-1 items-center gap-3 rounded-2xl border border-transparent bg-white px-4 py-3 shadow-[0_10px_22px_rgba(24,20,50,0.08)] focus-within:ring-2 focus-within:ring-[var(--ring)]">
-          <span className="text-ink-soft">⌕</span>
-          <input
+          <SearchIcon size={14} className="shrink-0 text-ink-soft" />
+          <Input
             ref={inputRef}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -177,24 +182,28 @@ export function PatientSearch() {
                 }
               }
             }}
-            className="w-full bg-transparent text-sm outline-none placeholder:text-ink-soft"
+            className="h-auto border-0 bg-transparent px-0 py-0 text-sm shadow-none focus-visible:border-0 focus-visible:ring-0 placeholder:text-ink-soft"
           />
         </div>
         <div className="flex items-center gap-2 text-xs text-ink-muted">
-          <button
+          <Button
             type="button"
             onClick={() => setStatusFilter("active")}
-            className={`tab-pill ${statusFilter === "active" ? "" : "bg-surface-2"}`}
+            variant={statusFilter === "active" ? "default" : "secondary"}
+            size="sm"
+            className={cn("tab-pill", statusFilter === "active" && "bg-brand-blue text-white hover:bg-[#1a829f]")}
           >
             Active
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={() => setStatusFilter("inactive")}
-            className={`tab-pill ${statusFilter === "inactive" ? "" : "bg-surface-2"}`}
+            variant={statusFilter === "inactive" ? "default" : "secondary"}
+            size="sm"
+            className={cn("tab-pill", statusFilter === "inactive" && "bg-brand-blue text-white hover:bg-[#1a829f]")}
           >
             Inactive
-          </button>
+          </Button>
         </div>
         <div className="text-xs text-ink-muted">{hint}</div>
       </div>
@@ -234,9 +243,11 @@ export function PatientSearch() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <span className="badge">{patient.status || "Active"}</span>
+                <Badge variant={patient.status?.toLowerCase() === "inactive" ? "danger" : "success"}>
+                  {patient.status || "Active"}
+                </Badge>
                 {patient.provider ? (
-                  <span className="badge bg-brand-orange/10 text-brand-ink">{patient.provider}</span>
+                  <Badge variant="blue">{patient.provider}</Badge>
                 ) : null}
               </div>
             </div>

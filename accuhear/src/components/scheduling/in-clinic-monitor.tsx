@@ -12,6 +12,7 @@ import {
   formatTransitionHistoryStatus,
   type AppointmentTransitionHistoryItem,
 } from "@/lib/appointments/transition-history";
+import { Button } from "@/components/ui/button";
 
 type MonitorAppointment = {
   id: string;
@@ -219,9 +220,11 @@ export function InClinicMonitor() {
                     {actions.map((action) => {
                       const isPending = pendingAction === `${appointment.id}:${action}`;
                       return (
-                        <button
+                        <Button
                           key={action}
                           type="button"
+                          variant="secondary"
+                          size="sm"
                           className="in-clinic-action-btn"
                           onClick={() => {
                             void runMonitorAction(appointment.id, action);
@@ -229,7 +232,7 @@ export function InClinicMonitor() {
                           disabled={Boolean(pendingAction)}
                         >
                           {isPending ? "Saving…" : action}
-                        </button>
+                        </Button>
                       );
                     })}
                   </div>
