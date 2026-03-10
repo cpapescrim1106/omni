@@ -34,6 +34,8 @@ export function PatientPhotoAvatar({
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [enlargedPos, setEnlargedPos] = useState<{ x: number; y: number } | null>(null);
+  const avatarWrapRef = useRef<HTMLDivElement>(null);
 
   const openDialog = useCallback(async () => {
     setStep("pick");
@@ -90,11 +92,14 @@ export function PatientPhotoAvatar({
       if (!dragStart) return;
       const coords = getRelativeCoords(e);
       if (!coords) return;
+      const rawW = Math.abs(coords.x - dragStart.x);
+      const rawH = Math.abs(coords.y - dragStart.y);
+      const size = Math.max(rawW, rawH);
       setCropRect({
-        x: Math.min(dragStart.x, coords.x),
-        y: Math.min(dragStart.y, coords.y),
-        w: Math.abs(coords.x - dragStart.x),
-        h: Math.abs(coords.y - dragStart.y),
+        x: coords.x < dragStart.x ? dragStart.x - size : dragStart.x,
+        y: coords.y < dragStart.y ? dragStart.y - size : dragStart.y,
+        w: size,
+        h: size,
       });
     },
     [dragStart, getRelativeCoords]
@@ -171,28 +176,59 @@ export function PatientPhotoAvatar({
 
   return (
     <>
-      <div
-        className="patient-header-avatar"
-        style={
-          photoDataUrl
-            ? undefined
-            : { background: "linear-gradient(135deg, var(--brand-blue), var(--brand-ink))" }
-        }
-        onClick={() => void openDialog()}
-        title="Set profile photo"
-      >
-        {photoDataUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={photoDataUrl}
-            alt={firstName}
-            style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
-          />
-        ) : (
-          firstName.charAt(0)
-        )}
-        <span className="patient-header-avatar-overlay">PHOTO</span>
+      <div ref={avatarWrapRef} style={{ position: "relative", display: "inline-flex" }}>
+        <div
+          className="patient-header-avatar"
+          style={
+            photoDataUrl
+              ? undefined
+              : { background: "linear-gradient(135deg, var(--brand-blue), var(--brand-ink))" }
+          }
+          onClick={() => void openDialog()}
+          title="Set profile photo"
+          onMouseEnter={() => {
+            if (!photoDataUrl || !avatarWrapRef.current) return;
+            const r = avatarWrapRef.current.getBoundingClientRect();
+            // 5-o'clock position: just below and slightly right of avatar center
+            setEnlargedPos({ x: r.left + r.width * 0.65, y: r.bottom + 6 });
+          }}
+          onMouseLeave={() => setEnlargedPos(null)}
+        >
+          {photoDataUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={photoDataUrl}
+              alt={firstName}
+              style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
+            />
+          ) : (
+            firstName.charAt(0)
+          )}
+          <span className="patient-header-avatar-overlay">PHOTO</span>
+        </div>
       </div>
+
+      {enlargedPos && photoDataUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={photoDataUrl}
+          alt={firstName}
+          style={{
+            position: "fixed",
+            top: enlargedPos.y,
+            left: enlargedPos.x,
+            transform: "none",
+            width: 120,
+            height: 120,
+            borderRadius: "50%",
+            objectFit: "cover",
+            boxShadow: "0 8px 32px rgba(24,20,50,0.28)",
+            border: "3px solid #fff",
+            pointerEvents: "none",
+            zIndex: 9999,
+          }}
+        />
+      )}
 
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
       <dialog
