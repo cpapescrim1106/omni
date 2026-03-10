@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { normalizeProviderName } from "@/lib/provider-names";
 
+const DEFAULT_PROVIDERS = ["Chris Pape", "C + C, SHD"];
+
 export async function GET() {
   const [types, statuses, providerRows, providerScheduleRows, range] = await Promise.all([
-    prisma.appointmentType.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
-    prisma.appointmentStatus.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
+    prisma.appointmentType.findMany({ orderBy: { name: "asc" } }),
+    prisma.appointmentStatus.findMany({ orderBy: { name: "asc" } }),
     prisma.appointment.findMany({
       distinct: ["providerName"],
       select: { providerName: true },
@@ -30,8 +32,12 @@ export async function GET() {
     )
   ).sort((a, b) => a.localeCompare(b));
 
+  const availableProviders = Array.from(new Set([...DEFAULT_PROVIDERS, ...providers])).sort((a, b) =>
+    a.localeCompare(b)
+  );
+
   return NextResponse.json({
-    providers,
+    providers: availableProviders,
     types,
     statuses,
     rangeStart: range._min.startTime?.toISOString() ?? null,

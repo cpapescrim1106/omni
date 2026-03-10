@@ -286,7 +286,7 @@ export function BigSchedule() {
     types: true,
     calendar: true,
   });
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [pinnedAppointmentId, setPinnedAppointmentId] = useState<string | null>(null);
   const resizeRef = useRef<{
     id: string;
@@ -309,6 +309,7 @@ export function BigSchedule() {
   const [patientLoading, setPatientLoading] = useState(false);
   const [patientStatusFilter, setPatientStatusFilter] = useState<"active" | "inactive">("active");
   const [modalError, setModalError] = useState<string | null>(null);
+  const [editHistory, setEditHistory] = useState<AppointmentTransitionHistoryItem[]>([]);
 
   useEffect(() => {
     if (!toastMessage) return;
@@ -455,6 +456,7 @@ export function BigSchedule() {
 
   useEffect(() => {
     if (!isModalOpen) return;
+    if (formState?.patientId) return;
     const query = debouncedPatientQuery.trim();
     if (!query) {
       setPatientResults([]);
@@ -617,8 +619,16 @@ export function BigSchedule() {
       setPatientQuery(patientName);
       setPatientResults([]);
       setModalError(null);
+      setEditHistory([]);
       setIsModalOpen(true);
       setActionMenu(null);
+
+      fetch(`/api/appointments/${appointment.id}/history`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data.history)) setEditHistory(data.history);
+        })
+        .catch(() => {});
     },
     [appointments, defaultStatusId, defaultTypeId]
   );
@@ -640,6 +650,7 @@ export function BigSchedule() {
       setPatientQuery("");
       setPatientResults([]);
       setModalError(null);
+      setEditHistory([]);
       setIsModalOpen(true);
       setActionMenu(null);
     },
@@ -745,7 +756,6 @@ export function BigSchedule() {
   }, [actionMenu, scheduleContextState]);
 
   const isInClinicActionPending = Boolean(scheduleContextState?.pendingAction);
-  const scheduleContextHistory = scheduleContextState?.history ?? [];
 
   const openActionMenu = useCallback((appointmentId: string, rect: DOMRect) => {
     const board = scheduleBoardRef.current;
@@ -1361,6 +1371,9 @@ export function BigSchedule() {
           <div className="text-sm text-ink-muted">Drag and drop to reschedule across providers.</div>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
+          <Button type="button" size="sm" data-testid="new-appointment" onClick={openNewModal}>
+            New appointment
+          </Button>
           <div className="flex items-center gap-2">
             <Button
               onClick={prevClick}
@@ -1614,17 +1627,14 @@ export function BigSchedule() {
                 </div>
                 <div className="appointment-field">
                   <Label className="appointment-label">Provider</Label>
-                  <Select
-                    required
-                    data-testid="appointment-provider"
-                    value={formState.providerName}
+                  <Select required value={formState.providerName}
                     onValueChange={(value) =>
                       setFormState((current) =>
                         current ? { ...current, providerName: value || "" } : current
                       )
                     }
                   >
-                    <SelectTrigger className="appointment-input">
+                    <SelectTrigger className="appointment-input" data-testid="appointment-provider">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1638,17 +1648,14 @@ export function BigSchedule() {
                 </div>
                 <div className="appointment-field">
                   <Label className="appointment-label">Appointment Type</Label>
-                  <Select
-                    required
-                    data-testid="appointment-type"
-                    value={formState.typeId}
+                  <Select required value={formState.typeId}
                     onValueChange={(value) =>
                       setFormState((current) =>
                         current ? { ...current, typeId: value || "" } : current
                       )
                     }
                   >
-                    <SelectTrigger className="appointment-input">
+                    <SelectTrigger className="appointment-input" data-testid="appointment-type">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1662,17 +1669,14 @@ export function BigSchedule() {
                 </div>
                 <div className="appointment-field">
                   <Label className="appointment-label">Status</Label>
-                  <Select
-                    required
-                    data-testid="appointment-status"
-                    value={formState.statusId}
+                  <Select required value={formState.statusId}
                     onValueChange={(value) =>
                       setFormState((current) =>
                         current ? { ...current, statusId: value || "" } : current
                       )
                     }
                   >
-                    <SelectTrigger className="appointment-input">
+                    <SelectTrigger className="appointment-input" data-testid="appointment-status">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1701,6 +1705,31 @@ export function BigSchedule() {
                 />
               </div>
             </div>
+
+            {editingId && editHistory.length > 0 ? (
+              <div className="px-5 pb-3">
+                <div className="grid gap-1.5">
+                  <div className="font-display text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                    Transition history
+                  </div>
+                  <div className="grid gap-1.5">
+                    {editHistory.map((event) => (
+                      <div
+                        key={event.id}
+                        className="grid gap-0.5 rounded-[10px] border border-border bg-muted/40 px-2.5 py-1.5"
+                      >
+                        <div className="text-[11px] font-semibold text-foreground">
+                          {formatTransitionHistoryStatus(event)}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">
+                          {formatTransitionHistoryMeta(event)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : null}
 
             <div className="appointment-modal-actions">
               <Button
@@ -1779,10 +1808,9 @@ export function BigSchedule() {
               <>
                 <Select
                   value={selectedStatus}
-                  data-testid="status-filter"
                   onValueChange={(value) => setSelectedStatus((value || "all") as StatusFilter)}
                 >
-                  <SelectTrigger className="mt-2 bg-white/80 text-xs">
+                  <SelectTrigger className="mt-2 bg-white/80 text-xs" data-testid="status-filter">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1905,27 +1933,6 @@ export function BigSchedule() {
                       ))}
                       <div className="schedule-action-menu-divider" />
                     </>
-                  ) : null}
-                  {!scheduleContextState?.isLoading ? (
-                    <div className="schedule-action-history" data-testid="schedule-transition-history">
-                      <div className="schedule-action-history-title">Transition history</div>
-                      {scheduleContextHistory.length ? (
-                        <div className="schedule-action-history-list">
-                          {scheduleContextHistory.map((event) => (
-                            <div
-                              key={event.id}
-                              className="schedule-action-history-row"
-                              data-testid="schedule-transition-history-row"
-                            >
-                              <div className="schedule-action-history-status">{formatTransitionHistoryStatus(event)}</div>
-                              <div className="schedule-action-history-meta">{formatTransitionHistoryMeta(event)}</div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="schedule-action-history-empty">No transition history yet.</div>
-                      )}
-                    </div>
                   ) : null}
                   <div className="schedule-action-menu-divider" />
                   <Button

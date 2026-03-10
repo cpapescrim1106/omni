@@ -66,6 +66,9 @@ export async function PATCH(
       providerName: normalizedProviderName,
       startTime: { lt: end },
       endTime: { gt: start },
+      status: {
+        name: { notIn: ["Completed", "Cancelled", "Canceled"] },
+      },
     },
   });
 

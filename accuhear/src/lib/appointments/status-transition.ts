@@ -42,7 +42,15 @@ const ACTION_TO_LIFECYCLE: Record<AppointmentTransitionAction, AppointmentLifecy
 };
 
 const ALLOWED_TRANSITIONS: Record<AppointmentLifecycleStatus, ReadonlySet<AppointmentTransitionAction>> = {
-  [AppointmentLifecycleStatus.Scheduled]: new Set(["Arrived", "Arrived & Ready", "Cancelled"]),
+  // Pre-arrival: any forward transition is valid (walk-ins, admin overrides, fast-track)
+  [AppointmentLifecycleStatus.Scheduled]: new Set([
+    "Arrived",
+    "Arrived & Ready",
+    "Ready",
+    "In Progress",
+    "Completed",
+    "Cancelled",
+  ]),
   [AppointmentLifecycleStatus.Arrived]: new Set([
     "Arrived & Ready",
     "Ready",
@@ -58,15 +66,23 @@ const ALLOWED_TRANSITIONS: Record<AppointmentLifecycleStatus, ReadonlySet<Appoin
 };
 
 const STATUS_NAME_TO_LIFECYCLE = new Map<string, AppointmentLifecycleStatus>([
+  // Pre-arrival statuses → Scheduled lifecycle
   ["scheduled", AppointmentLifecycleStatus.Scheduled],
+  ["tentative", AppointmentLifecycleStatus.Scheduled],
+  ["confirmed", AppointmentLifecycleStatus.Scheduled],
+  // In-clinic flow
   ["arrived", AppointmentLifecycleStatus.Arrived],
   ["arrived and ready", AppointmentLifecycleStatus.ArrivedAndReady],
   ["arrived & ready", AppointmentLifecycleStatus.ArrivedAndReady],
   ["ready", AppointmentLifecycleStatus.Ready],
   ["in progress", AppointmentLifecycleStatus.InProgress],
   ["completed", AppointmentLifecycleStatus.Completed],
+  // Terminal statuses → Cancelled lifecycle
   ["cancelled", AppointmentLifecycleStatus.Cancelled],
   ["canceled", AppointmentLifecycleStatus.Cancelled],
+  ["no-show", AppointmentLifecycleStatus.Cancelled],
+  ["no show", AppointmentLifecycleStatus.Cancelled],
+  ["rescheduled", AppointmentLifecycleStatus.Cancelled],
 ]);
 
 type PrismaLikeClient = Pick<PrismaClient, "$transaction">;
