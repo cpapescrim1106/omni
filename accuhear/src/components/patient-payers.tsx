@@ -116,7 +116,7 @@ export function PatientPayers({ patientId }: { patientId: string }) {
         {loadError ? (
           <div className="px-4 py-6 text-sm text-danger">{loadError}</div>
         ) : rows.length === 0 ? (
-          <div className="px-4 py-6 text-sm text-ink-muted">No payer policies found.</div>
+          <div className="px-4 py-6 text-sm text-ink-muted" data-testid="payers-empty">No payer policies found.</div>
         ) : (
           <div className="divide-y divide-surface-2">
             <div className="grid grid-cols-[1.4fr_1fr_1fr_0.7fr] bg-[var(--surface-1)] px-3 py-[6px] text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft">
@@ -126,7 +126,11 @@ export function PatientPayers({ patientId }: { patientId: string }) {
               <span>Priority</span>
             </div>
             {rows.map((policy, i) => (
-              <div key={policy.id} className={`grid grid-cols-[1.4fr_1fr_1fr_0.7fr] px-3 py-[7px] border-t border-[var(--surface-1)] text-[12px] hover:bg-[rgba(31,149,184,0.04)]${i % 2 === 1 ? " bg-[rgba(243,239,232,0.4)]" : ""}`}>
+              <div
+                key={policy.id}
+                data-testid="payers-row"
+                className={`grid grid-cols-[1.4fr_1fr_1fr_0.7fr] px-3 py-[7px] border-t border-[var(--surface-1)] text-[12px] hover:bg-[rgba(31,149,184,0.04)]${i % 2 === 1 ? " bg-[rgba(243,239,232,0.4)]" : ""}`}
+              >
                 <span className="font-semibold text-ink-strong">{policy.payerName}</span>
                 <span className="text-ink-muted">{policy.memberId || "—"}</span>
                 <span className="text-ink-muted">—</span>

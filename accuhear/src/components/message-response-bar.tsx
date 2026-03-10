@@ -15,6 +15,8 @@ type Props = {
   sendLabel?: string;
   hint?: string;
   showSendButton?: boolean;
+  textareaTestId?: string;
+  sendButtonTestId?: string;
 };
 
 function useAutosizeTextarea(value: string) {
@@ -47,6 +49,8 @@ export function MessageResponseBar({
   sendLabel = "Send",
   hint = "Enter to send · Shift+Enter for a new line",
   showSendButton = true,
+  textareaTestId,
+  sendButtonTestId,
 }: Props) {
   const { ref, resize } = useAutosizeTextarea(value);
   const canSend = !disabled && value.trim().length > 0;
@@ -59,6 +63,7 @@ export function MessageResponseBar({
           <div className="min-w-0 flex-1">
             <textarea
               ref={ref}
+              data-testid={textareaTestId}
               rows={1}
               className="max-h-[160px] w-full resize-none appearance-none overflow-y-hidden rounded-xl border border-transparent bg-transparent px-3 py-2 text-sm text-ink-strong placeholder:text-ink-soft focus:border-surface-3 focus:bg-white focus:outline-none"
               placeholder={placeholder}
@@ -82,6 +87,7 @@ export function MessageResponseBar({
                   <Button
                     type="button"
                     aria-label="Send message"
+                    data-testid={sendButtonTestId}
                     variant="default"
                     size="icon"
                     className="h-8 w-8 shadow-sm"

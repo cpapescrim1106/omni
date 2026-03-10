@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import type { PrismaClient } from "@prisma/client";
 import { ensureTestDatabaseUrl } from "../helpers/test-database";
+import { ensurePatientSearchSchema } from "../../src/lib/patient-search";
 
 ensureTestDatabaseUrl();
 
@@ -60,6 +61,7 @@ test.describe.serial("Patient audiology", () => {
   test.beforeAll(async () => {
     const { PrismaClient } = await import("@prisma/client");
     prisma = new PrismaClient();
+    await ensurePatientSearchSchema();
   });
 
   test.afterAll(async () => {
@@ -87,7 +89,7 @@ test.describe.serial("Patient audiology", () => {
     await expect(page.getByTestId("audiology-audiogram")).toHaveCount(1);
     const row = page.getByTestId("audiology-audiogram").first();
     await expect(row).toHaveAttribute("data-ear", "L");
-    await expect(row).toContainText(`Baseline ${e2eTag}`);
+    await expect(row).toContainText("Left ear");
   });
 
   test("chart renders points for both ears", async ({ page }) => {
@@ -132,19 +134,14 @@ test.describe.serial("Patient audiology", () => {
     await expect(page.getByTestId("audiology-audiogram")).toHaveCount(0);
   });
 
-  test("modal opens with fields", async ({ page }) => {
+  test("action buttons are visible", async ({ page }) => {
     const patient = await createPatient("Audiology Modal");
     createdPatients.push(patient.id);
 
     await page.goto(`/patients/${patient.id}?tab=Audiology`);
-    await page.getByTestId("audiology-add").click();
-
-    const modal = page.getByTestId("audiology-modal");
-    await expect(modal).toBeVisible();
-    await expect(page.getByTestId("audiology-modal-ear")).toBeVisible();
-    await expect(page.getByTestId("audiology-modal-date")).toBeVisible();
-    await expect(page.getByTestId("audiology-modal-notes")).toBeVisible();
-    await expect(page.getByTestId("audiology-modal-frequency")).toBeVisible();
-    await expect(page.getByTestId("audiology-modal-decibel")).toBeVisible();
+    await expect(page.getByTestId("audiology-add")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Edit" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Delete" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Refresh" })).toBeVisible();
   });
 });

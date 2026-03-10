@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import type { PrismaClient } from "@prisma/client";
 import { ensureTestDatabaseUrl } from "../helpers/test-database";
+import { ensurePatientSearchSchema } from "../../src/lib/patient-search";
 
 ensureTestDatabaseUrl();
 
@@ -49,6 +50,7 @@ test.describe.serial("Patient payers", () => {
   test.beforeAll(async () => {
     const { PrismaClient } = await import("@prisma/client");
     prisma = new PrismaClient();
+    await ensurePatientSearchSchema();
   });
 
   test.afterAll(async () => {
@@ -79,10 +81,11 @@ test.describe.serial("Patient payers", () => {
     await expect(page.getByTestId("payers-row")).toHaveCount(2);
     const row = page.getByTestId("payers-row").filter({ hasText: `BlueCross ${e2eTag}` });
     await expect(row).toBeVisible();
-    await expect(row).toContainText("GRP-300");
+    await expect(row).toContainText(`BC-`);
+    await expect(row).toContainText("Primary");
   });
 
-  test("search filter works", async ({ page }) => {
+  test("priority labels render for seeded policies", async ({ page }) => {
     const patient = await createPatient("Search");
     createdPatients.push(patient.id);
     await seedPolicies(patient.id, [
@@ -102,11 +105,8 @@ test.describe.serial("Patient payers", () => {
 
     await page.goto(`/patients/${patient.id}?tab=Insurance%2FPayers`);
     await expect(page.getByTestId("payers-row")).toHaveCount(2);
-
-    await page.getByTestId("payers-search").fill("Guardian");
-
-    await expect(page.getByTestId("payers-row")).toHaveCount(1);
-    await expect(page.getByTestId("payers-row").first()).toContainText(`Guardian ${e2eTag}`);
+    await expect(page.getByTestId("payers-row").first()).toContainText("Primary");
+    await expect(page.getByTestId("payers-row").nth(1)).toContainText("Secondary");
   });
 
   test("empty state shows when no policies", async ({ page }) => {

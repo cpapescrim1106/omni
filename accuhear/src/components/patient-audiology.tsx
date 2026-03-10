@@ -142,11 +142,13 @@ export function PatientAudiology({ patientId }: { patientId: string }) {
             <div className="text-xs font-semibold text-ink-muted">Audiological history</div>
             <div className="mt-3 grid gap-2">
               {audiograms.length === 0 ? (
-                <div className="text-xs text-ink-muted">No audiograms recorded yet.</div>
+                <div className="text-xs text-ink-muted" data-testid="audiology-empty">No audiograms recorded yet.</div>
               ) : (
                 audiograms.map((audiogram) => (
                   <div
                     key={audiogram.id}
+                    data-testid="audiology-audiogram"
+                    data-ear={audiogram.ear}
                     className="rounded-[8px] border border-[var(--surface-3)] bg-white px-3 py-2 text-xs"
                   >
                     {dayjs(audiogram.createdAt).format("MM/DD/YYYY")} - {EAR_LABEL[audiogram.ear]} ear
@@ -254,7 +256,7 @@ export function PatientAudiology({ patientId }: { patientId: string }) {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="secondary" size="sm">Create new</Button>
+              <Button type="button" variant="secondary" size="sm" data-testid="audiology-add">Create new</Button>
               <Button type="button" variant="secondary" size="sm">Edit</Button>
               <Button type="button" variant="secondary" size="sm">Delete</Button>
               <Button type="button" variant="secondary" size="sm">Refresh</Button>

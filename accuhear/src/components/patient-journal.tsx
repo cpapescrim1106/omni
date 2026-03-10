@@ -82,9 +82,9 @@ export function PatientJournal({ patientId }: { patientId: string }) {
           ) : loading ? (
             <div className="px-4 py-6 text-sm text-ink-muted">Loading journal...</div>
           ) : entries.length === 0 ? (
-            <div className="px-4 py-6 text-sm text-ink-muted">No journal entries yet.</div>
+            <div className="px-4 py-6 text-sm text-ink-muted" data-testid="journal-empty">No journal entries yet.</div>
           ) : (
-            <div className="divide-y divide-surface-2">
+            <div className="divide-y divide-surface-2" data-testid="journal-timeline">
               <div className="grid grid-cols-[180px_140px_160px_1fr] bg-[var(--surface-1)] px-3 py-[6px] text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft">
                 <span>Date</span>
                 <span>Type</span>
@@ -97,12 +97,14 @@ export function PatientJournal({ patientId }: { patientId: string }) {
                   type="button"
                   variant="ghost"
                   size="default"
+                  data-testid="journal-entry"
+                  data-type={entry.type}
                   className="grid h-auto w-full grid-cols-[180px_140px_160px_1fr] rounded-none border-t border-[var(--surface-1)] px-3 py-[7px] text-left text-[12px] hover:bg-[rgba(31,149,184,0.04)] [&:nth-child(even)]:bg-[rgba(243,239,232,0.4)]"
                   onClick={() => setSelectedEntryId(entry.id)}
                 >
-                  <span className="text-ink-muted">{dayjs(entry.createdAt).format("MM/DD/YYYY h:mm A")}</span>
-                  <span className="font-semibold text-ink-strong">{entry.type}</span>
-                  <span className="text-ink-muted">{entry.createdBy}</span>
+                  <span className="text-ink-muted" data-testid="journal-entry-date">{dayjs(entry.createdAt).format("MM/DD/YYYY h:mm A")}</span>
+                  <span className="font-semibold text-ink-strong" data-testid="journal-entry-icon">{entry.type}</span>
+                  <span className="text-ink-muted" data-testid="journal-entry-user">{entry.createdBy}</span>
                   <span className="text-ink-strong">{entry.content}</span>
                 </Button>
               ))}
@@ -155,7 +157,10 @@ export function PatientJournal({ patientId }: { patientId: string }) {
 
           <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] p-4">
             <div className="text-xs font-semibold text-ink-muted">Entry detail</div>
-            <div className="mt-3 rounded-xl border border-dashed border-surface-3 bg-white/70 px-3 py-4 text-xs text-ink-muted">
+            <div
+              className="mt-3 rounded-xl border border-dashed border-surface-3 bg-white/70 px-3 py-4 text-xs text-ink-muted"
+              data-testid="journal-detail"
+            >
               {selectedEntry ? selectedEntry.content : "Select a journal entry to view details."}
             </div>
           </div>

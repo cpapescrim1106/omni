@@ -1,6 +1,8 @@
 import { test, expect } from "@playwright/test";
 import type { PrismaClient } from "@prisma/client";
 import { ensureTestDatabaseUrl } from "../helpers/test-database";
+import { ensurePatientSearchSchema } from "../../src/lib/patient-search";
+import { selectOmniOption } from "./helpers/omni-select";
 
 ensureTestDatabaseUrl();
 
@@ -57,6 +59,7 @@ test.describe.serial("Marketing contacts", () => {
   test.beforeAll(async () => {
     const { PrismaClient } = await import("@prisma/client");
     prisma = new PrismaClient();
+    await ensurePatientSearchSchema();
     await prisma.marketingContact.deleteMany({});
 
     const alpha = await createPatient(alphaPatient);
@@ -105,7 +108,7 @@ test.describe.serial("Marketing contacts", () => {
   test("outcome filter updates table", async ({ page }) => {
     await page.goto("/marketing");
 
-    await page.getByTestId("marketing-filter-outcome").selectOption("scheduled");
+    await selectOmniOption(page, "marketing-filter-outcome", "Scheduled");
     const table = page.getByTestId("marketing-table");
     await expect(table.getByText(alphaPatientName)).toBeVisible();
     await expect(table.getByText(betaPatientName)).toHaveCount(0);
@@ -125,7 +128,7 @@ test.describe.serial("Marketing contacts", () => {
   test("channel filter works", async ({ page }) => {
     await page.goto("/marketing");
 
-    await page.getByTestId("marketing-filter-channel").selectOption("phone");
+    await selectOmniOption(page, "marketing-filter-channel", "Phone");
     const table = page.getByTestId("marketing-table");
     await expect(table.getByText(betaPatientName)).toBeVisible();
     await expect(table.getByText(gammaPatientName)).toHaveCount(0);
@@ -134,7 +137,7 @@ test.describe.serial("Marketing contacts", () => {
   test("empty state shows when no contacts", async ({ page }) => {
     await page.goto("/marketing");
 
-    await page.getByTestId("marketing-filter-outcome").selectOption("not_interested");
+    await selectOmniOption(page, "marketing-filter-outcome", "Not interested");
     await expect(page.getByTestId("marketing-empty")).toBeVisible();
     await expect(page.getByTestId("marketing-row")).toHaveCount(0);
   });

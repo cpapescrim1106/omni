@@ -2,6 +2,7 @@ import { test, expect, type APIRequestContext } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
 import dayjs from "dayjs";
 import { ensureTestDatabaseUrl } from "../helpers/test-database";
+import { selectOmniOption } from "./helpers/omni-select";
 
 ensureTestDatabaseUrl();
 
@@ -78,6 +79,21 @@ async function getMeta(request: APIRequestContext): Promise<MetaPayload> {
   return response.json();
 }
 
+async function ensureSidebarMeta() {
+  await prisma.appointmentType.upsert({
+    where: { name: "Consult" },
+    update: { isActive: true },
+    create: { name: "Consult", isActive: true },
+  });
+  for (const statusName of ["Scheduled", "Confirmed", "Cancelled"]) {
+    await prisma.appointmentStatus.upsert({
+      where: { name: statusName },
+      update: { isActive: true },
+      create: { name: statusName, isActive: true },
+    });
+  }
+}
+
 async function getAppointmentsForProvider(request: APIRequestContext, provider: string, date: string) {
   const rangeStart = buildLocalDateTime(date, DAY_START_HOUR, 0);
   const rangeEnd = buildLocalDateTime(date, DAY_END_HOUR, 0);
@@ -130,6 +146,7 @@ function findStatusId(meta: MetaPayload, matcher: (name: string) => boolean) {
 
 test.describe.serial("Scheduling sidebar", () => {
   test.beforeAll(async () => {
+    await ensureSidebarMeta();
     await prisma.appointment.deleteMany({ where: { notes: { startsWith: "E2E:" } } });
   });
 
@@ -218,7 +235,7 @@ test.describe.serial("Scheduling sidebar", () => {
     await page.goto(`/scheduling?date=${dateParam}`);
     await page.getByTestId("schedule-week").click();
 
-    await page.getByTestId("status-filter").selectOption("confirmed");
+    await selectOmniOption(page, "status-filter", "Confirmed");
     const confirmedEvent = page.locator(`[data-appointment-id="${createdConfirmed.appointment?.id}"]`);
     const cancelledEvent = page.locator(`[data-appointment-id="${createdCancelled.appointment?.id}"]`);
 
@@ -279,7 +296,7 @@ test.describe.serial("Scheduling sidebar", () => {
     await page.getByTestId("schedule-week").click();
 
     await page.getByTestId(`provider-filter-${providerB}`).setChecked(false);
-    await page.getByTestId("status-filter").selectOption("confirmed");
+    await selectOmniOption(page, "status-filter", "Confirmed");
 
     await page.waitForURL((url) => new URL(url).searchParams.get("status") === "confirmed");
     const url = new URL(page.url());

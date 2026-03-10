@@ -253,6 +253,7 @@ export function PatientDocuments({ patientId }: { patientId: string }) {
                 type="button"
                 variant="secondary"
                 size="sm"
+                data-testid={`documents-filter-category-${category.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
                 className="flex h-auto items-center justify-between rounded-xl bg-white px-3 py-2 text-xs font-normal text-ink-muted"
                 onClick={() => setCategoryFilter(category.label)}
               >

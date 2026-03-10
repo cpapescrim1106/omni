@@ -1,6 +1,8 @@
 import { test, expect } from "@playwright/test";
 import type { PrismaClient } from "@prisma/client";
 import { ensureTestDatabaseUrl } from "../helpers/test-database";
+import { ensurePatientSearchSchema } from "../../src/lib/patient-search";
+import { selectOmniOption } from "./helpers/omni-select";
 
 ensureTestDatabaseUrl();
 
@@ -75,6 +77,7 @@ test.describe.serial("Recalls dashboard", () => {
   test.beforeAll(async () => {
     const { PrismaClient } = await import("@prisma/client");
     prisma = new PrismaClient();
+    await ensurePatientSearchSchema();
     await prisma.recall.deleteMany({});
     await prisma.recallRule.deleteMany({});
 
@@ -124,7 +127,7 @@ test.describe.serial("Recalls dashboard", () => {
   test("status filter updates table", async ({ page }) => {
     await page.goto("/recalls");
 
-    await page.getByTestId("recalls-filter-status").selectOption("scheduled");
+    await selectOmniOption(page, "recalls-filter-status", "Scheduled");
     const table = page.getByTestId("recalls-table");
     await expect(table.getByText(scheduledPatientName)).toBeVisible();
     await expect(table.getByText(pendingPatientName)).toHaveCount(0);
@@ -155,7 +158,7 @@ test.describe.serial("Recalls dashboard", () => {
   test("empty state shows when no recalls", async ({ page }) => {
     await page.goto("/recalls");
 
-    await page.getByTestId("recalls-filter-status").selectOption("completed");
+    await selectOmniOption(page, "recalls-filter-status", "Completed");
     await expect(page.getByTestId("recalls-empty")).toBeVisible();
     await expect(page.getByTestId("recall-row")).toHaveCount(0);
   });

@@ -9,6 +9,7 @@ import { PatientMessaging } from "@/components/patient-messaging";
 import { PatientDocuments } from "@/components/patient-documents";
 import { PatientSales } from "@/components/patient-sales";
 import { PatientAudiology } from "@/components/patient-audiology";
+import { PatientDevices } from "@/components/patient-devices";
 import { PatientDeviceRegistry } from "@/components/patient-device-registry";
 import { PatientPayers } from "@/components/patient-payers";
 import { PatientMarketing } from "@/components/patient-marketing";
@@ -20,6 +21,7 @@ import { PatientPhotoAvatar } from "@/components/patient-photo-avatar";
 const tabs = [
   "Summary",
   "Audiology",
+  "Hearing aids",
   "Journal",
   "3rd party payers",
   "Messaging",
@@ -41,6 +43,7 @@ export default async function PatientProfilePage({
   const patient = await getPatientById(resolvedParams.id);
   if (!patient) notFound();
   const activeTab = resolvedSearchParams?.tab ?? "Summary";
+  const normalizedActiveTab = activeTab === "Ordered/delivered items" ? "Hearing aids" : activeTab;
   const purchaseMode = resolvedSearchParams?.purchase ?? "";
   const patientLabel = `${patient.lastName}, ${patient.firstName}${patient.preferredName ? ` (${patient.preferredName})` : ""}`;
 
@@ -168,7 +171,7 @@ export default async function PatientProfilePage({
               <Link
                 key={tab}
                 href={`/patients/${patient.id}?tab=${encodeURIComponent(tab)}`}
-                className={`seg-tab${activeTab === tab ? " active" : ""}`}
+                className={`seg-tab${normalizedActiveTab === tab ? " active" : ""}`}
               >
                 {tab}
               </Link>
@@ -177,19 +180,21 @@ export default async function PatientProfilePage({
         </div>
       </section>
 
-      {activeTab === "Audiology" ? (
+      {normalizedActiveTab === "Audiology" ? (
         <PatientAudiology patientId={patient.id} />
-      ) : activeTab === "Journal" ? (
+      ) : normalizedActiveTab === "Hearing aids" ? (
+        <PatientDevices patientId={patient.id} autoOpenCreate={purchaseMode === "tracked"} />
+      ) : normalizedActiveTab === "Journal" ? (
         <PatientJournal patientId={patient.id} />
-      ) : activeTab === "Insurance/Payers" || activeTab === "3rd party payers" ? (
+      ) : normalizedActiveTab === "Insurance/Payers" || normalizedActiveTab === "3rd party payers" ? (
         <PatientPayers patientId={patient.id} />
-      ) : activeTab === "Messaging" ? (
+      ) : normalizedActiveTab === "Messaging" ? (
         <PatientMessaging patientId={patient.id} />
-      ) : activeTab === "Sales history" ? (
-        <PatientSales patientId={patient.id} autoOpenCreate={purchaseMode === "direct" || purchaseMode === "tracked"} />
-      ) : activeTab === "Documents" ? (
+      ) : normalizedActiveTab === "Sales history" ? (
+        <PatientSales patientId={patient.id} autoOpenCreate={purchaseMode === "direct"} />
+      ) : normalizedActiveTab === "Documents" ? (
         <PatientDocuments patientId={patient.id} />
-      ) : activeTab === "Marketing" ? (
+      ) : normalizedActiveTab === "Marketing" ? (
         <PatientMarketing />
       ) : (
         <div className="content-area">

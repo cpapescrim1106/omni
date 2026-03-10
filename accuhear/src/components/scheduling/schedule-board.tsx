@@ -96,6 +96,7 @@ type ScheduleEvent = {
   providerName: string;
   typeId?: string;
   typeName: string;
+  statusId?: string;
   statusName?: string;
   title: string;
   start: dayjs.Dayjs;
@@ -125,6 +126,18 @@ type AppointmentFormState = {
   statusId: string;
   notes: string;
 };
+
+function getStatusDotColor(statusName?: string): string {
+  const n = (statusName ?? "").toLowerCase();
+  if (n === "in progress") return "#1f95b8";
+  if (n === "ready") return "#2e9e6e";
+  if (n === "arrived & ready" || n === "arrived and ready") return "rgba(46,158,110,0.65)";
+  if (n === "arrived") return "rgba(31,149,184,0.55)";
+  if (n === "completed") return "#1a6e47";
+  if (n === "cancelled" || n === "canceled" || n === "no-show" || n === "no show") return "#c94646";
+  if (n === "rescheduled") return "#c27c1a";
+  return "rgba(108,104,125,0.45)"; // scheduled / tentative / confirmed
+}
 
 function providerShortLabel(name: string) {
   if (providerShortNames[name]) return providerShortNames[name];
@@ -310,12 +323,31 @@ export function BigSchedule() {
   const [patientStatusFilter, setPatientStatusFilter] = useState<"active" | "inactive">("active");
   const [modalError, setModalError] = useState<string | null>(null);
   const [editHistory, setEditHistory] = useState<AppointmentTransitionHistoryItem[]>([]);
+  const [statusPicker, setStatusPicker] = useState<{ id: string; x: number; y: number } | null>(null);
+  const statusPickerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!toastMessage) return;
     const timeout = window.setTimeout(() => setToastMessage(null), 5000);
     return () => window.clearTimeout(timeout);
   }, [toastMessage]);
+
+  useEffect(() => {
+    if (!statusPicker) return;
+    function handlePointerDown(event: PointerEvent) {
+      if (statusPickerRef.current?.contains(event.target as Node)) return;
+      setStatusPicker(null);
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setStatusPicker(null);
+    }
+    window.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [statusPicker]);
 
   useEffect(() => {
     if (!actionMenu) return;
@@ -707,6 +739,7 @@ export function BigSchedule() {
           providerName: appointment.providerName,
           typeId: appointment.type?.id,
           typeName,
+          statusId: appointment.status?.id,
           statusName: appointment.status?.name,
           title: `${patientName} · ${typeName}`,
           start,
@@ -1455,6 +1488,34 @@ export function BigSchedule() {
         </div>
       </div>
 
+      {statusPicker ? (
+        <div
+          ref={statusPickerRef}
+          className="schedule-status-picker"
+          style={{ left: statusPicker.x, top: statusPicker.y }}
+          role="menu"
+        >
+          {orderedStatusOptions.map((status) => (
+            <button
+              key={status.id}
+              type="button"
+              className="schedule-status-picker-option"
+              role="menuitem"
+              onClick={() => {
+                void updateAppointmentStatus(statusPicker.id, status.id, status.name);
+                setStatusPicker(null);
+              }}
+            >
+              <span
+                className="schedule-status-picker-dot"
+                style={{ background: getStatusDotColor(status.name) }}
+              />
+              {status.name}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
       {toastMessage ? (
         <div
           className="mb-3 rounded-xl border border-danger/30 bg-danger/10 px-4 py-2 text-xs text-danger"
@@ -2162,7 +2223,20 @@ export function BigSchedule() {
                     }}
                     title={`${event.title} (${event.timeLabel})`}
                   >
-                    <div className="schedule-day-event-title">{event.title}</div>
+                    <div className="schedule-day-event-title">
+                      <button
+                        type="button"
+                        className="schedule-status-dot"
+                        style={{ background: getStatusDotColor(event.statusName) }}
+                        title={event.statusName ?? "Status"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setStatusPicker({ id: event.id, x: rect.left, y: rect.bottom + 6 });
+                        }}
+                      />
+                      <span className="schedule-event-label">{event.title}</span>
+                    </div>
                     <div className="schedule-day-event-time">{event.timeLabel}</div>
                     <div
                       className="schedule-event-resize-handle"
@@ -2323,7 +2397,20 @@ export function BigSchedule() {
                     }}
                     title={`${event.title} (${event.timeLabel})`}
                   >
-                    <div className="schedule-week-event-title">{event.title}</div>
+                    <div className="schedule-week-event-title">
+                      <button
+                        type="button"
+                        className="schedule-status-dot"
+                        style={{ background: getStatusDotColor(event.statusName) }}
+                        title={event.statusName ?? "Status"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setStatusPicker({ id: event.id, x: rect.left, y: rect.bottom + 6 });
+                        }}
+                      />
+                      <span className="schedule-event-label">{event.title}</span>
+                    </div>
                     <div className="schedule-week-event-time">{event.timeLabel}</div>
                     <div
                       className="schedule-event-resize-handle"

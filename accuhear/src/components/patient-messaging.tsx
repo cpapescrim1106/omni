@@ -246,10 +246,6 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
         <div className="flex min-h-0 flex-col overflow-hidden rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)]">
           {loadError ? (
             <div className="px-4 py-4 text-sm text-danger">{loadError}</div>
-          ) : totalMessages === 0 ? (
-            <div className="px-4 py-6 text-sm text-ink-muted" data-testid="messaging-empty">
-              No messages yet.
-            </div>
           ) : (
             <>
               <div
@@ -263,62 +259,72 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
                   stickToBottomRef.current = distanceToBottom < 24;
                 }}
               >
-                {threads.map((thread) => (
-                  <div key={thread.id} data-testid="messaging-thread" data-channel={thread.channel}>
-                    <div className="flex items-center justify-between border-b border-surface-2 px-4 py-3">
-                      <div className="text-sm font-semibold text-ink-strong">{thread.channel.toUpperCase()} thread</div>
-                      <Badge variant="neutral">{thread.status}</Badge>
-                    </div>
-                    <div className="grid gap-4 px-4 py-4">
-                      {thread.messages.map((message) => {
-                        const isOutbound = message.direction === "outbound";
-                        const isFailed = message.status === "failed";
-                        const failureDetails = isFailed ? formatSendFailure(message.errorMessage) : null;
-                        return (
-                          <div
-                            key={message.id}
-                            data-testid="messaging-message"
-                            data-direction={message.direction}
-                            data-status={message.status}
-                            className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}
-                          >
-                            <div className="max-w-[80%]">
-                              <div
-                                className={`rounded-[12px] px-3 py-2 text-[12px] ${
-                                  isFailed
-                                    ? "border border-danger/30 bg-danger/10 text-danger"
-                                    : isOutbound
-                                      ? "bg-[var(--brand-blue)] text-white"
-                                      : "bg-[var(--surface-2)] text-[var(--ink)]"
-                                }`}
-                              >
-                                {message.body}
-                              </div>
-                              <div
-                                className={`mt-2 flex flex-wrap items-center gap-2 text-[10px] text-[var(--ink-soft)] ${
-                                  isOutbound ? "justify-end" : "justify-start"
-                                }`}
-                              >
-                                <span>{isOutbound ? "Outbound" : "Inbound"}</span>
-                                <span>·</span>
-                                <span>{dayjs(message.sentAt).format("MMM D, YYYY h:mm A")}</span>
-                                <span>·</span>
-                                <Badge variant={STATUS_STYLES[message.status] as "neutral" | "blue" | "success" | "danger" | "orange"}>
-                                  {STATUS_LABELS[message.status]}
-                                </Badge>
-                              </div>
-                              {isFailed ? (
-                                <div className="mt-2 text-xs text-danger">
-                                  Failed to send{failureDetails ? `: ${failureDetails}` : "."}
-                                </div>
-                              ) : null}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                {totalMessages === 0 ? (
+                  <div className="px-4 py-6 text-sm text-ink-muted" data-testid="messaging-empty">
+                    No messages yet.
                   </div>
-                ))}
+                ) : (
+                  threads.map((thread) => (
+                    <div key={thread.id} data-testid="messaging-thread" data-channel={thread.channel}>
+                      <div className="flex items-center justify-between border-b border-surface-2 px-4 py-3">
+                        <div className="text-sm font-semibold text-ink-strong">{thread.channel.toUpperCase()} thread</div>
+                        <Badge variant="neutral">{thread.status}</Badge>
+                      </div>
+                      <div className="grid gap-4 px-4 py-4">
+                        {thread.messages.map((message) => {
+                          const isOutbound = message.direction === "outbound";
+                          const isFailed = message.status === "failed";
+                          const failureDetails = isFailed ? formatSendFailure(message.errorMessage) : null;
+                          return (
+                            <div
+                              key={message.id}
+                              data-testid="messaging-message"
+                              data-direction={message.direction}
+                              data-status={message.status}
+                              className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}
+                            >
+                              <div className="max-w-[80%]">
+                                <div
+                                  className={`rounded-[12px] px-3 py-2 text-[12px] ${
+                                    isFailed
+                                      ? "border border-danger/30 bg-danger/10 text-danger"
+                                      : isOutbound
+                                        ? "bg-[var(--brand-blue)] text-white"
+                                        : "bg-[var(--surface-2)] text-[var(--ink)]"
+                                  }`}
+                                >
+                                  {message.body}
+                                </div>
+                                <div
+                                  data-testid="messaging-message-meta"
+                                  className={`mt-2 flex flex-wrap items-center gap-2 text-[10px] text-[var(--ink-soft)] ${
+                                    isOutbound ? "justify-end" : "justify-start"
+                                  }`}
+                                >
+                                  <span>{isOutbound ? "Outbound" : "Inbound"}</span>
+                                  <span>·</span>
+                                  <span>{dayjs(message.sentAt).format("MMM D, YYYY h:mm A")}</span>
+                                  <span>·</span>
+                                  <Badge
+                                    data-testid="messaging-message-status"
+                                    variant={STATUS_STYLES[message.status] as "neutral" | "blue" | "success" | "danger" | "orange"}
+                                  >
+                                    {STATUS_LABELS[message.status]}
+                                  </Badge>
+                                </div>
+                                {isFailed ? (
+                                  <div className="mt-2 text-xs text-danger">
+                                    Failed to send{failureDetails ? `: ${failureDetails}` : "."}
+                                  </div>
+                                ) : null}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))
+                )}
                 <div ref={bottomRef} />
               </div>
 
@@ -336,6 +342,8 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
                 placeholder="Write a message..."
                 sendLabel={sending ? "Sending..." : "Send"}
                 hint="Enter to send · Shift+Enter for a new line"
+                textareaTestId="messaging-compose-body"
+                sendButtonTestId="messaging-compose-submit"
               />
             </>
           )}
