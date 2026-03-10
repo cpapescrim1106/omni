@@ -1528,6 +1528,391 @@ a {
   text-align: center;
 }
 
+/* ─── Dense Patient Header ─── */
+.patient-header {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 18px;
+  box-shadow: var(--card-shadow);
+  padding: 8px 12px 4px;
+}
+
+.patient-header-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.patient-header-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-family: var(--font-display), "Space Grotesk", sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.patient-header-identity {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.patient-header-name {
+  font-family: var(--font-display), "Space Grotesk", sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink-strong);
+  white-space: nowrap;
+}
+
+.patient-header-meta {
+  font-size: 11px;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+.patient-header-sep {
+  color: var(--ink-soft);
+  margin: 0 3px;
+}
+
+.patient-header-badges {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.patient-header-badge {
+  font-family: var(--font-display), "Space Grotesk", sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.patient-header-badge.badge-success {
+  background: rgba(30, 155, 108, 0.1);
+  color: var(--success);
+}
+
+.patient-header-badge.badge-blue {
+  background: rgba(31, 149, 184, 0.1);
+  color: var(--brand-blue);
+}
+
+.patient-header-stats {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.patient-header-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+}
+
+.patient-header-stat-label {
+  font-size: 10px;
+  color: var(--ink-soft);
+}
+
+.patient-header-stat-value {
+  font-family: var(--font-display), "Space Grotesk", sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.patient-header-stat-sep {
+  width: 1px;
+  height: 14px;
+  background: var(--surface-3);
+  margin: 0 8px;
+}
+
+/* ─── Variant-06 Demographics Layout ─── */
+.content-area {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  gap: 8px;
+}
+
+.record-panel {
+  flex: 0 0 60%;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.record-panel .tab-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+}
+
+.context-panel {
+  flex: 0 0 40%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.ctx-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
+  padding: 12px 14px;
+  border-radius: 18px;
+}
+
+.ctx-card-title {
+  font-family: var(--font-display), "Space Grotesk", sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px 12px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.form-field.span-2 {
+  grid-column: span 2;
+}
+
+.form-label {
+  font-family: var(--font-display), "Space Grotesk", sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+}
+
+.form-value {
+  font-size: 13px;
+  color: var(--ink);
+  padding: 4px 0;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s;
+}
+
+.form-value:hover {
+  border-bottom-color: var(--surface-3);
+}
+
+.appt-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--surface-1);
+}
+
+.appt-item:last-child {
+  border-bottom: none;
+}
+
+.appt-time {
+  font-family: var(--font-display), "Space Grotesk", sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  white-space: nowrap;
+  min-width: 72px;
+}
+
+.appt-detail {
+  flex: 1;
+  min-width: 0;
+}
+
+.appt-type {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.appt-meta {
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.note-item {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--surface-1);
+}
+
+.note-item:last-child {
+  border-bottom: none;
+}
+
+.note-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.note-item-body {
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mini-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.mini-table th {
+  font-family: var(--font-display), "Space Grotesk", sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--surface-2);
+}
+
+.mini-table td {
+  font-size: 12px;
+  color: var(--ink);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--surface-1);
+}
+
+.mini-table tr:nth-child(even) td {
+  background: rgba(243, 239, 232, 0.4);
+}
+
+.mini-table tr:hover td {
+  background: rgba(31, 149, 184, 0.04);
+}
+
+.btn-sm,
+.btn-sm-primary,
+.btn-sm-ghost {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-sm {
+  border: 1px solid var(--card-border);
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--ink-muted);
+}
+
+.btn-sm:hover,
+.btn-sm-ghost:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.btn-sm-primary {
+  background: var(--brand-blue);
+  color: #fff;
+}
+
+.btn-sm-primary:hover {
+  background: #1a829f;
+}
+
+.btn-sm-ghost {
+  background: transparent;
+  color: var(--ink-muted);
+}
+
+.ctx-card-count {
+  font-size: 10px;
+  color: var(--ink-soft);
+}
+
+.empty-text {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.note-item-date {
+  font-weight: 400;
+  color: var(--ink-soft);
+  font-size: 10px;
+}
+
+.mini-table-strong {
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.quick-note-input {
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(38, 34, 96, 0.12);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--ink);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.quick-note-input::placeholder {
+  color: var(--ink-soft);
+}
+
+.quick-note-input:focus {
+  outline: none;
+  border-color: rgba(31, 149, 184, 0.45);
+  box-shadow: 0 0 0 3px rgba(31, 149, 184, 0.1);
+}
+
 /* Native dialog reset */
 dialog {
   border: none;
