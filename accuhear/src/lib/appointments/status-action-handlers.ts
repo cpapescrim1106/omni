@@ -114,9 +114,6 @@ function evaluateEntryPointAvailability(params: {
   const transitionActions = getAvailableTransitionActionsForStatus(appointment.status.name);
   let availableActions = transitionActions;
 
-  if (entryPoint === "schedule-context" && !isToday) {
-    availableActions = [];
-  }
 
   if (entryPoint === "monitor-list" && !monitorEligible) {
     availableActions = [];
@@ -214,13 +211,6 @@ export async function runEntryPointActionTransition(params: {
     entryPoint: params.entryPoint,
     referenceDate: params.referenceDate ?? new Date(),
   });
-
-  if (params.entryPoint === "schedule-context" && !availability.isToday) {
-    throw new AppointmentActionHandlerError(
-      "SCHEDULE_CONTEXT_NOT_TODAY",
-      "Schedule context actions are only available for today's appointments."
-    );
-  }
 
   if (params.entryPoint === "monitor-list" && !availability.monitorEligible) {
     throw new AppointmentActionHandlerError(

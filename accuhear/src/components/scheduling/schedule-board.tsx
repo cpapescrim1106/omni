@@ -2386,10 +2386,10 @@ export function BigSchedule() {
                       {scheduleContextState?.isLoading ? (
                         <DropdownMenuItem disabled>Loading actions…</DropdownMenuItem>
                       ) : null}
-                      {!scheduleContextState?.isLoading && scheduleContextState?.isToday && scheduleContextActions.length ? (
+                      {!scheduleContextState?.isLoading && scheduleContextActions.length ? (
                         <>
                           {scheduleContextActions
-                            .filter((action) => action !== "In Progress" && action !== "Cancelled")
+                            .filter((action) => action === "Completed")
                             .map((action) =>
                               action !== "Completed" ? (
                                 <DropdownMenuItem
@@ -2700,10 +2700,10 @@ export function BigSchedule() {
                       {scheduleContextState?.isLoading ? (
                         <DropdownMenuItem disabled>Loading actions…</DropdownMenuItem>
                       ) : null}
-                      {!scheduleContextState?.isLoading && scheduleContextState?.isToday && scheduleContextActions.length ? (
+                      {!scheduleContextState?.isLoading && scheduleContextActions.length ? (
                         <>
                           {scheduleContextActions
-                            .filter((action) => action !== "In Progress" && action !== "Cancelled")
+                            .filter((action) => action === "Completed")
                             .map((action) =>
                               action !== "Completed" ? (
                                 <DropdownMenuItem
