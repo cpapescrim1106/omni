@@ -1246,12 +1246,14 @@ export function BigSchedule() {
     const start = dayjs(`${formState.date}T${formState.startTime}`);
     const end = dayjs(`${formState.date}T${formState.endTime}`);
     if (!start.isValid() || !end.isValid() || !end.isAfter(start)) return null;
+    const durationMinutes = end.diff(start, "minute");
     const patientName = formState.patientName || (formState.isNaBlock ? "Reserved" : "");
     const typeName = meta?.types.find((t) => t.id === formState.typeId)?.name ?? "Appointment";
     const statusName = meta?.statuses.find((s) => s.id === formState.statusId)?.name;
     const title = `${patientName || "Reserved"} · ${typeName}`;
     const timeLabel = `${start.format("h:mm A")} – ${end.format("h:mm A")}`;
-    return { start, end, date: formState.date, providerName: formState.providerName, title, statusName, timeLabel };
+    const sizeClass = durationMinutes <= 15 ? "is-compact" : durationMinutes <= 30 ? "is-short" : "";
+    return { start, end, date: formState.date, providerName: formState.providerName, title, statusName, timeLabel, sizeClass };
   }, [isModalOpen, formState, meta]);
 
   const weekGridStyles = weekGrid
@@ -2489,7 +2491,7 @@ export function BigSchedule() {
                   return (
                     <div
                       key="ghost-event"
-                      className="schedule-day-event pointer-events-none border-2 border-dashed border-brand-blue bg-brand-blue/20 opacity-80"
+                      className={`schedule-day-event ${ghostEvent.sizeClass} pointer-events-none border-2 border-dashed border-brand-blue bg-brand-blue/20 opacity-80`}
                       style={{
                         gridColumn: providerPosition + 2,
                         gridRow: `${startIndex + 2} / ${Math.min(endIndex + 2, dayGrid.slotCount + 2)}`,
@@ -2804,7 +2806,7 @@ export function BigSchedule() {
                   return (
                     <div
                       key="ghost-event"
-                      className="schedule-week-event pointer-events-none border-2 border-dashed border-brand-blue bg-brand-blue/20 opacity-80"
+                      className={`schedule-week-event ${ghostEvent.sizeClass} pointer-events-none border-2 border-dashed border-brand-blue bg-brand-blue/20 opacity-80`}
                       style={{
                         gridColumn: 2 + dayIndex * visibleProviders.length + providerPosition,
                         gridRow: `${startIndex + 3} / ${Math.min(endIndex + 3, weekGrid.slots.slotCount + 3)}`,
