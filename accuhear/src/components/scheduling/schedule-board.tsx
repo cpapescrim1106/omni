@@ -1240,6 +1240,14 @@ export function BigSchedule() {
     };
   }, [events, viewDate, viewType, visibleProviders]);
 
+  const ghostEvent = useMemo(() => {
+    if (!isModalOpen || !formState?.date || !formState?.startTime || !formState?.endTime || !formState?.providerName) return null;
+    const start = dayjs(`${formState.date}T${formState.startTime}`);
+    const end = dayjs(`${formState.date}T${formState.endTime}`);
+    if (!start.isValid() || !end.isValid() || !end.isAfter(start)) return null;
+    return { start, end, date: formState.date, providerName: formState.providerName };
+  }, [isModalOpen, formState]);
+
   const weekGridStyles = weekGrid
     ? {
         gridTemplateColumns: `${TIME_COLUMN_WIDTH}px repeat(${
@@ -2461,6 +2469,34 @@ export function BigSchedule() {
                   </DropdownMenu>
                   );
                 })}
+                {ghostEvent && (() => {
+                  if (ghostEvent.date !== dayjs(viewDate).format("YYYY-MM-DD")) return null;
+                  const providerPosition = visibleProviders.indexOf(ghostEvent.providerName);
+                  if (providerPosition === -1) return null;
+                  const dayStart = dayjs(viewDate).hour(DAY_START_HOUR).minute(0).second(0);
+                  const dayEnd = dayjs(viewDate).hour(DAY_END_HOUR).minute(0).second(0);
+                  if (!ghostEvent.end.isAfter(dayStart) || !ghostEvent.start.isBefore(dayEnd)) return null;
+                  const startMins = Math.max(0, ghostEvent.start.diff(dayStart, "minute"));
+                  const endMins = Math.min(dayGrid.slotCount * SLOT_MINUTES, ghostEvent.end.diff(dayStart, "minute"));
+                  const startIndex = Math.floor(startMins / SLOT_MINUTES);
+                  const endIndex = Math.max(startIndex + 1, Math.ceil(endMins / SLOT_MINUTES));
+                  return (
+                    <div
+                      key="ghost-event"
+                      className="schedule-day-event pointer-events-none border-2 border-dashed border-brand-blue bg-brand-blue/20 opacity-80"
+                      style={{
+                        gridColumn: providerPosition + 2,
+                        gridRow: `${startIndex + 2} / ${Math.min(endIndex + 2, dayGrid.slotCount + 2)}`,
+                      }}
+                    >
+                      <div className="schedule-day-event-title">
+                        <span className="schedule-event-label text-brand-blue font-medium">
+                          {ghostEvent.start.format("h:mm")}–{ghostEvent.end.format("h:mm A")}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           ) : weekGrid ? (
@@ -2747,6 +2783,35 @@ export function BigSchedule() {
                   </DropdownMenu>
                   );
                 })}
+                {ghostEvent && (() => {
+                  const providerPosition = visibleProviders.indexOf(ghostEvent.providerName);
+                  if (providerPosition === -1) return null;
+                  const dayIndex = weekGrid.weekDays.findIndex((d) => d.format("YYYY-MM-DD") === ghostEvent.date);
+                  if (dayIndex === -1) return null;
+                  const dayStart = weekGrid.weekDays[dayIndex].hour(DAY_START_HOUR).minute(0).second(0);
+                  const dayEnd = weekGrid.weekDays[dayIndex].hour(DAY_END_HOUR).minute(0).second(0);
+                  if (!ghostEvent.end.isAfter(dayStart) || !ghostEvent.start.isBefore(dayEnd)) return null;
+                  const startMins = Math.max(0, ghostEvent.start.diff(dayStart, "minute"));
+                  const endMins = Math.min(weekGrid.slots.totalMinutes, ghostEvent.end.diff(dayStart, "minute"));
+                  const startIndex = Math.floor(startMins / SLOT_MINUTES);
+                  const endIndex = Math.max(startIndex + 1, Math.ceil(endMins / SLOT_MINUTES));
+                  return (
+                    <div
+                      key="ghost-event"
+                      className="schedule-week-event pointer-events-none border-2 border-dashed border-brand-blue bg-brand-blue/20 opacity-80"
+                      style={{
+                        gridColumn: 2 + dayIndex * visibleProviders.length + providerPosition,
+                        gridRow: `${startIndex + 3} / ${Math.min(endIndex + 3, weekGrid.slots.slotCount + 3)}`,
+                      }}
+                    >
+                      <div className="schedule-week-event-title">
+                        <span className="schedule-event-label text-brand-blue font-medium">
+                          {ghostEvent.start.format("h:mm")}–{ghostEvent.end.format("h:mm A")}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           ) : (
