@@ -959,22 +959,44 @@ export function BigSchedule() {
         });
       }
 
-      // Search: same day ±60 min in 15-min increments ordered by closeness, then walk forward day by day
+      // Determine available time window for a candidate date based on provider schedules
+      function getAvailableWindow(date: dayjs.Dayjs): { startMinute: number; endMinute: number } | null {
+        const providerSched = providerSchedules[targetProvider];
+        if (!providerSched) {
+          // No schedule configured → full day open
+          return { startMinute: DAY_START_HOUR * 60, endMinute: DAY_END_HOUR * 60 };
+        }
+        const dow = date.day(); // JS: 0=Sun, 1=Mon, ..., 6=Sat
+        const daySched = providerSched[dow];
+        if (!daySched || !daySched.isActive) return null; // provider off this day
+        return { startMinute: daySched.startMinute, endMinute: daySched.endMinute };
+      }
+
+      // Search: try slots within available window, sorted by closeness to original time
       let foundSlot: dayjs.Dayjs | null = null;
-      const DAY_START_H = 8;
-      const DAY_END_H = 17;
+      const targetMinuteInDay = targetHour * 60 + targetMinute;
 
       for (let dayOffset = 0; dayOffset <= 30 && !foundSlot; dayOffset++) {
         const candidateDate = targetDate.add(dayOffset, "day");
-        const minuteOffsets =
-          dayOffset === 0
-            ? [0, -15, 15, -30, 30, -45, 45, -60, 60]
-            : [0];
+        const window = getAvailableWindow(candidateDate);
+        if (!window) continue; // provider unavailable this day
 
-        for (const offset of minuteOffsets) {
-          const slotStart = candidateDate.hour(targetHour).minute(targetMinute).second(0).add(offset, "minute");
+        const { startMinute: winStart, endMinute: winEnd } = window;
+
+        // Build all valid slot start minutes within the available window
+        const allSlots: number[] = [];
+        for (let m = winStart; m + durationMinutes <= winEnd; m += SLOT_MINUTES) {
+          allSlots.push(m);
+        }
+
+        // Sort slots by closeness to the original appointment time
+        allSlots.sort((a, b) => Math.abs(a - targetMinuteInDay) - Math.abs(b - targetMinuteInDay));
+
+        for (const minuteInDay of allSlots) {
+          const h = Math.floor(minuteInDay / 60);
+          const m = minuteInDay % 60;
+          const slotStart = candidateDate.hour(h).minute(m).second(0);
           const slotEnd = slotStart.add(durationMinutes, "minute");
-          if (slotStart.hour() < DAY_START_H || slotEnd.hour() > DAY_END_H || (slotEnd.hour() === DAY_END_H && slotEnd.minute() > 0)) continue;
           if (isSlotFree(slotStart, slotEnd)) {
             foundSlot = slotStart;
             break;
@@ -982,8 +1004,20 @@ export function BigSchedule() {
         }
       }
 
-      // Fallback: use target date/time as-is and let user adjust
-      if (!foundSlot) foundSlot = targetDate.hour(targetHour).minute(targetMinute).second(0);
+      // Fallback: first available day's opening slot if nothing free found
+      if (!foundSlot) {
+        for (let dayOffset = 0; dayOffset <= 30; dayOffset++) {
+          const candidateDate = targetDate.add(dayOffset, "day");
+          const window = getAvailableWindow(candidateDate);
+          if (window) {
+            const h = Math.floor(window.startMinute / 60);
+            const m = window.startMinute % 60;
+            foundSlot = candidateDate.hour(h).minute(m).second(0);
+            break;
+          }
+        }
+        if (!foundSlot) foundSlot = targetDate.hour(targetHour).minute(targetMinute).second(0);
+      }
 
       const foundEnd = foundSlot.add(durationMinutes, "minute");
       const patientName = appt.patient ? `${appt.patient.lastName}, ${appt.patient.firstName}` : "";
@@ -1009,7 +1043,7 @@ export function BigSchedule() {
       setIsModalOpen(true);
       setOpenMenuId(null);
     },
-    [appointmentMap, meta, defaultTypeId, defaultStatusId, loadAppointments, showError, setViewDate]
+    [appointmentMap, meta, providerSchedules, defaultTypeId, defaultStatusId, loadAppointments, showError, setViewDate]
   );
 
   const runScheduleContextAction = useCallback(
