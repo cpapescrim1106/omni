@@ -1162,60 +1162,14 @@ a {
   color: var(--ink-soft);
 }
 
-.appointment-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(18, 15, 34, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 60;
-  padding: 24px;
-}
-
-.appointment-modal-card {
-  width: min(760px, 92vw);
-  max-height: 90vh;
-  overflow: auto;
-  background: rgba(255, 255, 255, 0.96);
-  border-radius: 24px;
-  box-shadow: 0 30px 60px rgba(18, 15, 34, 0.25);
-  border: 1px solid rgba(38, 34, 96, 0.08);
-  padding: 24px;
-}
-
-.appointment-modal-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
 .appointment-modal-body {
   display: grid;
   gap: 16px;
-}
-
-.appointment-modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 16px;
-}
-
-.appointment-submit-button {
-  border: 0;
-  border-radius: 999px;
-  background: var(--brand-ink);
-  color: #fff;
-  padding: 8px 20px;
-  font-size: 12px;
-  font-weight: 600;
+  padding: 20px;
 }
 
 .appointment-modal-error {
-  margin-bottom: 12px;
+  margin: 12px 20px 0;
   padding: 10px 12px;
   border-radius: 12px;
   background: rgba(208, 36, 36, 0.12);
@@ -2092,6 +2046,7 @@ select.form-input {
 .device-row-main {
   flex: 1;
   min-width: 0;
+  
 }
 
 .device-row-model {
@@ -2111,6 +2066,13 @@ select.form-input {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.device-in-order-group {
+  margin-bottom: 2px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--brand-blue) 10%, transparent);
+  padding: 2px 4px;
 }
 
 .device-status-select {

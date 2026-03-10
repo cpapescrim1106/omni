@@ -32,12 +32,33 @@ type PatientDeviceRegistryProps = {
   inOrderItems: InOrderDevice[];
 };
 
+type DeviceGroup = {
+  key: string;
+  model: string;
+  warrantyEnd: string | null;
+  lossDamageWarrantyEnd: string | null;
+  devices: DeviceRecord[];
+};
+
+type InOrderGroup = {
+  key: string;
+  itemName: string;
+  status: string;
+  orderedAt: string;
+  items: InOrderDevice[];
+};
+
 const SUB_TABS = ["Hearing aids", "ALDs/Accessories"] as const;
 type SubTab = (typeof SUB_TABS)[number];
 
 function fmtDate(value?: string | null) {
   if (!value) return "—";
   return dayjs(value).isValid() ? dayjs(value).format("MM/DD/YY") : "—";
+}
+
+function warrantyColor(value?: string | null) {
+  if (!value || !dayjs(value).isValid()) return "var(--ink-soft)";
+  return dayjs().isAfter(dayjs(value), "day") ? "var(--danger)" : "var(--success)";
 }
 
 function isAccessory(device: DeviceRecord) {
@@ -67,12 +88,72 @@ export function PatientDeviceRegistry({ patientId, devices, inOrderItems }: Pati
   const inactiveDevices = useMemo(() => filtered.filter((d) => resolveGroup(d.status) === "inactive"), [filtered]);
   const backupDevices = useMemo(() => filtered.filter((d) => resolveGroup(d.status) === "backup"), [filtered]);
   const totalCount = currentDevices.length + inactiveDevices.length + backupDevices.length;
+  const currentDeviceGroups = useMemo<DeviceGroup[]>(() => {
+    const map = new Map<string, DeviceGroup>();
+    for (const device of currentDevices) {
+      const key = `${device.manufacturer}|${device.model}|${device.warrantyEnd ?? ""}|${device.lossDamageWarrantyEnd ?? ""}`;
+      const existing = map.get(key);
+      if (existing) {
+        existing.devices.push(device);
+      } else {
+        map.set(key, {
+          key,
+          model: `${device.manufacturer} ${device.model}`.trim(),
+          warrantyEnd: device.warrantyEnd,
+          lossDamageWarrantyEnd: device.lossDamageWarrantyEnd,
+          devices: [device],
+        });
+      }
+    }
+    return Array.from(map.values()).map((group) => ({
+      ...group,
+      devices: [...group.devices].sort((a, b) => {
+        const sortValue = (ear: string | null | undefined) => {
+          const normalized = (ear ?? "").toLowerCase();
+          if (normalized === "left") return 0;
+          if (normalized === "right") return 1;
+          if (normalized === "other") return 2;
+          return 3;
+        };
+        return sortValue(a.ear) - sortValue(b.ear);
+      }),
+    }));
+  }, [currentDevices]);
 
   const filteredInOrder = useMemo(
-    () =>
-      inOrderItems.filter((item) =>
-        activeTab === "ALDs/Accessories" ? item.side === "Other" || item.side === null : item.side !== "Other"
-      ),
+    () => {
+      const map = new Map<string, InOrderGroup>();
+      for (const item of inOrderItems.filter((it) =>
+        activeTab === "ALDs/Accessories" ? it.side === "Other" || it.side === null : it.side !== "Other"
+      )) {
+        const key = `${item.itemName}|${item.status}|${item.orderedAt}`;
+        const existing = map.get(key);
+        if (existing) {
+          existing.items.push(item);
+        } else {
+          map.set(key, {
+            key,
+            itemName: item.itemName,
+            status: item.status,
+            orderedAt: item.orderedAt,
+            items: [item],
+          });
+        }
+      }
+      return Array.from(map.values()).map((group) => ({
+        ...group,
+        items: [...group.items].sort((a, b) => {
+          const sortValue = (side: string | null) => {
+            const normalized = (side ?? "").toLowerCase();
+            if (normalized === "left") return 0;
+            if (normalized === "right") return 1;
+            if (normalized === "other") return 2;
+            return 3;
+          };
+          return sortValue(a.side) - sortValue(b.side);
+        }),
+      }));
+    },
     [activeTab, inOrderItems]
   );
 
@@ -98,6 +179,13 @@ export function PatientDeviceRegistry({ patientId, devices, inOrderItems }: Pati
     } finally {
       setUpdatingId(null);
     }
+  };
+
+  const formatEar = (ear: string | null | undefined) => {
+    const normalized = (ear ?? "").toLowerCase();
+    if (normalized === "left") return "LEFT";
+    if (normalized === "right") return "RIGHT";
+    return (ear || "—").toUpperCase();
   };
 
   const statusSelect = (d: DeviceRecord) => (
@@ -155,29 +243,62 @@ export function PatientDeviceRegistry({ patientId, devices, inOrderItems }: Pati
         ))}
       </div>
 
-      {currentDevices.length > 0 && (
+      {filteredInOrder.length > 0 && (
         <>
-          <div className="device-group-label">Current</div>
-          {currentDevices.map((d) => (
-            <div key={d.id} className="device-row">
-              <div className="device-row-main">
-                <span className="device-row-model">{d.manufacturer} {d.model}</span>
-                <span className="device-row-meta">{d.ear} · {d.serial || "—"} · Wrty {fmtDate(d.warrantyEnd)}</span>
+          <div className="device-group-label">In Order</div>
+          {filteredInOrder.map((group) => (
+            <div key={group.key} className="device-in-order-group">
+              <div className="device-row">
+                <div className="device-row-main">
+                  <span className="device-row-model">{group.itemName}</span>
+                </div>
               </div>
-              {statusSelect(d)}
+              <div className="device-row">
+                <div className="device-row-main">
+                  <span className="device-row-meta">
+                    {group.items
+                      .map((item) => `${formatEar(item.side)} · ${item.status} · ${fmtDate(item.orderedAt)}`)
+                      .join("  ·  ")}
+                  </span>
+                </div>
+              </div>
             </div>
           ))}
         </>
       )}
 
-      {filteredInOrder.length > 0 && (
+      {currentDeviceGroups.length > 0 && (
         <>
-          <div className="device-group-label">In Order</div>
-          {filteredInOrder.map((item, i) => (
-            <div key={i} className="device-row">
-              <div className="device-row-main">
-                <span className="device-row-model">{item.itemName}</span>
-                <span className="device-row-meta">{item.side ?? "—"} · {item.status} · {fmtDate(item.orderedAt)}</span>
+          <div className="device-group-label">Current</div>
+          {currentDeviceGroups.map((group) => (
+            <div key={group.key}>
+              <div className="device-row">
+                <div className="device-row-main">
+                  <span className="device-row-model">
+                    {group.model}{" "}
+                    <span style={{ color: warrantyColor(group.warrantyEnd) }}>
+                      Repair Warr. {fmtDate(group.warrantyEnd)}
+                    </span>{" "}
+                    ·{" "}
+                    <span style={{ color: warrantyColor(group.lossDamageWarrantyEnd) }}>
+                      L&D {fmtDate(group.lossDamageWarrantyEnd)}
+                    </span>
+                  </span>
+                </div>
+              </div>
+              <div className="device-row">
+                <div className="device-row-main">
+                  <span className="device-row-meta">
+                    {group.devices
+                      .map((d) => `${formatEar(d.ear)} · ${d.serial || "—"}`)
+                      .join("  ·  ")}
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: 4 }}>
+                  {group.devices.map((d) => (
+                    <div key={d.id}>{statusSelect(d)}</div>
+                  ))}
+                </div>
               </div>
             </div>
           ))}
