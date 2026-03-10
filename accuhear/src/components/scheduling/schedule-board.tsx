@@ -5,7 +5,28 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import isoWeek from "dayjs/plugin/isoWeek";
 import type { OpUnitType } from "dayjs";
-import { HouseIcon } from "lucide-react";
+import {
+  Activity,
+  BadgeCheck,
+  CalendarIcon,
+  CircleCheck,
+  CircleCheckBig,
+  CircleHelp,
+  CircleX,
+  Clock,
+  FilterIcon,
+  HouseIcon,
+  ListChecksIcon,
+  LogIn,
+  PhoneCall,
+  PhoneMissed,
+  PinIcon,
+  PinOffIcon,
+  RefreshCw,
+  UserCheck,
+  UsersIcon,
+  UserX,
+} from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -127,16 +148,23 @@ type AppointmentFormState = {
   notes: string;
 };
 
-function getStatusDotColor(statusName?: string): string {
+type StatusIconConfig = { Icon: React.ElementType; color: string };
+
+function getStatusIcon(statusName?: string): StatusIconConfig {
   const n = (statusName ?? "").toLowerCase();
-  if (n === "in progress") return "#1f95b8";
-  if (n === "ready") return "#2e9e6e";
-  if (n === "arrived & ready" || n === "arrived and ready") return "rgba(46,158,110,0.65)";
-  if (n === "arrived") return "rgba(31,149,184,0.55)";
-  if (n === "completed") return "#1a6e47";
-  if (n === "cancelled" || n === "canceled" || n === "no-show" || n === "no show") return "#c94646";
-  if (n === "rescheduled") return "#c27c1a";
-  return "rgba(108,104,125,0.45)"; // scheduled / tentative / confirmed
+  if (n === "tentative")                                    return { Icon: CircleHelp,      color: "#9b8ec4" };
+  if (n === "confirmed")                                    return { Icon: BadgeCheck,       color: "#2e9e6e" };
+  if (n === "left message")                                 return { Icon: PhoneCall,        color: "#c27c1a" };
+  if (n === "no answer")                                    return { Icon: PhoneMissed,      color: "#c94646" };
+  if (n === "arrived")                                      return { Icon: LogIn,            color: "rgba(31,149,184,0.7)" };
+  if (n === "arrived & ready" || n === "arrived and ready") return { Icon: UserCheck,        color: "#1f95b8" };
+  if (n === "ready")                                        return { Icon: CircleCheck,      color: "#2e9e6e" };
+  if (n === "in progress")                                  return { Icon: Activity,         color: "#1f95b8" };
+  if (n === "completed")                                    return { Icon: CircleCheckBig,   color: "#1a6e47" };
+  if (n === "cancelled" || n === "canceled")                return { Icon: CircleX,          color: "#c94646" };
+  if (n === "no-show" || n === "no show")                   return { Icon: UserX,            color: "#c94646" };
+  if (n === "rescheduled")                                  return { Icon: RefreshCw,        color: "#c27c1a" };
+  return { Icon: Clock, color: "rgba(108,104,125,0.55)" }; // scheduled / fallback
 }
 
 function providerShortLabel(name: string) {
@@ -299,7 +327,7 @@ export function BigSchedule() {
     types: true,
     calendar: true,
   });
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarPinned, setIsSidebarPinned] = useState(true);
   const [pinnedAppointmentId, setPinnedAppointmentId] = useState<string | null>(null);
   const resizeRef = useRef<{
     id: string;
@@ -1473,15 +1501,6 @@ export function BigSchedule() {
               5-day
             </Button>
           </div>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => setIsSidebarCollapsed((current) => !current)}
-            data-testid="schedule-toggle-filters"
-          >
-            {isSidebarCollapsed ? "Show filters" : "Hide filters"}
-          </Button>
           <div data-testid="schedule-date" className="rounded-full bg-surface-2 px-3 py-2">
             {dayjs(viewDate).format("MMM D, YYYY")}
           </div>
@@ -1495,24 +1514,24 @@ export function BigSchedule() {
           style={{ left: statusPicker.x, top: statusPicker.y }}
           role="menu"
         >
-          {orderedStatusOptions.map((status) => (
-            <button
-              key={status.id}
-              type="button"
-              className="schedule-status-picker-option"
-              role="menuitem"
-              onClick={() => {
-                void updateAppointmentStatus(statusPicker.id, status.id, status.name);
-                setStatusPicker(null);
-              }}
-            >
-              <span
-                className="schedule-status-picker-dot"
-                style={{ background: getStatusDotColor(status.name) }}
-              />
-              {status.name}
-            </button>
-          ))}
+          {orderedStatusOptions.map((status) => {
+            const { Icon, color } = getStatusIcon(status.name);
+            return (
+              <button
+                key={status.id}
+                type="button"
+                className="schedule-status-picker-option"
+                role="menuitem"
+                onClick={() => {
+                  void updateAppointmentStatus(statusPicker.id, status.id, status.name);
+                  setStatusPicker(null);
+                }}
+              >
+                <Icon size={13} style={{ color }} strokeWidth={2.5} className="shrink-0" />
+                {status.name}
+              </button>
+            );
+          })}
         </div>
       ) : null}
 
@@ -1815,8 +1834,32 @@ export function BigSchedule() {
         </div>
       ) : null}
 
-      <div className={cn("schedule-shell", isSidebarCollapsed && "is-collapsed")} data-testid="scheduler-root">
+      <div className={cn("schedule-shell", !isSidebarPinned && "is-hoverable")} data-testid="scheduler-root">
         <aside className="schedule-sidebar">
+          <div className="schedule-sidebar-pin">
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => setIsSidebarPinned((c) => !c)}
+                    aria-label={isSidebarPinned ? "Unpin filters" : "Pin filters"}
+                  />
+                }
+              >
+                {isSidebarPinned ? <PinOffIcon size={14} /> : <PinIcon size={14} />}
+              </TooltipTrigger>
+              <TooltipContent side="right">{isSidebarPinned ? "Unpin filters" : "Pin filters open"}</TooltipContent>
+            </Tooltip>
+          </div>
+          <div className="schedule-sidebar-icons">
+            <UsersIcon size={16} className="text-ink-muted" />
+            <FilterIcon size={16} className="text-ink-muted" />
+            <ListChecksIcon size={16} className="text-ink-muted" />
+            <CalendarIcon size={16} className="text-ink-muted" />
+          </div>
           <div className="schedule-sidebar-card">
             <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-soft">Filter by</div>
             <Select defaultValue="people">
@@ -2224,17 +2267,20 @@ export function BigSchedule() {
                     title={`${event.title} (${event.timeLabel})`}
                   >
                     <div className="schedule-day-event-title">
-                      <button
-                        type="button"
-                        className="schedule-status-dot"
-                        style={{ background: getStatusDotColor(event.statusName) }}
-                        title={event.statusName ?? "Status"}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          setStatusPicker({ id: event.id, x: rect.left, y: rect.bottom + 6 });
-                        }}
-                      />
+                      {(() => { const { Icon, color } = getStatusIcon(event.statusName); return (
+                        <button
+                          type="button"
+                          className="schedule-status-dot"
+                          title={event.statusName ?? "Status"}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setStatusPicker({ id: event.id, x: rect.left, y: rect.bottom + 6 });
+                          }}
+                        >
+                          <Icon size={10} style={{ color }} strokeWidth={2.5} />
+                        </button>
+                      ); })()}
                       <span className="schedule-event-label">{event.title}</span>
                     </div>
                     <div className="schedule-day-event-time">{event.timeLabel}</div>
@@ -2398,17 +2444,20 @@ export function BigSchedule() {
                     title={`${event.title} (${event.timeLabel})`}
                   >
                     <div className="schedule-week-event-title">
-                      <button
-                        type="button"
-                        className="schedule-status-dot"
-                        style={{ background: getStatusDotColor(event.statusName) }}
-                        title={event.statusName ?? "Status"}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          setStatusPicker({ id: event.id, x: rect.left, y: rect.bottom + 6 });
-                        }}
-                      />
+                      {(() => { const { Icon, color } = getStatusIcon(event.statusName); return (
+                        <button
+                          type="button"
+                          className="schedule-status-dot"
+                          title={event.statusName ?? "Status"}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setStatusPicker({ id: event.id, x: rect.left, y: rect.bottom + 6 });
+                          }}
+                        >
+                          <Icon size={10} style={{ color }} strokeWidth={2.5} />
+                        </button>
+                      ); })()}
                       <span className="schedule-event-label">{event.title}</span>
                     </div>
                     <div className="schedule-week-event-time">{event.timeLabel}</div>

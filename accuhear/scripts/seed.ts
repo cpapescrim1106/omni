@@ -24,6 +24,10 @@ export const IN_CLINIC_STATUSES = [
 
 export const SEED_BASELINE_STATUSES = [
   "Scheduled",
+  "Tentative",
+  "Confirmed",
+  "Left message",
+  "No answer",
   ...IN_CLINIC_STATUSES,
   "No-show",
   "Rescheduled",

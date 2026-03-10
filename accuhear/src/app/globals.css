@@ -776,11 +776,75 @@ a {
 
 .schedule-day-event-title,
 .schedule-week-event-title {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+
+.schedule-event-label {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
 }
+
+.schedule-status-dot {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 11px;
+  height: 11px;
+  border-radius: 4px;
+  border: none;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: transform 100ms ease-out, background 100ms ease-out;
+}
+
+.schedule-status-dot:hover {
+  transform: scale(1.2);
+  background: rgba(255,255,255,0.4);
+}
+
+.schedule-status-picker {
+  position: fixed;
+  z-index: 200;
+  background: #ffffff;
+  border: 1px solid rgba(38,34,96,0.12);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(38,34,96,0.12), 0 1px 4px rgba(38,34,96,0.08);
+  padding: 4px;
+  min-width: 160px;
+  display: grid;
+  gap: 1px;
+}
+
+.schedule-status-picker-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+  transition: background 100ms ease-out;
+}
+
+.schedule-status-picker-option:hover {
+  background: var(--surface-1);
+}
+
 
 .schedule-day-event:hover .schedule-event-resize-handle,
 .schedule-week-event:hover .schedule-event-resize-handle {
@@ -799,12 +863,63 @@ a {
   grid-template-columns: 240px 1fr;
 }
 
-.schedule-shell.is-collapsed {
-  grid-template-columns: 1fr;
+/* Hoverable (unpinned) state — sidebar collapses to slim strip, expands on hover */
+.schedule-shell.is-hoverable {
+  grid-template-columns: 40px 1fr;
+  position: relative;
+}
+.schedule-shell.is-hoverable .schedule-sidebar {
+  width: 40px;
+  overflow: hidden;
+  transition: width 0.2s ease, box-shadow 0.2s ease;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 20;
+  background: var(--surface-1);
+  border-radius: 16px;
+}
+.schedule-shell.is-hoverable .schedule-sidebar:hover {
+  width: 240px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.08);
+}
+/* Board must stay in column 2 since sidebar is absolutely positioned */
+.schedule-shell.is-hoverable .schedule-board {
+  grid-column: 2;
+}
+.schedule-shell.is-hoverable .schedule-sidebar > :not(.schedule-sidebar-pin) {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+.schedule-shell.is-hoverable .schedule-sidebar:hover > :not(.schedule-sidebar-pin) {
+  opacity: 1;
+  pointer-events: auto;
 }
 
-.schedule-shell.is-collapsed .schedule-sidebar {
+/* Collapsed icon strip — visible only when sidebar is collapsed (not hovered) */
+.schedule-sidebar-icons {
   display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 0;
+}
+.schedule-shell.is-hoverable .schedule-sidebar-icons {
+  display: flex;
+}
+.schedule-shell.is-hoverable .schedule-sidebar:hover .schedule-sidebar-icons {
+  display: none;
+}
+
+/* Pin button */
+.schedule-sidebar-pin {
+  display: flex;
+  justify-content: center;
+  padding: 4px 0;
 }
 
 .schedule-card {

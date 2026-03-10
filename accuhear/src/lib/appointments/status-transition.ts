@@ -70,6 +70,8 @@ const STATUS_NAME_TO_LIFECYCLE = new Map<string, AppointmentLifecycleStatus>([
   ["scheduled", AppointmentLifecycleStatus.Scheduled],
   ["tentative", AppointmentLifecycleStatus.Scheduled],
   ["confirmed", AppointmentLifecycleStatus.Scheduled],
+  ["left message", AppointmentLifecycleStatus.Scheduled],
+  ["no answer", AppointmentLifecycleStatus.Scheduled],
   // In-clinic flow
   ["arrived", AppointmentLifecycleStatus.Arrived],
   ["arrived and ready", AppointmentLifecycleStatus.ArrivedAndReady],
