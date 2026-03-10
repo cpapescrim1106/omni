@@ -313,7 +313,7 @@ export function BigSchedule() {
   const [hasExplicitProviders, setHasExplicitProviders] = useState(false);
   const [hasAutoFocused, setHasAutoFocused] = useState(false);
   const [actionMenu, setActionMenu] = useState<{ id: string; x: number; y: number } | null>(null);
-  const [actionMenuView, setActionMenuView] = useState<"main" | "status">("main");
+  const [actionMenuView, setActionMenuView] = useState<"main" | "status" | "complete-6mo">("main");
   const [scheduleContextState, setScheduleContextState] = useState<{
     appointmentId: string;
     isToday: boolean;
@@ -1883,7 +1883,7 @@ export function BigSchedule() {
                   />
                 }
               >
-                {isSidebarPinned ? <UnlockIcon size={14} /> : <LockIcon size={14} />}
+                {isSidebarPinned ? <LockIcon size={14} /> : <UnlockIcon size={14} />}
               </TooltipTrigger>
               <TooltipContent side="right">{isSidebarPinned ? "Unpin filters" : "Pin filters open"}</TooltipContent>
             </Tooltip>
@@ -2077,7 +2077,9 @@ export function BigSchedule() {
                   ) : null}
                   {!scheduleContextState?.isLoading && scheduleContextState?.isToday && scheduleContextActions.length ? (
                     <>
-                      {scheduleContextActions.map((action) => (
+                      {scheduleContextActions
+                        .filter((action) => action !== "In Progress" && action !== "Cancelled")
+                        .map((action) => (
                         <Button
                           key={action}
                           type="button"
@@ -2087,10 +2089,14 @@ export function BigSchedule() {
                           data-testid={`schedule-in-clinic-action-${toInClinicActionTestId(action)}`}
                           disabled={isInClinicActionPending}
                           onClick={() => {
-                            void runScheduleContextAction(actionMenu.id, action);
+                            if (action === "Completed") {
+                              setActionMenuView("complete-6mo");
+                            } else {
+                              void runScheduleContextAction(actionMenu.id, action);
+                            }
                           }}
                         >
-                          {action}
+                          {action === "Completed" ? "Complete & Schedule 6mo →" : action}
                         </Button>
                       ))}
                       <div className="schedule-action-menu-divider" />
@@ -2175,6 +2181,35 @@ export function BigSchedule() {
                   >
                     Close
                   </Button>
+                </>
+              ) : actionMenuView === "complete-6mo" ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="schedule-action-menu-item"
+                    role="menuitem"
+                    onClick={() => setActionMenuView("main")}
+                  >
+                    ← Back
+                  </Button>
+                  <div className="schedule-action-menu-divider" />
+                  {["HE", "C+C"].map((apptType) => (
+                    <Button
+                      key={apptType}
+                      type="button"
+                      variant="ghost"
+                      className="schedule-action-menu-item"
+                      role="menuitem"
+                      onClick={() => {
+                        void runScheduleContextAction(actionMenu.id, "Completed");
+                        setActionMenu(null);
+                        // TODO: open new appointment modal pre-filled with apptType in 6 months
+                      }}
+                    >
+                      {apptType}
+                    </Button>
+                  ))}
                 </>
               ) : (
                 <>
