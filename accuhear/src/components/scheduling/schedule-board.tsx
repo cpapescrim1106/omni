@@ -916,8 +916,9 @@ export function BigSchedule() {
       if (!appt) return;
 
       const targetProvider = typeLabel === "HE" ? "Chris Pape" : "C + C, SHD";
-      const targetTypeName = typeLabel === "HE" ? "Hearing Evaluation" : "Clean and Check";
-      const targetTypeId = meta?.types.find((t) => t.name === targetTypeName)?.id ?? defaultTypeId;
+      const targetTypeKeyword = typeLabel === "HE" ? "hearing" : "clean";
+      const targetTypeId =
+        meta?.types.find((t) => t.name.toLowerCase().includes(targetTypeKeyword))?.id ?? defaultTypeId;
 
       const apptStart = parseAppointmentTime(appt.startTime);
       const apptEnd = parseAppointmentTime(appt.endTime);
@@ -1245,8 +1246,10 @@ export function BigSchedule() {
     const start = dayjs(`${formState.date}T${formState.startTime}`);
     const end = dayjs(`${formState.date}T${formState.endTime}`);
     if (!start.isValid() || !end.isValid() || !end.isAfter(start)) return null;
-    return { start, end, date: formState.date, providerName: formState.providerName };
-  }, [isModalOpen, formState]);
+    const patientName = formState.patientName || (formState.isNaBlock ? "N/A Block" : "");
+    const typeName = meta?.types.find((t) => t.id === formState.typeId)?.name ?? "";
+    return { start, end, date: formState.date, providerName: formState.providerName, patientName, typeName };
+  }, [isModalOpen, formState, meta]);
 
   const weekGridStyles = weekGrid
     ? {
@@ -2490,9 +2493,9 @@ export function BigSchedule() {
                       }}
                     >
                       <div className="schedule-day-event-title">
-                        <span className="schedule-event-label text-brand-blue font-medium">
-                          {ghostEvent.start.format("h:mm")}–{ghostEvent.end.format("h:mm A")}
-                        </span>
+                        {ghostEvent.patientName && <span className="schedule-event-label text-brand-blue font-semibold">{ghostEvent.patientName}</span>}
+                        {ghostEvent.typeName && <span className="schedule-event-label text-brand-blue">{ghostEvent.typeName}</span>}
+                        <span className="schedule-event-label text-brand-blue opacity-70">{ghostEvent.start.format("h:mm")}–{ghostEvent.end.format("h:mm A")}</span>
                       </div>
                     </div>
                   );
@@ -2805,9 +2808,9 @@ export function BigSchedule() {
                       }}
                     >
                       <div className="schedule-week-event-title">
-                        <span className="schedule-event-label text-brand-blue font-medium">
-                          {ghostEvent.start.format("h:mm")}–{ghostEvent.end.format("h:mm A")}
-                        </span>
+                        {ghostEvent.patientName && <span className="schedule-event-label text-brand-blue font-semibold">{ghostEvent.patientName}</span>}
+                        {ghostEvent.typeName && <span className="schedule-event-label text-brand-blue">{ghostEvent.typeName}</span>}
+                        <span className="schedule-event-label text-brand-blue opacity-70">{ghostEvent.start.format("h:mm")}–{ghostEvent.end.format("h:mm A")}</span>
                       </div>
                     </div>
                   );
