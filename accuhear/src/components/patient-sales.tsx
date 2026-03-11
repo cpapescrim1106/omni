@@ -192,6 +192,7 @@ export function PatientSales({
   const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null);
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
   const [confirmDeleteKey, setConfirmDeleteKey] = useState<string | null>(null);
+  const [confirmDeleteTxnKey, setConfirmDeleteTxnKey] = useState<string | null>(null);
   const [voidingPaymentId, setVoidingPaymentId] = useState<string | null>(null);
   const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null);
   const [returnReason, setReturnReason] = useState("Return");
@@ -524,6 +525,7 @@ export function PatientSales({
 
   const deleteTransaction = useCallback(async (saleId: string) => {
     setDeletingTransactionId(saleId);
+    setConfirmDeleteTxnKey(null);
     setVoidingTransactionId(null);
     setBusy(true);
     setMessage(null);
@@ -618,6 +620,54 @@ export function PatientSales({
       </Popover>
     );
   }, [busy, confirmDeleteKey, deleteCancelledOrder, deletingOrderId]);
+
+  const renderDeleteTransactionButton = useCallback((saleId: string, location: "row" | "detail", className?: string) => {
+    const key = `${saleId}:${location}`;
+    return (
+      <Popover modal="trap-focus" open={confirmDeleteTxnKey === key} onOpenChange={(open) => setConfirmDeleteTxnKey(open ? key : null)}>
+        <PopoverTrigger
+          render={
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              className={className}
+              disabled={busy || deletingTransactionId === saleId || voidingTransactionId === saleId}
+            />
+          }
+        >
+          {deletingTransactionId === saleId ? "Deleting..." : location === "row" ? "Delete" : "Delete transaction"}
+        </PopoverTrigger>
+        <PopoverContent>
+          <div className="space-y-1">
+            <div className="font-display text-[13px] font-semibold text-ink-strong">Delete this transaction?</div>
+            <div className="text-[12px] leading-relaxed text-ink-muted">
+              This permanently deletes the transaction and its associated line items and payments.
+            </div>
+          </div>
+          <div className="mt-3 flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setConfirmDeleteTxnKey(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              disabled={busy || deletingTransactionId === saleId || voidingTransactionId === saleId}
+              onClick={() => void deleteTransaction(saleId)}
+            >
+              {deletingTransactionId === saleId ? "Deleting..." : "Delete transaction"}
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
+  }, [busy, confirmDeleteTxnKey, deleteTransaction, deletingTransactionId, voidingTransactionId]);
 
   const generatePurchaseAgreement = useCallback(async () => {
     if (!selectedSale) return;
@@ -1191,19 +1241,12 @@ export function PatientSales({
                             </div>
                           ) : null}
                           {!hideTransactionDelete ? (
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              size="sm"
-                              disabled={busy || deletingTransactionId === row.sale.id || voidingTransactionId === row.sale.id}
-                              className="h-7 px-2"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                void deleteTransaction(row.sale.id);
-                              }}
+                            <div
+                              onClick={(event) => event.stopPropagation()}
+                              onKeyDown={(event) => event.stopPropagation()}
                             >
-                              {deletingTransactionId === row.sale.id ? "Deleting..." : "Delete"}
-                            </Button>
+                              {renderDeleteTransactionButton(row.sale.id, "row", "h-7 px-2")}
+                            </div>
                           ) : null}
                         </span>
                       </div>
@@ -1629,15 +1672,7 @@ export function PatientSales({
                     "detail"
                   )
                 ) : (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    disabled={busy || deletingTransactionId === selectedSale.id || voidingTransactionId === selectedSale.id}
-                    onClick={() => void deleteTransaction(selectedSale.id)}
-                  >
-                    {deletingTransactionId === selectedSale.id ? "Deleting..." : "Delete transaction"}
-                  </Button>
+                  renderDeleteTransactionButton(selectedSale.id, "detail")
                 )}
                 {/* Order lifecycle action buttons — only when sale has a linked order */}
                 {selectedSaleOrder ? (
