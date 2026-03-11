@@ -4,7 +4,12 @@ import { PrismaClient } from "@prisma/client";
 import { POST as createPatientOrder, GET as getPatientOrders } from "../../src/app/api/patients/[id]/orders/route";
 import { POST as receiveOrder } from "../../src/app/api/orders/[id]/receive/route";
 import { POST as deliverOrder } from "../../src/app/api/orders/[id]/deliver/route";
+import { POST as cancelOrder } from "../../src/app/api/orders/[id]/cancel/route";
+import { POST as returnOrder } from "../../src/app/api/orders/[id]/return/route";
 import { POST as addSalePayment } from "../../src/app/api/sales/[id]/payments/route";
+import { DELETE as deleteSalePayment } from "../../src/app/api/sales/[id]/payments/[paymentId]/route";
+import { POST as voidSalePayment } from "../../src/app/api/sales/[id]/payments/[paymentId]/void/route";
+import { POST as returnSale } from "../../src/app/api/sales/[id]/returns/route";
 import { POST as generatePurchaseAgreement } from "../../src/app/api/sales/[id]/purchase-agreement/route";
 import { ensureStarterCatalog } from "../../src/lib/commerce";
 import { withTestCleanup } from "../helpers/test-cleanup";
@@ -170,6 +175,47 @@ test("tracked order flow creates invoice, receives, delivers, accepts payment, a
     { params: Promise.resolve({ id: order.invoice.id }) }
   );
   assert.equal(paymentResponse.status, 200);
+  const paymentData = (await readJson(paymentResponse)) as {
+    sale: {
+      id: string;
+      payments: Array<{ id: string; amount: number }>;
+    };
+  };
+  const addedPaymentId = paymentData.sale.payments[0]?.id;
+  assert.ok(addedPaymentId);
+
+  const voidResponse = await voidSalePayment(
+    new Request(`http://localhost/api/sales/${order.invoice.id}/payments/${addedPaymentId}/void`, {
+      method: "POST",
+    }),
+    { params: Promise.resolve({ id: order.invoice.id, paymentId: addedPaymentId }) }
+  );
+  assert.equal(voidResponse.status, 200);
+  const voidData = (await readJson(voidResponse)) as {
+    sale: { id: string; payments: Array<{ id: string; amount: number; kind: string }> };
+  };
+  assert.equal(voidData.sale.id, order.invoice.id);
+  assert.equal(voidData.sale.payments.length, 2);
+  const refund = voidData.sale.payments.find((entry) => entry.kind === "refund");
+  assert.equal(refund?.amount, 500);
+
+  const deleteResponse = await deleteSalePayment(
+    new Request(`http://localhost/api/sales/${order.invoice.id}/payments/${addedPaymentId}`, {
+      method: "DELETE",
+    }),
+    { params: Promise.resolve({ id: order.invoice.id, paymentId: addedPaymentId }) }
+  );
+  assert.equal(deleteResponse.status, 200);
+  const deleteData = (await readJson(deleteResponse)) as { sale: { id: string; payments: Array<{ id: string; kind: string }> } };
+  assert.equal(deleteData.sale.id, order.invoice.id);
+  assert.equal(deleteData.sale.payments.length, 1);
+  assert.equal(deleteData.sale.payments[0]?.kind, "refund");
+
+  const storedInvoice = await prisma.saleTransaction.findUnique({
+    where: { id: order.invoice.id },
+    include: { payments: true },
+  });
+  assert.equal(storedInvoice?.payments.length, 1);
 
   const agreementResponse = await generatePurchaseAgreement(
     new Request(`http://localhost/api/sales/${order.invoice.id}/purchase-agreement`, {
@@ -191,4 +237,139 @@ test("tracked order flow creates invoice, receives, delivers, accepts payment, a
     where: { patientId: patient.id, title: { contains: "Purchase Agreement" } },
   });
   assert.ok(agreementDocument);
+});
+
+test("tracked order can be cancelled and received devices are marked inactive", async () => {
+  const patient = await prisma.patient.create({
+    data: {
+      legacyId: `${testTag}-cancel-patient`,
+      firstName: "Jordan",
+      lastName: "Parker",
+      status: "Active",
+    },
+  });
+
+  const trackedItem = await prisma.catalogItem.findFirstOrThrow({
+    where: { requiresSerial: true, createsPatientAsset: true },
+  });
+
+  const createResponse = await createPatientOrder(
+    new Request(`http://localhost/api/patients/${patient.id}/orders`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        provider: "Dr. Lane",
+        location: "SHD",
+        lineItems: [{ catalogItemId: trackedItem.id, side: "Right", quantity: 1 }],
+      }),
+    }),
+    { params: Promise.resolve({ id: patient.id }) }
+  );
+
+  assert.equal(createResponse.status, 200);
+  const createData = await readJson(createResponse);
+  const order = createData.order as {
+    id: string;
+    lineItems: Array<{ id: string; status: string }>;
+    invoice: { id: string; fulfillmentStatus: string } | null;
+  };
+
+  const receiveResponse = await receiveOrder(
+    new Request(`http://localhost/api/orders/${order.id}/receive`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        items: [
+          {
+            orderItemId: order.lineItems[0]?.id,
+            serialNumber: `SN-CANCEL-${testTag}`,
+            manufacturerWarrantyEnd: "2029-03-09",
+            lossDamageWarrantyEnd: "2029-03-09",
+          },
+        ],
+      }),
+    }),
+    { params: Promise.resolve({ id: order.id }) }
+  );
+
+  assert.equal(receiveResponse.status, 200);
+
+  const cancelResponse = await cancelOrder(
+    new Request(`http://localhost/api/orders/${order.id}/cancel`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ reason: "Patient declined" }),
+    }),
+    { params: Promise.resolve({ id: order.id }) }
+  );
+
+  assert.equal(cancelResponse.status, 200);
+  const cancelData = await readJson(cancelResponse);
+  const cancelledOrder = cancelData.order as {
+    status: string;
+    lineItems: Array<{ status: string }>;
+    invoice: { balance: number | null; invoiceStatus: string; fulfillmentStatus: string } | null;
+  };
+
+  assert.equal(cancelledOrder.status, "cancelled");
+  assert.equal(cancelledOrder.lineItems[0]?.status, "cancelled");
+  assert.equal(cancelledOrder.invoice?.invoiceStatus, "credited");
+  assert.equal(cancelledOrder.invoice?.balance, 0);
+  assert.equal(cancelledOrder.invoice?.fulfillmentStatus, "returned");
+
+  const orderSales = await prisma.saleTransaction.findMany({
+    where: { purchaseOrderId: order.id },
+    orderBy: { createdAt: "asc" },
+    include: { lineItems: true },
+  });
+  assert.equal(orderSales.length, 2);
+  assert.equal(orderSales[0]?.txnType, "invoice");
+  assert.equal(orderSales[0]?.invoiceStatus, "credited");
+  assert.equal(orderSales[1]?.txnType, "credit");
+  assert.match(orderSales[1]?.txnId ?? "", /^CXL-/);
+  assert.equal(orderSales[1]?.total, -trackedItem.unitPrice);
+  assert.equal(orderSales[1]?.notes, "Order cancelled: Patient declined");
+  assert.equal(orderSales[1]?.lineItems[0]?.revenue, trackedItem.unitPrice * -1);
+
+  const storedDevice = await prisma.device.findFirst({
+    where: { patientId: patient.id, purchaseOrderItemId: order.lineItems[0]?.id },
+  });
+  assert.equal(storedDevice?.status, "Inactive");
+
+  const latestDeviceStatus = await prisma.deviceStatusHistory.findFirst({
+    where: { deviceId: storedDevice?.id },
+    orderBy: { changedAt: "desc" },
+  });
+  assert.equal(latestDeviceStatus?.status, "Inactive");
+  assert.equal(latestDeviceStatus?.notes, "Patient declined");
+
+  const latestJournalEntry = await prisma.journalEntry.findFirst({
+    where: { patientId: patient.id, type: "Order" },
+    orderBy: { createdAt: "desc" },
+  });
+  assert.equal(latestJournalEntry?.content, "Tracked order cancelled: Patient declined.");
+
+  const invoiceReturnResponse = await returnSale(
+    new Request(`http://localhost/api/sales/${order.invoice?.id}/returns`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ reason: "Should fail" }),
+    }),
+    { params: Promise.resolve({ id: order.invoice?.id ?? "" }) }
+  );
+  assert.equal(invoiceReturnResponse.status, 400);
+  const invoiceReturnData = await readJson(invoiceReturnResponse);
+  assert.equal(invoiceReturnData.error, "This invoice can no longer be returned");
+
+  const orderReturnResponse = await returnOrder(
+    new Request(`http://localhost/api/orders/${order.id}/return`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ reason: "Should fail" }),
+    }),
+    { params: Promise.resolve({ id: order.id }) }
+  );
+  assert.equal(orderReturnResponse.status, 400);
+  const orderReturnData = await readJson(orderReturnResponse);
+  assert.equal(orderReturnData.error, "Cancelled orders cannot be returned");
 });

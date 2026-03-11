@@ -246,6 +246,18 @@ export async function getPatientById(id: string) {
         include: { lineItems: true },
         orderBy: { createdAt: 'desc' },
       },
+      sales: {
+        select: {
+          total: true,
+          invoiceStatus: true,
+          payments: {
+            select: {
+              amount: true,
+              kind: true,
+            },
+          },
+        },
+      },
     },
   });
 }

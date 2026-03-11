@@ -197,6 +197,34 @@ export function computeBalance(total: number | null | undefined, payments: Array
   return Math.max(normalizedTotal - sumPayments(payments), 0);
 }
 
+export function computeOutstandingBalance(
+  total: number | null | undefined,
+  payments: Array<{ amount: number; kind?: PaymentKind }>,
+  invoiceStatus: InvoiceStatus | string | null | undefined
+) {
+  if (invoiceStatus === "credited" || invoiceStatus === "void" || invoiceStatus === "written_off") {
+    return 0;
+  }
+  return computeBalance(total, payments);
+}
+
+export function computePatientBalance(
+  transactions: Array<{
+    total: number | null | undefined;
+    invoiceStatus: InvoiceStatus | string | null | undefined;
+    payments: Array<{ amount: number; kind?: PaymentKind }>;
+  }>
+) {
+  const net = transactions.reduce((sum, transaction) => {
+    if (transaction.invoiceStatus === "void" || transaction.invoiceStatus === "written_off") {
+      return sum;
+    }
+    return sum + (transaction.total ?? 0) - sumPayments(transaction.payments);
+  }, 0);
+
+  return Math.max(net, 0);
+}
+
 export function computeInvoiceStatus(total: number | null | undefined, payments: Array<{ amount: number; kind?: PaymentKind }>) {
   const normalizedTotal = total ?? 0;
   if (normalizedTotal <= 0) return "credited" as InvoiceStatus;
@@ -336,7 +364,7 @@ export function formatSaleTransaction(transaction: SaleTransactionWithRelations)
     invoiceStatus: transaction.invoiceStatus,
     fulfillmentStatus: transaction.fulfillmentStatus,
     total: transaction.total ?? paymentTotal,
-    balance: computeBalance(transaction.total, transaction.payments),
+    balance: computeOutstandingBalance(transaction.total, transaction.payments, transaction.invoiceStatus),
     lineItems: transaction.lineItems.map((item) => ({
       id: item.id,
       item: item.item,
@@ -426,7 +454,7 @@ export function formatPurchaseOrder(order: PurchaseOrderWithRelations) {
             txnId: invoice.txnId,
             date: invoice.date.toISOString(),
             total: invoice.total,
-            balance: computeBalance(invoice.total, invoice.payments),
+            balance: computeOutstandingBalance(invoice.total, invoice.payments, invoice.invoiceStatus),
             invoiceStatus: invoice.invoiceStatus,
             fulfillmentStatus: invoice.fulfillmentStatus,
             payments: invoice.payments.map((payment) => ({

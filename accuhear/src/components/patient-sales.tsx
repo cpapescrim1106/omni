@@ -119,6 +119,10 @@ type OrderRecord = {
   documents: Array<{ id: string; title: string; category: string; uploadedAt: string }>;
 };
 
+type LedgerRow =
+  | { kind: "sale"; id: string; sale: SaleTransaction; payment: null }
+  | { kind: "payment"; id: string; sale: SaleTransaction; payment: SalePayment };
+
 type DraftTrackedItem = {
   catalogItemId: string;
   side: string;
@@ -147,7 +151,11 @@ function addYears(baseDate: Date, years?: number | null) {
 }
 
 function rowTypeLabel(transaction: SaleTransaction) {
-  if (transaction.txnType === "return" || transaction.txnType === "credit") return "Credit";
+  if (transaction.txnType === "credit" && transaction.notes?.startsWith("Order cancelled:")) {
+    return "Cancelled";
+  }
+  if (transaction.txnType === "return") return "Return";
+  if (transaction.txnType === "credit") return "Credit";
   return "Invoice";
 }
 
@@ -179,6 +187,10 @@ export function PatientSales({
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("Patient");
   const [paymentKind, setPaymentKind] = useState("payment");
+  const [voidingTransactionId, setVoidingTransactionId] = useState<string | null>(null);
+  const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null);
+  const [voidingPaymentId, setVoidingPaymentId] = useState<string | null>(null);
+  const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null);
   const [returnReason, setReturnReason] = useState("Return");
   const [busy, setBusy] = useState(false);
 
@@ -246,8 +258,20 @@ export function PatientSales({
     () => sales.find((sale) => sale.id === selectedSaleId) ?? sales[0] ?? null,
     [sales, selectedSaleId]
   );
+  const selectedSaleIsTerminal =
+    selectedSale != null &&
+    ["credited", "void", "written_off"].includes(selectedSale.invoiceStatus);
 
-  const rows = useMemo(() => sales, [sales]);
+  const ledgerRows = useMemo(() => {
+    const rows: LedgerRow[] = [];
+    for (const sale of sales) {
+      rows.push({ kind: "sale", id: `sale:${sale.id}`, sale, payment: null });
+      for (const payment of sale.payments) {
+        rows.push({ kind: "payment", id: `payment:${payment.id}`, sale, payment });
+      }
+    }
+    return rows;
+  }, [sales]);
 
   // Find the order record linked to the selected sale
   const selectedSaleOrder = useMemo(() => {
@@ -255,9 +279,9 @@ export function PatientSales({
     return orders.find((order) => order.id === selectedSale.purchaseOrder!.id) ?? null;
   }, [selectedSale, orders]);
 
-  // Outstanding orders (not yet delivered)
-  const outstandingOrders = useMemo(
-    () => orders.filter((order) => !["delivered", "returned", "cancelled"].includes(order.status)),
+  // Keep cancelled tracked orders visible here so the user can still open the linked invoice.
+  const trackedOrders = useMemo(
+    () => orders.filter((order) => !["delivered", "returned"].includes(order.status)),
     [orders]
   );
 
@@ -429,6 +453,94 @@ export function PatientSales({
     }
   }, [loadSales, paymentAmount, paymentKind, paymentMethod, selectedSale]);
 
+  const voidPayment = useCallback(async (saleId: string, paymentId: string) => {
+    setVoidingPaymentId(paymentId);
+    setDeletingPaymentId(null);
+    setBusy(true);
+    setMessage(null);
+    try {
+      const response = await fetch(`/api/sales/${saleId}/payments/${paymentId}/void`, { method: "POST" });
+      const payload = await response.json().catch(() => ({ error: "Unable to void payment." }));
+      if (!response.ok) {
+        throw new Error(payload.error || "Unable to void payment.");
+      }
+      setMessage("Payment voided.");
+      await loadSales();
+      setSelectedSaleId(payload.sale?.id ?? saleId);
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "Unable to void payment.");
+    } finally {
+      setVoidingPaymentId(null);
+      setBusy(false);
+    }
+  }, [loadSales]);
+
+  const deletePayment = useCallback(async (saleId: string, paymentId: string) => {
+    setDeletingPaymentId(paymentId);
+    setVoidingPaymentId(null);
+    setBusy(true);
+    setMessage(null);
+    try {
+      const response = await fetch(`/api/sales/${saleId}/payments/${paymentId}`, { method: "DELETE" });
+      const payload = await response.json().catch(() => ({ error: "Unable to delete payment." }));
+      if (!response.ok) {
+        throw new Error(payload.error || "Unable to delete payment.");
+      }
+      setMessage("Payment deleted.");
+      await loadSales();
+      setSelectedSaleId(payload.sale?.id ?? saleId);
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "Unable to delete payment.");
+    } finally {
+      setDeletingPaymentId(null);
+      setBusy(false);
+    }
+  }, [loadSales]);
+
+  const voidTransaction = useCallback(async (saleId: string) => {
+    setVoidingTransactionId(saleId);
+    setDeletingTransactionId(null);
+    setBusy(true);
+    setMessage(null);
+    try {
+      const response = await fetch(`/api/sales/${saleId}/void`, { method: "POST" });
+      const payload = await response.json().catch(() => ({ error: "Unable to void transaction." }));
+      if (!response.ok) {
+        throw new Error(payload.error || "Unable to void transaction.");
+      }
+      setMessage("Transaction voided.");
+      await loadSales();
+      setSelectedSaleId(payload.sale?.id ?? saleId);
+    } catch (transactionError) {
+      setError(transactionError instanceof Error ? transactionError.message : "Unable to void transaction.");
+    } finally {
+      setVoidingTransactionId(null);
+      setBusy(false);
+    }
+  }, [loadSales]);
+
+  const deleteTransaction = useCallback(async (saleId: string) => {
+    setDeletingTransactionId(saleId);
+    setVoidingTransactionId(null);
+    setBusy(true);
+    setMessage(null);
+    try {
+      const response = await fetch(`/api/sales/${saleId}`, { method: "DELETE" });
+      const payload = await response.json().catch(() => ({ error: "Unable to delete transaction." }));
+      if (!response.ok) {
+        throw new Error(payload.error || "Unable to delete transaction.");
+      }
+      setMessage("Transaction deleted.");
+      await loadSales();
+      setSelectedSaleId(payload.nextSale?.id ?? (selectedSaleId === saleId ? null : selectedSaleId));
+    } catch (transactionError) {
+      setError(transactionError instanceof Error ? transactionError.message : "Unable to delete transaction.");
+    } finally {
+      setDeletingTransactionId(null);
+      setBusy(false);
+    }
+  }, [loadSales, selectedSaleId]);
+
   const generatePurchaseAgreement = useCallback(async () => {
     if (!selectedSale) return;
     setBusy(true);
@@ -443,6 +555,25 @@ export function PatientSales({
       await loadSales();
     } catch (agreementError) {
       setError(agreementError instanceof Error ? agreementError.message : "Unable to generate purchase agreement.");
+    } finally {
+      setBusy(false);
+    }
+  }, [loadSales, selectedSale]);
+
+  const generateQuote = useCallback(async () => {
+    if (!selectedSale) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      const response = await fetch(`/api/sales/${selectedSale.id}/quote`, { method: "POST" });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.error || "Unable to generate quote.");
+      }
+      setMessage("Quote generated.");
+      await loadSales();
+    } catch (quoteError) {
+      setError(quoteError instanceof Error ? quoteError.message : "Unable to generate quote.");
     } finally {
       setBusy(false);
     }
@@ -893,13 +1024,13 @@ export function PatientSales({
           <div className="overflow-hidden rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)]">
             {loading ? (
               <div className="px-4 py-6 text-sm text-ink-muted">Loading sales...</div>
-            ) : rows.length === 0 ? (
+            ) : ledgerRows.length === 0 ? (
               <div className="px-4 py-6 text-sm text-ink-muted" data-testid="sales-empty">
                 No sales recorded for this patient.
               </div>
             ) : (
               <div>
-                <div className="grid grid-cols-[110px_100px_1.3fr_0.75fr_0.75fr_0.75fr_0.85fr] bg-[var(--surface-1)] px-3 py-[6px] text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft">
+                <div className="grid grid-cols-[100px_128px_minmax(0,_1.55fr)_0.8fr_0.8fr_0.8fr_0.75fr_0.85fr] bg-[var(--surface-1)] px-3 py-[6px] text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft">
                   <span>Date</span>
                   <span>Txn ID</span>
                   <span>Items</span>
@@ -907,48 +1038,164 @@ export function PatientSales({
                   <span>Debit</span>
                   <span>Credit</span>
                   <span>Balance</span>
+                  <span>Actions</span>
                 </div>
-                {rows.map((row) => (
-                  <Button
-                    key={row.id}
-                    type="button"
-                    variant="ghost"
-                    className="grid h-auto w-full grid-cols-[110px_100px_1.3fr_0.75fr_0.75fr_0.75fr_0.85fr] rounded-none border-t border-[var(--surface-1)] px-3 py-[7px] text-left text-[12px] hover:bg-[rgba(31,149,184,0.04)] [&:nth-child(even)]:bg-[rgba(243,239,232,0.4)]"
-                    data-testid="sales-row"
-                    onClick={() => setSelectedSaleId(row.id)}
-                  >
-                    <span className="text-ink-muted">{formatDate(row.date)}</span>
-                    <span className="text-ink-muted">{row.txnId}</span>
-                    <span className="text-ink-strong">{row.lineItems.map((item) => item.item).join(", ")}</span>
-                    <span className="text-ink-muted">{rowTypeLabel(row)}</span>
-                    <span className="text-ink-muted">{row.total && row.total > 0 ? formatCurrency(row.total) : "—"}</span>
-                    <span className="text-ink-muted">{row.total && row.total < 0 ? formatCurrency(Math.abs(row.total)) : "—"}</span>
-                    <span className="text-ink-muted">{formatCurrency(row.balance)}</span>
-                  </Button>
-                ))}
+                {ledgerRows.map((row) => {
+                  if (row.kind === "sale") {
+                    return (
+                      <div
+                        key={row.id}
+                        role="button"
+                        tabIndex={0}
+                        className="grid h-auto w-full min-w-0 cursor-pointer grid-cols-[100px_128px_minmax(0,_1.55fr)_0.8fr_0.8fr_0.8fr_0.75fr_0.85fr] rounded-none border-t border-[var(--surface-1)] px-3 py-[7px] text-left text-[12px] hover:bg-[rgba(31,149,184,0.04)] [&:nth-child(even)]:bg-[rgba(243,239,232,0.4)]"
+                        data-testid="sales-row"
+                        onClick={() => setSelectedSaleId(row.sale.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            setSelectedSaleId(row.sale.id);
+                          }
+                        }}
+                      >
+                        <span className="text-ink-muted">{formatDate(row.sale.date)}</span>
+                        <span className="min-w-0 truncate text-ink-muted" title={row.sale.txnId}>
+                          {row.sale.txnId}
+                        </span>
+                        <span className="min-w-0 truncate text-ink-strong" title={row.sale.lineItems.map((item) => item.item).join(", ")}>
+                          {row.sale.lineItems.map((item) => item.item).join(", ")}
+                        </span>
+                        <span className="min-w-0 truncate text-ink-muted" title={rowTypeLabel(row.sale)}>
+                          {rowTypeLabel(row.sale)}
+                        </span>
+                        <span className="min-w-0 truncate text-ink-muted">
+                          {row.sale.total && row.sale.total > 0 ? formatCurrency(row.sale.total) : "—"}
+                        </span>
+                        <span className="min-w-0 truncate text-ink-muted">
+                          {row.sale.total && row.sale.total < 0 ? formatCurrency(Math.abs(row.sale.total)) : "—"}
+                        </span>
+                        <span className="min-w-0 truncate text-ink-muted">{formatCurrency(row.sale.balance)}</span>
+                        <span className="flex items-start justify-end gap-2">
+                          {row.sale.invoiceStatus !== "void" ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={busy || voidingTransactionId === row.sale.id || deletingTransactionId === row.sale.id}
+                              className="h-7 px-2 text-ink-muted line-through decoration-2"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void voidTransaction(row.sale.id);
+                              }}
+                            >
+                              {voidingTransactionId === row.sale.id ? "Voiding..." : "Void"}
+                            </Button>
+                          ) : null}
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            disabled={busy || deletingTransactionId === row.sale.id || voidingTransactionId === row.sale.id}
+                            className="h-7 px-2"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void deleteTransaction(row.sale.id);
+                            }}
+                          >
+                            {deletingTransactionId === row.sale.id ? "Deleting..." : "Delete"}
+                          </Button>
+                        </span>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={row.id}
+                      role="button"
+                      tabIndex={0}
+                      className="grid h-auto w-full min-w-0 cursor-pointer grid-cols-[100px_128px_minmax(0,_1.55fr)_0.8fr_0.8fr_0.8fr_0.75fr_0.85fr] rounded-none border-t border-[var(--surface-1)] bg-[rgba(255,255,255,0.4)] px-3 py-[7px] text-left text-[12px] hover:bg-[rgba(31,149,184,0.04)] [&:nth-child(even)]:bg-[rgba(243,239,232,0.4)]"
+                      data-testid="sales-row"
+                      onClick={() => setSelectedSaleId(row.sale.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          setSelectedSaleId(row.sale.id);
+                        }
+                      }}
+                    >
+                      <span className="text-ink-muted">{formatDate(row.payment.date)}</span>
+                      <span className="min-w-0 truncate text-ink-muted" title={row.sale.txnId}>
+                        {row.sale.txnId}
+                      </span>
+                      <span className="min-w-0 truncate text-ink-strong" title={`Payment · ${row.payment.kind}`}>
+                        Payment · {row.payment.method || "Unspecified"}
+                      </span>
+                      <span className="min-w-0 truncate text-ink-muted" title={row.payment.kind}>
+                        {row.payment.kind}
+                      </span>
+                      <span className="min-w-0 truncate text-ink-muted">
+                        {row.payment.kind === "refund" ? "—" : formatCurrency(row.payment.amount)}
+                      </span>
+                      <span className="min-w-0 truncate text-ink-muted">
+                        {row.payment.kind === "refund" ? formatCurrency(row.payment.amount) : "—"}
+                      </span>
+                      <span className="min-w-0 truncate text-ink-muted">{formatCurrency(row.sale.balance)}</span>
+                      <span className="flex items-start justify-end gap-2">
+                        {row.payment.kind !== "refund" ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={busy || voidingPaymentId === row.payment.id || deletingPaymentId === row.payment.id}
+                            className="h-7 px-2 text-ink-muted line-through decoration-2"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void voidPayment(row.sale.id, row.payment.id);
+                            }}
+                          >
+                            {voidingPaymentId === row.payment.id ? "Voiding..." : "Void"}
+                          </Button>
+                        ) : null}
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          disabled={busy || deletingPaymentId === row.payment.id || voidingPaymentId === row.payment.id}
+                          className="h-7 px-2"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void deletePayment(row.sale.id, row.payment.id);
+                          }}
+                        >
+                          {deletingPaymentId === row.payment.id ? "Deleting..." : "Delete"}
+                        </Button>
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
 
-          {/* Outstanding orders section */}
+          {/* Tracked orders section */}
           <div className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] p-4">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <div className="section-title">Outstanding orders</div>
-                <div className="text-xs text-ink-muted">Tracked orders not yet delivered.</div>
+                <div className="section-title">Tracked orders</div>
+                <div className="text-xs text-ink-muted">Pending and cancelled tracked orders linked to invoices.</div>
               </div>
               <Badge variant="blue">
-                {outstandingOrders.length} open
+                {trackedOrders.length} shown
               </Badge>
             </div>
 
             <div className="mt-4 space-y-3">
-              {outstandingOrders.length === 0 ? (
+              {trackedOrders.length === 0 ? (
                 <div className="rounded-[18px] bg-surface-1/60 px-4 py-4 text-sm text-ink-muted">
-                  No outstanding tracked orders.
+                  No tracked orders to show.
                 </div>
               ) : (
-                outstandingOrders.map((order) => {
+                trackedOrders.map((order) => {
                   // Find the sale linked to this order
                   const linkedSale = sales.find((sale) => sale.purchaseOrderId === order.id);
                   return (
@@ -1038,9 +1285,37 @@ export function PatientSales({
                   ) : (
                     selectedSale.payments.map((payment) => (
                       <div key={payment.id} className="rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] px-4 py-3 text-sm">
-                        <div className="font-semibold text-ink-strong">{formatCurrency(payment.amount)}</div>
-                        <div className="text-xs text-ink-muted">
-                          {payment.kind} · {payment.method || "Unspecified"} · {formatDate(payment.date)}
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="font-semibold text-ink-strong">{formatCurrency(payment.amount)}</div>
+                            <div className="text-xs text-ink-muted">
+                              {payment.kind} · {payment.method || "Unspecified"} · {formatDate(payment.date)}
+                            </div>
+                          </div>
+                          <div className="flex flex-row flex-wrap items-start gap-2">
+                            {payment.kind !== "refund" ? (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={busy || voidingPaymentId === payment.id || deletingPaymentId === payment.id}
+                                className="h-7 px-2 text-ink-muted line-through decoration-2"
+                                onClick={() => void voidPayment(selectedSale.id, payment.id)}
+                              >
+                                {voidingPaymentId === payment.id ? "Voiding..." : "Void"}
+                              </Button>
+                            ) : null}
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              disabled={busy || deletingPaymentId === payment.id || voidingPaymentId === payment.id}
+                              className="h-7 px-2"
+                              onClick={() => void deletePayment(selectedSale.id, payment.id)}
+                            >
+                              {deletingPaymentId === payment.id ? "Deleting..." : "Delete"}
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))
@@ -1196,14 +1471,54 @@ export function PatientSales({
               ) : null}
 
               <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="secondary" size="sm" onClick={() => setShowPaymentForm(true)}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={selectedSale.txnType !== "invoice" || selectedSaleIsTerminal}
+                  onClick={() => setShowPaymentForm(true)}
+                >
                   Record payment
                 </Button>
-                <Button type="button" variant="secondary" size="sm" onClick={() => void generatePurchaseAgreement()}>
+                <Button type="button" variant="secondary" size="sm" onClick={() => void generateQuote()}>
+                  Generate quote
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={selectedSale.txnType !== "invoice"}
+                  onClick={() => void generatePurchaseAgreement()}
+                >
                   Generate purchase agreement
                 </Button>
-                <Button type="button" variant="secondary" size="sm" onClick={() => setShowReturnForm(true)}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={selectedSaleIsTerminal || selectedSaleOrder?.status === "cancelled" || selectedSaleOrder?.status === "returned"}
+                  onClick={() => setShowReturnForm(true)}
+                >
                   Return item(s)
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={busy || selectedSale.invoiceStatus === "void" || voidingTransactionId === selectedSale.id || deletingTransactionId === selectedSale.id}
+                  className="text-ink-muted line-through decoration-2"
+                  onClick={() => void voidTransaction(selectedSale.id)}
+                >
+                  {voidingTransactionId === selectedSale.id ? "Voiding..." : "Void transaction"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  disabled={busy || deletingTransactionId === selectedSale.id || voidingTransactionId === selectedSale.id}
+                  onClick={() => void deleteTransaction(selectedSale.id)}
+                >
+                  {deletingTransactionId === selectedSale.id ? "Deleting..." : "Delete transaction"}
                 </Button>
                 {/* Order lifecycle action buttons — only when sale has a linked order */}
                 {selectedSaleOrder ? (
@@ -1223,7 +1538,9 @@ export function PatientSales({
                         Deliver order
                       </Button>
                     ) : null}
-                    {selectedSaleOrder.lineItems.some((item) => item.status === "received" || item.status === "delivered") ? (
+                    {selectedSaleOrder.status !== "cancelled" &&
+                    selectedSaleOrder.status !== "returned" &&
+                    selectedSaleOrder.lineItems.some((item) => item.status === "received" || item.status === "delivered") ? (
                       <Button type="button" variant="secondary" size="sm" onClick={() => { setReturnOrderId(selectedSaleOrder.id); setReceiveOrderId(null); setDeliverOrderId(null); }}>
                         Return to manufacturer
                       </Button>

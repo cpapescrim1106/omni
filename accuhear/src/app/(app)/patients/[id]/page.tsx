@@ -2,6 +2,7 @@ import { Fragment } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import dayjs from "dayjs";
+import { computePatientBalance } from "@/lib/commerce";
 import { getPatientById } from "@/lib/patient-data";
 import { Button } from "@/components/ui/button";
 import { PatientJournal } from "@/components/patient-journal";
@@ -9,7 +10,6 @@ import { PatientMessaging } from "@/components/patient-messaging";
 import { PatientDocuments } from "@/components/patient-documents";
 import { PatientSales } from "@/components/patient-sales";
 import { PatientAudiology } from "@/components/patient-audiology";
-import { PatientDevices } from "@/components/patient-devices";
 import { PatientDeviceRegistry } from "@/components/patient-device-registry";
 import { PatientPayers } from "@/components/patient-payers";
 import { PatientMarketing } from "@/components/patient-marketing";
@@ -21,7 +21,6 @@ import { PatientPhotoAvatar } from "@/components/patient-photo-avatar";
 const tabs = [
   "Summary",
   "Audiology",
-  "Hearing aids",
   "Journal",
   "3rd party payers",
   "Messaging",
@@ -42,6 +41,13 @@ const LAST_AUDIOGRAM = [
   { ear: "Left", severity: "Moderately severe", type: "Sensorineural", shape: "Sloping" },
 ];
 
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(value);
+}
+
 export default async function PatientProfilePage({
   params,
   searchParams,
@@ -55,11 +61,12 @@ export default async function PatientProfilePage({
   const patient = await getPatientById(resolvedParams.id);
   if (!patient) notFound();
   const activeTab = resolvedSearchParams?.tab ?? "Summary";
-  const normalizedActiveTab = activeTab === "Ordered/delivered items" ? "Hearing aids" : activeTab;
+  const normalizedActiveTab = activeTab === "Ordered/delivered items" ? "Sales history" : activeTab;
   const purchaseMode = resolvedSearchParams?.purchase ?? "";
   const patientLabel = `${patient.lastName}, ${patient.firstName}${patient.preferredName ? ` (${patient.preferredName})` : ""}`;
 
   const age = patient.dateOfBirth ? dayjs().diff(dayjs(patient.dateOfBirth), "year") : null;
+  const patientBalance = computePatientBalance(patient.sales);
   const primaryPayer = patient.payerPolicies
     ?.slice()
     .sort((a, b) => {
@@ -151,7 +158,7 @@ export default async function PatientProfilePage({
 
           <div className="patient-header-stats">
             {[
-              { label: "Bal", value: "$0.00" },
+              { label: "Bal", value: formatCurrency(patientBalance) },
               { label: "Reimb", value: "$0.00" },
               { label: "Punct", value: "1m early" },
               { label: "No-show", value: "0%" },
@@ -185,8 +192,6 @@ export default async function PatientProfilePage({
 
       {normalizedActiveTab === "Audiology" ? (
         <PatientAudiology patientId={patient.id} />
-      ) : normalizedActiveTab === "Hearing aids" ? (
-        <PatientDevices patientId={patient.id} autoOpenCreate={purchaseMode === "tracked"} />
       ) : normalizedActiveTab === "Journal" ? (
         <PatientJournal patientId={patient.id} />
       ) : normalizedActiveTab === "Insurance/Payers" || normalizedActiveTab === "3rd party payers" ? (
@@ -194,9 +199,13 @@ export default async function PatientProfilePage({
       ) : normalizedActiveTab === "Messaging" ? (
         <PatientMessaging patientId={patient.id} />
       ) : normalizedActiveTab === "Sales history" ? (
-        <PatientSales patientId={patient.id} autoOpenCreate={purchaseMode === "direct"} />
+        <PatientSales patientId={patient.id} autoOpenCreate={purchaseMode === "direct" || purchaseMode === "tracked"} />
       ) : normalizedActiveTab === "Documents" ? (
-        <PatientDocuments patientId={patient.id} />
+        <PatientDocuments
+          patientId={patient.id}
+          patientEmail={patient.email}
+          patientPhones={patient.phones}
+        />
       ) : normalizedActiveTab === "Marketing" ? (
         <PatientMarketing />
       ) : (

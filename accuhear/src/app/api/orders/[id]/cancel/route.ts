@@ -25,7 +25,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   const body = await request.json().catch(() => ({}));
-  const reason = typeof body?.reason === "string" && body.reason.trim() ? body.reason.trim() : "Return";
+  const reason =
+    typeof body?.reason === "string" && body.reason.trim() ? body.reason.trim() : "Order cancelled";
   const lineItemIds = Array.isArray(body?.lineItemIds)
     ? body.lineItemIds.filter((value: unknown): value is string => typeof value === "string")
     : [];
@@ -47,73 +48,83 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           documents: true,
         },
       });
-      if (!existingOrder) throw new Error("Order not found");
-      if (existingOrder.status === "cancelled") {
-        throw new Error("Cancelled orders cannot be returned");
-      }
-      if (existingOrder.status === "returned") {
-        throw new Error("Order has already been returned");
-      }
-      if (
-        existingOrder.invoices.some(
-          (invoice) =>
-            invoice.txnType !== "invoice" &&
-            ["credit", "return"].includes(invoice.txnType) &&
-            invoice.invoiceStatus !== "void"
-        )
-      ) {
-        throw new Error("Order already has an active return or credit");
+
+      if (!existingOrder) {
+        throw new Error("Order not found");
       }
 
       const targetItems = existingOrder.lineItems.filter((item) => {
-        if (lineItemIds.length && !lineItemIds.includes(item.id)) return false;
-        return item.status === "received" || item.status === "delivered";
+        if (lineItemIds.length > 0 && !lineItemIds.includes(item.id)) return false;
+        return !["cancelled", "returned", "delivered"].includes(item.status);
       });
-      if (!targetItems.length) throw new Error("No order items selected for return");
+
+      if (!targetItems.length) {
+        throw new Error("No order items are eligible for cancellation");
+      }
+
+      const cancellationTotal = targetItems.reduce(
+        (sum, item) => sum + item.unitPrice * item.quantity,
+        0
+      );
 
       for (const item of targetItems) {
         await tx.purchaseOrderItem.update({
           where: { id: item.id },
-          data: { status: "returned" },
+          data: { status: "cancelled" },
         });
 
         const device = await tx.device.findUnique({
           where: { purchaseOrderItemId: item.id },
         });
+
         if (device) {
           await tx.device.update({
             where: { id: device.id },
-            data: { status: "Returned" },
+            data: {
+              status: "Inactive",
+              deliveryDate: null,
+              fittingDate: null,
+            },
           });
+
           await tx.deviceStatusHistory.create({
             data: {
               deviceId: device.id,
-              status: "Returned",
+              status: "Inactive",
               notes: reason,
             },
           });
         }
       }
 
-      const creditTotal = targetItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+      const refreshedItems = await tx.purchaseOrderItem.findMany({
+        where: { orderId: existingOrder.id },
+      });
+      const orderStatus = computeOrderStatus(refreshedItems);
+      const fulfillmentStatus = computeFulfillmentStatus(refreshedItems);
+
+      await tx.purchaseOrder.update({
+        where: { id: existingOrder.id },
+        data: { status: orderStatus },
+      });
+
       await tx.saleTransaction.create({
         data: {
           patientId: existingOrder.patientId,
           purchaseOrderId: existingOrder.id,
-          txnId: makeTxnId("CR"),
+          txnId: makeTxnId("CXL"),
           txnType: "credit",
           date: new Date(),
           location: existingOrder.location,
           provider: existingOrder.provider,
-          notes: reason,
+          notes: `Order cancelled: ${reason}`,
           invoiceStatus: "credited",
-          fulfillmentStatus: "returned",
-          total: -creditTotal,
+          fulfillmentStatus,
+          total: cancellationTotal * -1,
           lineItems: {
             create: targetItems.map((item) => ({
               purchaseOrderItemId: item.id,
               item: item.itemName,
-              itemCategory: item.catalogItemId ? undefined : null,
               quantity: item.quantity,
               unitPrice: item.unitPrice,
               revenue: item.unitPrice * item.quantity * -1,
@@ -125,27 +136,21 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         },
       });
 
-      const refreshedItems = await tx.purchaseOrderItem.findMany({
-        where: { orderId: existingOrder.id },
-      });
-
-      await tx.purchaseOrder.update({
-        where: { id: existingOrder.id },
-        data: { status: computeOrderStatus(refreshedItems) },
-      });
-
       await tx.saleTransaction.updateMany({
         where: { purchaseOrderId: existingOrder.id, txnType: "invoice" },
         data: {
-          fulfillmentStatus: computeFulfillmentStatus(refreshedItems),
-          invoiceStatus: "credited",
+          fulfillmentStatus,
+          ...(orderStatus === "cancelled" ? { invoiceStatus: "credited" as const } : {}),
         },
       });
 
       await addJournalEntry(tx, {
         patientId: existingOrder.patientId,
         type: "Order",
-        content: `Tracked item return recorded: ${reason}.`,
+        content:
+          orderStatus === "cancelled"
+            ? `Tracked order cancelled: ${reason}.`
+            : `Tracked order partially cancelled: ${reason}.`,
       });
 
       const updatedOrder = await tx.purchaseOrder.findUnique({
@@ -164,14 +169,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           documents: true,
         },
       });
-      if (!updatedOrder) throw new Error("Unable to load updated order");
+
+      if (!updatedOrder) {
+        throw new Error("Unable to load updated order");
+      }
+
       return updatedOrder;
     });
 
     return NextResponse.json({ order: formatPurchaseOrder(order as PurchaseOrderWithRelations) });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to return order items" },
+      { error: error instanceof Error ? error.message : "Unable to cancel order items" },
       { status: 400 }
     );
   }

@@ -3,6 +3,10 @@ import assert from "node:assert/strict";
 import { PrismaClient } from "@prisma/client";
 import { GET as getPatientSales, POST as createPatientSale } from "../../src/app/api/patients/[id]/sales/route";
 import { GET as getSalesDashboard } from "../../src/app/api/sales/route";
+import { DELETE as deleteSaleTransaction } from "../../src/app/api/sales/[id]/route";
+import { POST as returnSale } from "../../src/app/api/sales/[id]/returns/route";
+import { POST as voidSaleTransaction } from "../../src/app/api/sales/[id]/void/route";
+import { computePatientBalance } from "../../src/lib/commerce";
 import { withTestCleanup } from "../helpers/test-cleanup";
 
 const prisma = new PrismaClient();
@@ -29,6 +33,7 @@ async function cleanup() {
         await tx.saleTransaction.deleteMany({ where: { id: { in: transactionIds } } });
       }
 
+      await tx.journalEntry.deleteMany({ where: { patientId: { in: patientIds } } });
       await tx.patient.deleteMany({ where: { id: { in: patientIds } } });
     }
   });
@@ -189,6 +194,103 @@ test("list patient sales", async () => {
   assert.equal(sales[1]?.id, older.id);
   assert.ok(Array.isArray(sales[0]?.lineItems));
   assert.ok(Array.isArray(sales[0]?.payments));
+});
+
+test("returns are single-use, can be voided/deleted, and patient balance nets credits", async () => {
+  const patient = await prisma.patient.create({
+    data: {
+      legacyId: `${testTag}-returns`,
+      firstName: "Nina",
+      lastName: "Cole",
+    },
+  });
+
+  const createResponse = await createPatientSale(
+    new Request(`http://localhost/api/patients/${patient.id}/sales`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        txnId: `INV-${Date.now()}`,
+        txnType: "invoice",
+        total: 320,
+        lineItems: [{ item: "Wax Filter Pack", quantity: 1, revenue: 320, unitPrice: 320 }],
+      }),
+    }),
+    { params: { id: patient.id } }
+  );
+
+  assert.equal(createResponse.status, 200);
+  const createdSale = (await readJson(createResponse)).sale as { id: string };
+
+  const firstReturnResponse = await returnSale(
+    new Request(`http://localhost/api/sales/${createdSale.id}/returns`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ reason: "Return" }),
+    }),
+    { params: Promise.resolve({ id: createdSale.id }) }
+  );
+  assert.equal(firstReturnResponse.status, 200);
+
+  const refreshedInvoice = await prisma.saleTransaction.findUniqueOrThrow({
+    where: { id: createdSale.id },
+    include: { payments: true },
+  });
+  assert.equal(refreshedInvoice.invoiceStatus, "credited");
+
+  const creditTxn = await prisma.saleTransaction.findFirstOrThrow({
+    where: { patientId: patient.id, txnType: "return" },
+    orderBy: { createdAt: "desc" },
+  });
+  assert.equal(
+    computePatientBalance([
+      {
+        total: refreshedInvoice.total,
+        invoiceStatus: refreshedInvoice.invoiceStatus,
+        payments: refreshedInvoice.payments,
+      },
+      {
+        total: creditTxn.total,
+        invoiceStatus: creditTxn.invoiceStatus,
+        payments: [],
+      },
+    ]),
+    0
+  );
+
+  const secondReturnResponse = await returnSale(
+    new Request(`http://localhost/api/sales/${createdSale.id}/returns`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ reason: "Again" }),
+    }),
+    { params: Promise.resolve({ id: createdSale.id }) }
+  );
+  assert.equal(secondReturnResponse.status, 400);
+  const secondReturnData = await readJson(secondReturnResponse);
+  assert.equal(secondReturnData.error, "This invoice can no longer be returned");
+
+  const voidResponse = await voidSaleTransaction(
+    new Request(`http://localhost/api/sales/${creditTxn.id}/void`, { method: "POST" }),
+    { params: Promise.resolve({ id: creditTxn.id }) }
+  );
+  assert.equal(voidResponse.status, 200);
+
+  const reopenedInvoice = await prisma.saleTransaction.findUniqueOrThrow({
+    where: { id: createdSale.id },
+  });
+  assert.equal(reopenedInvoice.invoiceStatus, "open");
+
+  const deleteResponse = await deleteSaleTransaction(
+    new Request(`http://localhost/api/sales/${creditTxn.id}`, { method: "DELETE" }),
+    { params: Promise.resolve({ id: creditTxn.id }) }
+  );
+  assert.equal(deleteResponse.status, 200);
+
+  const deletedCredit = await prisma.saleTransaction.findUnique({
+    where: { id: creditTxn.id },
+  });
+  assert.equal(deletedCredit, null);
 });
 
 test("dashboard filter", async () => {

@@ -35,6 +35,31 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         },
       });
       if (!sale) throw new Error("Invoice not found");
+      if (sale.txnType !== "invoice") {
+        throw new Error("Only invoice transactions can be returned");
+      }
+      if (sale.invoiceStatus === "credited" || sale.invoiceStatus === "void" || sale.invoiceStatus === "written_off") {
+        throw new Error("This invoice can no longer be returned");
+      }
+      if (sale.purchaseOrder?.status === "cancelled") {
+        throw new Error("Cancelled orders cannot be returned");
+      }
+      if (sale.purchaseOrder?.status === "returned") {
+        throw new Error("Order has already been returned");
+      }
+      if (
+        sale.purchaseOrderId &&
+        (await tx.saleTransaction.count({
+          where: {
+            purchaseOrderId: sale.purchaseOrderId,
+            id: { not: sale.id },
+            txnType: { in: ["credit", "return"] },
+            invoiceStatus: { not: "void" },
+          },
+        })) > 0
+      ) {
+        throw new Error("Order already has an active return or credit");
+      }
 
       const creditTotal = sale.lineItems.reduce((sum, item) => sum + (item.revenue ?? 0), 0);
       await tx.saleTransaction.create({
@@ -46,7 +71,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           date: new Date(),
           location: sale.location,
           provider: sale.provider,
-          notes: reason,
+          notes: `sourceSaleId:${sale.id} | ${reason}`,
           invoiceStatus: "credited",
           fulfillmentStatus: sale.purchaseOrderId ? "returned" : "fulfilled",
           total: creditTotal * -1,
@@ -98,6 +123,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           data: { status: "returned" },
         });
       }
+
+      await tx.saleTransaction.update({
+        where: { id: sale.id },
+        data: {
+          invoiceStatus: "credited",
+          fulfillmentStatus: sale.purchaseOrderId ? "returned" : sale.fulfillmentStatus,
+        },
+      });
 
       if (sale.patientId) {
         await addJournalEntry(tx, {
