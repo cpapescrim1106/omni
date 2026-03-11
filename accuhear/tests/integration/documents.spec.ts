@@ -2,6 +2,7 @@ import { after, before, beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import { PrismaClient } from "@prisma/client";
 import { GET as getPatientDocuments, POST as createPatientDocument } from "../../src/app/api/patients/[id]/documents/route";
+import { DELETE as deletePatientDocument } from "../../src/app/api/patients/[id]/documents/[documentId]/route";
 import { withTestCleanup } from "../helpers/test-cleanup";
 
 const prisma = new PrismaClient();
@@ -40,6 +41,10 @@ async function readJson(response: Response) {
   return payload as Record<string, unknown>;
 }
 
+function currentDocumentStorageProvider() {
+  return (process.env.DOCUMENT_STORAGE_PROVIDER || "").trim().toLowerCase() || "stub";
+}
+
 test("create document metadata", async () => {
   const patient = await prisma.patient.create({
     data: {
@@ -58,12 +63,33 @@ test("create document metadata", async () => {
     sizeBytes: 2048,
   };
 
+  const storageProvider = currentDocumentStorageProvider();
+  const request =
+    storageProvider === "local"
+      ? (() => {
+          const formData = new FormData();
+          formData.set("title", payload.title);
+          formData.set("category", payload.category);
+          formData.set("addedBy", payload.addedBy);
+          formData.set(
+            "file",
+            new File([Buffer.alloc(payload.sizeBytes, 1)], payload.fileName, {
+              type: payload.contentType,
+            })
+          );
+          return new Request(`http://localhost/api/patients/${patient.id}/documents`, {
+            method: "POST",
+            body: formData,
+          });
+        })()
+      : new Request(`http://localhost/api/patients/${patient.id}/documents`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
   const response = await createPatientDocument(
-    new Request(`http://localhost/api/patients/${patient.id}/documents`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
-    }),
+    request,
     { params: { id: patient.id } }
   );
 
@@ -76,7 +102,7 @@ test("create document metadata", async () => {
   assert.equal(data.document?.fileName, payload.fileName);
   assert.equal(data.document?.contentType, payload.contentType);
   assert.equal(data.document?.sizeBytes, payload.sizeBytes);
-  assert.equal(data.document?.storageProvider, "stub");
+  assert.equal(data.document?.storageProvider, storageProvider);
   assert.ok(data.document?.storageKey);
 
   const stored = await prisma.document.findUnique({ where: { id: documentId } });
@@ -88,7 +114,7 @@ test("create document metadata", async () => {
   assert.equal(stored?.fileName, payload.fileName);
   assert.equal(stored?.contentType, payload.contentType);
   assert.equal(stored?.sizeBytes, payload.sizeBytes);
-  assert.equal(stored?.storageProvider, "stub");
+  assert.equal(stored?.storageProvider, storageProvider);
   assert.ok(stored?.storageKey);
 });
 
@@ -216,4 +242,42 @@ test("invalid category rejected", async () => {
 
   const stored = await prisma.document.findMany({ where: { patientId: patient.id } });
   assert.equal(stored.length, 0);
+});
+
+test("delete document removes metadata row", async () => {
+  const patient = await prisma.patient.create({
+    data: {
+      legacyId: `${testTag}-delete`,
+      firstName: "Parker",
+      lastName: "Lane",
+    },
+  });
+
+  const document = await prisma.document.create({
+    data: {
+      patientId: patient.id,
+      title: "Delete Me",
+      category: "Other",
+      addedBy: "Casey",
+      fileName: "delete-me.pdf",
+      contentType: "application/pdf",
+      sizeBytes: 1234,
+      storageProvider: "stub",
+      storageKey: `stub/${patient.id}/delete/delete-me.pdf`,
+    },
+  });
+
+  const response = await deletePatientDocument(
+    new Request(`http://localhost/api/patients/${patient.id}/documents/${document.id}`, {
+      method: "DELETE",
+    }),
+    { params: Promise.resolve({ id: patient.id, documentId: document.id }) }
+  );
+
+  assert.equal(response.status, 200);
+  const data = await readJson(response);
+  assert.equal(data.deletedId, document.id);
+
+  const stored = await prisma.document.findUnique({ where: { id: document.id } });
+  assert.equal(stored, null);
 });

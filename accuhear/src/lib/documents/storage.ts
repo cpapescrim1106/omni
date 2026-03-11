@@ -94,7 +94,14 @@ export function resolveLocalStoragePath(storageKey: string) {
   if (!storageKey.startsWith("local/")) return null;
   const relativePath = storageKey.slice("local/".length);
   const rootDir = path.resolve(process.env.DOCUMENT_STORAGE_LOCAL_ROOT || path.join(process.cwd(), "var/uploads/documents"));
-  return path.join(rootDir, relativePath);
+  const absolutePath = path.resolve(rootDir, relativePath);
+  const normalizedRoot = path.join(rootDir, path.sep);
+
+  if (!absolutePath.startsWith(normalizedRoot)) {
+    return null;
+  }
+
+  return absolutePath;
 }
 
 export const documentStorage: DocumentStorageAdapter = getDocumentStorageAdapter();

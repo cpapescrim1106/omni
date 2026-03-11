@@ -1,3 +1,5 @@
+import fs from "node:fs/promises";
+import path from "node:path";
 import { test, expect } from "@playwright/test";
 import dayjs from "dayjs";
 import type { PrismaClient } from "@prisma/client";
@@ -15,6 +17,28 @@ type DocumentSeed = {
   addedBy?: string | null;
   createdAt?: Date;
 };
+
+async function seedLocalDocument(patientId: string, title: string) {
+  const storageKey = `local/${patientId}/e2e-actions/action-document.pdf`;
+  const uploadsRoot = path.resolve(process.cwd(), "var/uploads/documents");
+  const fullPath = path.join(uploadsRoot, patientId, "e2e-actions", "action-document.pdf");
+  await fs.mkdir(path.dirname(fullPath), { recursive: true });
+  await fs.writeFile(fullPath, "%PDF-1.4\n% Omni test document\n");
+
+  return prisma.document.create({
+    data: {
+      patientId,
+      title,
+      category: "Other",
+      addedBy: "E2E Tester",
+      fileName: "action-document.pdf",
+      contentType: "application/pdf",
+      sizeBytes: 29,
+      storageProvider: "local",
+      storageKey,
+    },
+  });
+}
 
 async function createPatient(label: string) {
   return prisma.patient.create({
@@ -82,6 +106,7 @@ test.describe.serial("Patient documents", () => {
     createdPatients.push(patient.id);
 
     await page.goto(`/patients/${patient.id}?tab=Documents`);
+    await expect(page.getByTestId("documents-upload")).toBeVisible();
     await expect(page.getByTestId("documents-scan-id")).toBeVisible();
     await expect(page.getByTestId("documents-scan-insurance")).toBeVisible();
   });
@@ -100,6 +125,30 @@ test.describe.serial("Patient documents", () => {
     const preview = page.getByTestId("documents-preview");
     await expect(preview).toBeVisible();
     await expect(preview).toContainText(`Purchase Agreement ${e2eTag}`);
+  });
+
+  test("selected document actions render and delete removes the row", async ({ page }) => {
+    const patient = await createPatient("Document Actions");
+    createdPatients.push(patient.id);
+    await prisma.patient.update({
+      where: { id: patient.id },
+      data: { email: "docs@example.com" },
+    });
+    await seedLocalDocument(patient.id, `Action Document ${e2eTag}`);
+
+    await page.goto(`/patients/${patient.id}?tab=Documents`);
+    await page.getByTestId("documents-row").first().click();
+
+    const actions = page.getByTestId("documents-actions");
+    await expect(actions).toBeVisible();
+    await expect(actions.getByRole("button", { name: "Print" })).toBeEnabled();
+    await expect(actions.getByRole("button", { name: "Download" })).toBeEnabled();
+    await expect(actions.getByRole("button", { name: "Email" })).toBeEnabled();
+    await expect(actions.getByRole("button", { name: "Fax" })).toBeDisabled();
+
+    await actions.getByRole("button", { name: "Delete" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Delete" }).click();
+    await expect(page.getByTestId("documents-empty")).toBeVisible();
   });
 
   test("empty state shows when no documents", async ({ page }) => {
