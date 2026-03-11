@@ -106,7 +106,7 @@ export default function OrdersPage() {
                 <div key={order.id} className="grid grid-cols-[1.15fr_1.5fr_0.8fr_0.8fr_0.8fr_0.7fr] gap-3 px-4 py-4 text-sm">
                   <div>
                     <div className="font-semibold text-ink-strong">
-                      <Link href={`/patients/${order.patientId}?tab=${encodeURIComponent("Hearing aids")}`}>
+                      <Link href={`/patients/${order.patientId}?tab=${encodeURIComponent("Sales history")}`}>
                         {order.patient.lastName}, {order.patient.firstName}
                       </Link>
                     </div>

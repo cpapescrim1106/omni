@@ -277,14 +277,22 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
                       >
                         <Select value={item.catalogItemId} onValueChange={(value) => updateItem(index, { catalogItemId: value ?? item.catalogItemId })}>
                           <SelectTrigger className="min-w-0 flex-1 bg-white text-sm">
-                            <SelectValue />
+                            <span className="truncate">
+                              {(() => {
+                                const cat = catalog.find((c) => c.id === item.catalogItemId);
+                                return cat ? `${cat.manufacturer ? `${cat.manufacturer} ` : ""}${cat.name}` : "Select device";
+                              })()}
+                            </span>
                           </SelectTrigger>
                           <SelectContent>
-                          {catalog.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>
-                              {c.manufacturer ? `${c.manufacturer} ` : ""}{c.name}
-                            </SelectItem>
-                          ))}
+                          {catalog.map((c) => {
+                            const displayName = `${c.manufacturer ? `${c.manufacturer} ` : ""}${c.name}`;
+                            return (
+                              <SelectItem key={c.id} value={c.id} label={displayName}>
+                                {displayName}
+                              </SelectItem>
+                            );
+                          })}
                           </SelectContent>
                         </Select>
                         <Select value={item.side} onValueChange={(value) => updateItem(index, { side: value ?? item.side })}>
