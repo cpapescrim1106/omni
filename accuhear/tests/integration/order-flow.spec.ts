@@ -6,10 +6,12 @@ import { POST as receiveOrder } from "../../src/app/api/orders/[id]/receive/rout
 import { POST as deliverOrder } from "../../src/app/api/orders/[id]/deliver/route";
 import { POST as cancelOrder } from "../../src/app/api/orders/[id]/cancel/route";
 import { POST as returnOrder } from "../../src/app/api/orders/[id]/return/route";
+import { DELETE as deleteSaleTransaction } from "../../src/app/api/sales/[id]/route";
 import { POST as addSalePayment } from "../../src/app/api/sales/[id]/payments/route";
 import { DELETE as deleteSalePayment } from "../../src/app/api/sales/[id]/payments/[paymentId]/route";
 import { POST as voidSalePayment } from "../../src/app/api/sales/[id]/payments/[paymentId]/void/route";
 import { POST as returnSale } from "../../src/app/api/sales/[id]/returns/route";
+import { POST as voidSaleTransaction } from "../../src/app/api/sales/[id]/void/route";
 import { POST as generatePurchaseAgreement } from "../../src/app/api/sales/[id]/purchase-agreement/route";
 import { ensureStarterCatalog } from "../../src/lib/commerce";
 import { withTestCleanup } from "../helpers/test-cleanup";
@@ -360,6 +362,45 @@ test("tracked order can be cancelled and received devices are marked inactive", 
   assert.equal(invoiceReturnResponse.status, 400);
   const invoiceReturnData = await readJson(invoiceReturnResponse);
   assert.equal(invoiceReturnData.error, "This invoice can no longer be returned");
+
+  const invoiceVoidResponse = await voidSaleTransaction(
+    new Request(`http://localhost/api/sales/${order.invoice?.id}/void`, {
+      method: "POST",
+    }),
+    { params: Promise.resolve({ id: order.invoice?.id ?? "" }) }
+  );
+  assert.equal(invoiceVoidResponse.status, 400);
+  const invoiceVoidData = await readJson(invoiceVoidResponse);
+  assert.equal(
+    invoiceVoidData.error,
+    "Cancelled or returned tracked order transactions cannot be voided"
+  );
+
+  const creditVoidResponse = await voidSaleTransaction(
+    new Request(`http://localhost/api/sales/${orderSales[1]?.id}/void`, {
+      method: "POST",
+    }),
+    { params: Promise.resolve({ id: orderSales[1]?.id ?? "" }) }
+  );
+  assert.equal(creditVoidResponse.status, 400);
+  const creditVoidData = await readJson(creditVoidResponse);
+  assert.equal(
+    creditVoidData.error,
+    "Cancelled or returned tracked order transactions cannot be voided"
+  );
+
+  const invoiceDeleteResponse = await deleteSaleTransaction(
+    new Request(`http://localhost/api/sales/${order.invoice?.id}`, {
+      method: "DELETE",
+    }),
+    { params: Promise.resolve({ id: order.invoice?.id ?? "" }) }
+  );
+  assert.equal(invoiceDeleteResponse.status, 400);
+  const invoiceDeleteData = await readJson(invoiceDeleteResponse);
+  assert.equal(
+    invoiceDeleteData.error,
+    "Cancelled or returned tracked order transactions cannot be deleted"
+  );
 
   const orderReturnResponse = await returnOrder(
     new Request(`http://localhost/api/orders/${order.id}/return`, {
