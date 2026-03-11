@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { emitEvent } from "@/lib/event-bus";
 import { normalizeProviderName } from "@/lib/provider-names";
+import { isTimeRangeWithinSchedule } from "@/lib/provider-schedule";
 
 type AppointmentPatchBody = {
   providerName?: string;
@@ -31,6 +32,21 @@ export async function PATCH(
   const end = new Date(endTime);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
     return NextResponse.json({ error: "Invalid appointment time range" }, { status: 400 });
+  }
+
+  const dayOfWeek = start.getDay();
+  const startMinuteInDay = start.getHours() * 60 + start.getMinutes();
+  const endMinuteInDay = end.getHours() * 60 + end.getMinutes();
+  const daySchedule = await prisma.providerSchedule.findUnique({
+    where: {
+      providerName_dayOfWeek: {
+        providerName: normalizedProviderName,
+        dayOfWeek,
+      },
+    },
+  });
+  if (daySchedule && !isTimeRangeWithinSchedule(daySchedule, startMinuteInDay, endMinuteInDay)) {
+    return NextResponse.json({ error: "Outside provider availability" }, { status: 409 });
   }
 
   const current = await prisma.appointment.findUnique({

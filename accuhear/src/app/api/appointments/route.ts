@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { emitEvent } from "@/lib/event-bus";
 import { getLatestMarketingContact } from "@/lib/marketing-contacts";
 import { normalizeProviderName } from "@/lib/provider-names";
+import { isTimeRangeWithinSchedule } from "@/lib/provider-schedule";
 
 function getRange(startParam?: string | null, endParam?: string | null, dateParam?: string | null) {
   if (startParam && endParam) {
@@ -52,6 +53,24 @@ export async function POST(request: Request) {
 
   const start = new Date(startTime);
   const end = new Date(endTime);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+    return NextResponse.json({ error: "Invalid appointment time range" }, { status: 400 });
+  }
+
+  const dayOfWeek = start.getDay();
+  const startMinuteInDay = start.getHours() * 60 + start.getMinutes();
+  const endMinuteInDay = end.getHours() * 60 + end.getMinutes();
+  const daySchedule = await prisma.providerSchedule.findUnique({
+    where: {
+      providerName_dayOfWeek: {
+        providerName: normalizedProviderName,
+        dayOfWeek,
+      },
+    },
+  });
+  if (daySchedule && !isTimeRangeWithinSchedule(daySchedule, startMinuteInDay, endMinuteInDay)) {
+    return NextResponse.json({ error: "Outside provider availability" }, { status: 409 });
+  }
 
   const conflict = await prisma.appointment.findFirst({
     where: {
