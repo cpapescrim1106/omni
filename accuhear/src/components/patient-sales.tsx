@@ -189,6 +189,7 @@ export function PatientSales({
   const [paymentKind, setPaymentKind] = useState("payment");
   const [voidingTransactionId, setVoidingTransactionId] = useState<string | null>(null);
   const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null);
+  const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
   const [voidingPaymentId, setVoidingPaymentId] = useState<string | null>(null);
   const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null);
   const [returnReason, setReturnReason] = useState("Return");
@@ -540,6 +541,29 @@ export function PatientSales({
       setBusy(false);
     }
   }, [loadSales, selectedSaleId]);
+
+  const deleteCancelledOrder = useCallback(async (orderId: string, deletedSaleIds: string[] = []) => {
+    setDeletingOrderId(orderId);
+    setDeletingTransactionId(null);
+    setVoidingTransactionId(null);
+    setBusy(true);
+    setMessage(null);
+    try {
+      const response = await fetch(`/api/orders/${orderId}`, { method: "DELETE" });
+      const payload = await response.json().catch(() => ({ error: "Unable to delete order." }));
+      if (!response.ok) {
+        throw new Error(payload.error || "Unable to delete order.");
+      }
+      setMessage("Cancelled order deleted.");
+      await loadSales();
+      setSelectedSaleId((current) => (current && deletedSaleIds.includes(current) ? null : current));
+    } catch (orderError) {
+      setError(orderError instanceof Error ? orderError.message : "Unable to delete order.");
+    } finally {
+      setDeletingOrderId(null);
+      setBusy(false);
+    }
+  }, [loadSales]);
 
   const generatePurchaseAgreement = useCallback(async () => {
     if (!selectedSale) return;
@@ -1042,6 +1066,12 @@ export function PatientSales({
                 </div>
                 {ledgerRows.map((row) => {
                   if (row.kind === "sale") {
+                    const canDeleteCancelledOrder =
+                      row.sale.txnType === "invoice" && row.sale.purchaseOrder?.status === "cancelled";
+                    const hideTransactionVoid =
+                      row.sale.purchaseOrder?.status === "cancelled" || row.sale.purchaseOrder?.status === "returned";
+                    const hideTransactionDelete =
+                      row.sale.purchaseOrder?.status === "cancelled" || row.sale.purchaseOrder?.status === "returned";
                     return (
                       <div
                         key={row.id}
@@ -1075,7 +1105,7 @@ export function PatientSales({
                         </span>
                         <span className="min-w-0 truncate text-ink-muted">{formatCurrency(row.sale.balance)}</span>
                         <span className="flex items-start justify-end gap-2">
-                          {row.sale.invoiceStatus !== "void" ? (
+                          {row.sale.invoiceStatus !== "void" && !hideTransactionVoid ? (
                             <Button
                               type="button"
                               variant="outline"
@@ -1090,19 +1120,40 @@ export function PatientSales({
                               {voidingTransactionId === row.sale.id ? "Voiding..." : "Void"}
                             </Button>
                           ) : null}
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="sm"
-                            disabled={busy || deletingTransactionId === row.sale.id || voidingTransactionId === row.sale.id}
-                            className="h-7 px-2"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              void deleteTransaction(row.sale.id);
-                            }}
-                          >
-                            {deletingTransactionId === row.sale.id ? "Deleting..." : "Delete"}
-                          </Button>
+                          {canDeleteCancelledOrder ? (
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              disabled={busy || deletingOrderId === row.sale.purchaseOrderId}
+                              className="h-7 px-2"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                if (!row.sale.purchaseOrderId) return;
+                                const relatedSaleIds = sales
+                                  .filter((sale) => sale.purchaseOrderId === row.sale.purchaseOrderId)
+                                  .map((sale) => sale.id);
+                                void deleteCancelledOrder(row.sale.purchaseOrderId, relatedSaleIds);
+                              }}
+                            >
+                              {deletingOrderId === row.sale.purchaseOrderId ? "Deleting..." : "Delete order"}
+                            </Button>
+                          ) : null}
+                          {!hideTransactionDelete ? (
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              disabled={busy || deletingTransactionId === row.sale.id || voidingTransactionId === row.sale.id}
+                              className="h-7 px-2"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void deleteTransaction(row.sale.id);
+                              }}
+                            >
+                              {deletingTransactionId === row.sale.id ? "Deleting..." : "Delete"}
+                            </Button>
+                          ) : null}
                         </span>
                       </div>
                     );
@@ -1505,21 +1556,47 @@ export function PatientSales({
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={busy || selectedSale.invoiceStatus === "void" || voidingTransactionId === selectedSale.id || deletingTransactionId === selectedSale.id}
+                  disabled={
+                    busy ||
+                    selectedSale.invoiceStatus === "void" ||
+                    selectedSaleOrder?.status === "cancelled" ||
+                    selectedSaleOrder?.status === "returned" ||
+                    voidingTransactionId === selectedSale.id ||
+                    deletingTransactionId === selectedSale.id
+                  }
                   className="text-ink-muted line-through decoration-2"
                   onClick={() => void voidTransaction(selectedSale.id)}
                 >
                   {voidingTransactionId === selectedSale.id ? "Voiding..." : "Void transaction"}
                 </Button>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="sm"
-                  disabled={busy || deletingTransactionId === selectedSale.id || voidingTransactionId === selectedSale.id}
-                  onClick={() => void deleteTransaction(selectedSale.id)}
-                >
-                  {deletingTransactionId === selectedSale.id ? "Deleting..." : "Delete transaction"}
-                </Button>
+                {selectedSaleOrder?.status === "cancelled" ? (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    disabled={busy || deletingOrderId === selectedSaleOrder.id}
+                    onClick={() =>
+                      void deleteCancelledOrder(
+                        selectedSaleOrder.id,
+                        sales
+                          .filter((sale) => sale.purchaseOrderId === selectedSaleOrder.id)
+                          .map((sale) => sale.id)
+                      )
+                    }
+                  >
+                    {deletingOrderId === selectedSaleOrder.id ? "Deleting..." : "Delete cancelled order"}
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    disabled={busy || deletingTransactionId === selectedSale.id || voidingTransactionId === selectedSale.id}
+                    onClick={() => void deleteTransaction(selectedSale.id)}
+                  >
+                    {deletingTransactionId === selectedSale.id ? "Deleting..." : "Delete transaction"}
+                  </Button>
+                )}
                 {/* Order lifecycle action buttons — only when sale has a linked order */}
                 {selectedSaleOrder ? (
                   <>

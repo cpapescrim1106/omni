@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { PrismaClient } from "@prisma/client";
 import { POST as createPatientOrder, GET as getPatientOrders } from "../../src/app/api/patients/[id]/orders/route";
 import { POST as receiveOrder } from "../../src/app/api/orders/[id]/receive/route";
+import { DELETE as deleteOrder } from "../../src/app/api/orders/[id]/route";
 import { POST as deliverOrder } from "../../src/app/api/orders/[id]/deliver/route";
 import { POST as cancelOrder } from "../../src/app/api/orders/[id]/cancel/route";
 import { POST as returnOrder } from "../../src/app/api/orders/[id]/return/route";
@@ -413,4 +414,94 @@ test("tracked order can be cancelled and received devices are marked inactive", 
   assert.equal(orderReturnResponse.status, 400);
   const orderReturnData = await readJson(orderReturnResponse);
   assert.equal(orderReturnData.error, "Cancelled orders cannot be returned");
+});
+
+test("cancelled tracked order can be deleted as a single package", async () => {
+  const patient = await prisma.patient.create({
+    data: {
+      legacyId: `${testTag}-delete-cancelled-order`,
+      firstName: "Morgan",
+      lastName: "Shaw",
+      status: "Active",
+    },
+  });
+
+  const trackedItem = await prisma.catalogItem.findFirstOrThrow({
+    where: { requiresSerial: true, createsPatientAsset: true },
+  });
+
+  const createResponse = await createPatientOrder(
+    new Request(`http://localhost/api/patients/${patient.id}/orders`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        provider: "Dr. Lane",
+        location: "SHD",
+        lineItems: [{ catalogItemId: trackedItem.id, side: "Left", quantity: 1 }],
+      }),
+    }),
+    { params: Promise.resolve({ id: patient.id }) }
+  );
+
+  assert.equal(createResponse.status, 200);
+  const createData = await readJson(createResponse);
+  const order = createData.order as {
+    id: string;
+    lineItems: Array<{ id: string }>;
+  };
+
+  const receiveResponse = await receiveOrder(
+    new Request(`http://localhost/api/orders/${order.id}/receive`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        items: [
+          {
+            orderItemId: order.lineItems[0]?.id,
+            serialNumber: `SN-DELETE-${testTag}`,
+            manufacturerWarrantyEnd: "2029-03-09",
+            lossDamageWarrantyEnd: "2029-03-09",
+          },
+        ],
+      }),
+    }),
+    { params: Promise.resolve({ id: order.id }) }
+  );
+
+  assert.equal(receiveResponse.status, 200);
+
+  const cancelResponse = await cancelOrder(
+    new Request(`http://localhost/api/orders/${order.id}/cancel`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ reason: "Entered by mistake" }),
+    }),
+    { params: Promise.resolve({ id: order.id }) }
+  );
+
+  assert.equal(cancelResponse.status, 200);
+
+  const deleteResponse = await deleteOrder(
+    new Request(`http://localhost/api/orders/${order.id}`, {
+      method: "DELETE",
+    }),
+    { params: Promise.resolve({ id: order.id }) }
+  );
+
+  assert.equal(deleteResponse.status, 200);
+
+  const deletedOrder = await prisma.purchaseOrder.findUnique({
+    where: { id: order.id },
+  });
+  assert.equal(deletedOrder, null);
+
+  const remainingSales = await prisma.saleTransaction.findMany({
+    where: { purchaseOrderId: order.id },
+  });
+  assert.equal(remainingSales.length, 0);
+
+  const remainingDevices = await prisma.device.findMany({
+    where: { patientId: patient.id },
+  });
+  assert.equal(remainingDevices.length, 0);
 });
