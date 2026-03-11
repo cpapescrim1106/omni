@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { normalizeProviderName } from "@/lib/provider-names";
+import type { ProviderScheduleMap } from "@/lib/provider-schedule";
 
 const DEFAULT_PROVIDERS = ["Chris Pape", "C + C, SHD"];
 
@@ -30,13 +31,15 @@ export async function GET() {
     a.localeCompare(b)
   );
 
-  const schedules: Record<string, Record<number, { startMinute: number; endMinute: number; isActive: boolean }>> = {};
+  const schedules: ProviderScheduleMap = {};
   for (const row of scheduleRows) {
     if (!schedules[row.providerName]) schedules[row.providerName] = {};
     schedules[row.providerName][row.dayOfWeek] = {
       startMinute: row.startMinute,
       endMinute: row.endMinute,
       isActive: row.isActive,
+      lunchStartMinute: row.lunchStartMinute,
+      lunchEndMinute: row.lunchEndMinute,
     };
   }
 
@@ -48,6 +51,8 @@ type ScheduleEntry = {
   dayOfWeek: number;
   startMinute: number;
   endMinute: number;
+  lunchStartMinute: number | null;
+  lunchEndMinute: number | null;
   isActive: boolean;
 };
 
@@ -60,6 +65,8 @@ export async function PUT(request: NextRequest) {
   }
 
   for (const entry of schedules) {
+    const lunchStartMinute = entry.lunchStartMinute ?? null;
+    const lunchEndMinute = entry.lunchEndMinute ?? null;
     const { providerName, dayOfWeek, startMinute, endMinute, isActive } = entry;
     if (
       typeof providerName !== "string" ||
@@ -68,6 +75,8 @@ export async function PUT(request: NextRequest) {
       dayOfWeek > 6 ||
       typeof startMinute !== "number" ||
       typeof endMinute !== "number" ||
+      (lunchStartMinute !== null && typeof lunchStartMinute !== "number") ||
+      (lunchEndMinute !== null && typeof lunchEndMinute !== "number") ||
       typeof isActive !== "boolean"
     ) {
       return NextResponse.json({ error: "Invalid schedule entry" }, { status: 400 });
@@ -75,26 +84,51 @@ export async function PUT(request: NextRequest) {
     if (isActive && endMinute <= startMinute) {
       return NextResponse.json({ error: `End time must be after start time for ${providerName}` }, { status: 400 });
     }
+    const hasPartialLunchBreak =
+      (lunchStartMinute == null && lunchEndMinute != null) ||
+      (lunchStartMinute != null && lunchEndMinute == null);
+    if (hasPartialLunchBreak) {
+      return NextResponse.json({ error: `Lunch break must include both start and end time for ${providerName}` }, { status: 400 });
+    }
+    if (
+      isActive &&
+      lunchStartMinute != null &&
+      lunchEndMinute != null &&
+      (lunchEndMinute <= lunchStartMinute ||
+        lunchStartMinute < startMinute ||
+        lunchEndMinute > endMinute)
+    ) {
+      return NextResponse.json(
+        { error: `Lunch break must fall inside working hours for ${providerName}` },
+        { status: 400 }
+      );
+    }
   }
 
   await Promise.all(
-    schedules.map((entry) =>
-      prisma.providerSchedule.upsert({
-        where: { providerName_dayOfWeek: { providerName: entry.providerName, dayOfWeek: entry.dayOfWeek } },
-        create: {
-          providerName: entry.providerName,
-          dayOfWeek: entry.dayOfWeek,
-          startMinute: entry.startMinute,
-          endMinute: entry.endMinute,
-          isActive: entry.isActive,
-        },
-        update: {
-          startMinute: entry.startMinute,
-          endMinute: entry.endMinute,
-          isActive: entry.isActive,
-        },
-      })
-    )
+    schedules.map((entry) => {
+      const lunchStartMinute = entry.lunchStartMinute ?? null;
+      const lunchEndMinute = entry.lunchEndMinute ?? null;
+      return prisma.providerSchedule.upsert({
+          where: { providerName_dayOfWeek: { providerName: entry.providerName, dayOfWeek: entry.dayOfWeek } },
+          create: {
+            providerName: entry.providerName,
+            dayOfWeek: entry.dayOfWeek,
+            startMinute: entry.startMinute,
+            endMinute: entry.endMinute,
+            lunchStartMinute,
+            lunchEndMinute,
+            isActive: entry.isActive,
+          },
+          update: {
+            startMinute: entry.startMinute,
+            endMinute: entry.endMinute,
+            lunchStartMinute,
+            lunchEndMinute,
+            isActive: entry.isActive,
+          },
+      });
+    })
   );
 
   return NextResponse.json({ ok: true });

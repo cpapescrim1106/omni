@@ -37,6 +37,12 @@ import {
   formatTransitionHistoryStatus,
   type AppointmentTransitionHistoryItem,
 } from "@/lib/appointments/transition-history";
+import {
+  isMinuteWithinSchedule,
+  isTimeRangeWithinSchedule,
+  type ProviderDaySchedule,
+  type ProviderScheduleMap,
+} from "@/lib/provider-schedule";
 import { cn } from "@/lib/utils";
 import { normalizeProviderName } from "@/lib/provider-names";
 import {
@@ -104,8 +110,6 @@ type Appointment = {
   status?: { id: string; name: string } | null;
   notes?: string | null;
 };
-
-type ProviderScheduleMap = Record<string, Record<number, { startMinute: number; endMinute: number; isActive: boolean }>>;
 
 type MetaPayload = {
   providers: string[];
@@ -232,8 +236,21 @@ function isSlotUnavailable(
   const daySchedule = providerSchedules[providerName]?.[dayOfWeek];
   // Provider has schedules but none for this day → unavailable
   if (!daySchedule || !daySchedule.isActive) return true;
-  // Outside configured hours → unavailable
-  return slotMinuteInDay < daySchedule.startMinute || slotMinuteInDay >= daySchedule.endMinute;
+  return !isMinuteWithinSchedule(daySchedule, slotMinuteInDay);
+}
+
+function isTimeRangeUnavailable(
+  providerName: string,
+  date: string,
+  startMinuteInDay: number,
+  endMinuteInDay: number,
+  providerSchedules: ProviderScheduleMap
+): boolean {
+  if (!(providerName in providerSchedules)) return false;
+  const dayOfWeek = new Date(date).getDay();
+  const daySchedule = providerSchedules[providerName]?.[dayOfWeek];
+  if (!daySchedule || !daySchedule.isActive) return true;
+  return !isTimeRangeWithinSchedule(daySchedule, startMinuteInDay, endMinuteInDay);
 }
 
 function parseAppointmentTime(value: string | Date) {
@@ -954,16 +971,22 @@ export function BigSchedule() {
       }
 
       // Determine available time window for a candidate date based on provider schedules
-      function getAvailableWindow(date: dayjs.Dayjs): { startMinute: number; endMinute: number } | null {
+      function getAvailableWindow(date: dayjs.Dayjs): ProviderDaySchedule | null {
         const providerSched = providerSchedules[targetProvider];
         if (!providerSched) {
           // No schedule configured → full day open
-          return { startMinute: DAY_START_HOUR * 60, endMinute: DAY_END_HOUR * 60 };
+          return {
+            startMinute: DAY_START_HOUR * 60,
+            endMinute: DAY_END_HOUR * 60,
+            lunchStartMinute: null,
+            lunchEndMinute: null,
+            isActive: true,
+          };
         }
         const dow = date.day(); // JS: 0=Sun, 1=Mon, ..., 6=Sat
         const daySched = providerSched[dow];
         if (!daySched || !daySched.isActive) return null; // provider off this day
-        return { startMinute: daySched.startMinute, endMinute: daySched.endMinute };
+        return daySched;
       }
 
       // Search: try slots within available window, sorted by closeness to original time
@@ -980,7 +1003,9 @@ export function BigSchedule() {
         // Build all valid slot start minutes within the available window
         const allSlots: number[] = [];
         for (let m = winStart; m + durationMinutes <= winEnd; m += SLOT_MINUTES) {
-          allSlots.push(m);
+          if (isTimeRangeWithinSchedule(window, m, m + durationMinutes)) {
+            allSlots.push(m);
+          }
         }
 
         // Sort slots by closeness to the original appointment time
@@ -1322,7 +1347,15 @@ export function BigSchedule() {
     if (!dockedAppointment) return;
     const { event: dockedEvt, originalAppointment } = dockedAppointment;
     const [hour, minute] = payload.time.split(":").map((value) => Number(value));
-    if (isSlotUnavailable(payload.provider, payload.date, hour * 60 + minute, providerSchedules)) {
+    if (
+      isTimeRangeUnavailable(
+        payload.provider,
+        payload.date,
+        hour * 60 + minute,
+        hour * 60 + minute + dockedEvt.durationMinutes,
+        providerSchedules
+      )
+    ) {
       setToastMessage("Outside provider availability");
       return;
     }
@@ -1424,7 +1457,15 @@ export function BigSchedule() {
     if (!appointment) return;
 
     const [hour, minute] = payload.time.split(":").map((value) => Number(value));
-    if (isSlotUnavailable(payload.provider, payload.date, hour * 60 + minute, providerSchedules)) {
+    if (
+      isTimeRangeUnavailable(
+        payload.provider,
+        payload.date,
+        hour * 60 + minute,
+        hour * 60 + minute + appointment.durationMinutes,
+        providerSchedules
+      )
+    ) {
       setToastMessage("Outside provider availability");
       return;
     }
@@ -1519,7 +1560,8 @@ export function BigSchedule() {
     }
 
     const startMinuteInDay = start.hour() * 60 + start.minute();
-    if (isSlotUnavailable(formState.providerName, formState.date, startMinuteInDay, providerSchedules)) {
+    const endMinuteInDay = end.hour() * 60 + end.minute();
+    if (isTimeRangeUnavailable(formState.providerName, formState.date, startMinuteInDay, endMinuteInDay, providerSchedules)) {
       setModalError("Outside provider availability");
       return;
     }

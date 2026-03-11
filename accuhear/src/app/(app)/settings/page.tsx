@@ -319,14 +319,19 @@ type DayState = {
 
 type ProviderAvailabilityState = Record<string, DayState[]>;
 
-function buildDefaultDays(): DayState[] {
+function hasDefaultLunchBreak(provider: string): boolean {
+  return provider === "Chris Pape";
+}
+
+function buildDefaultDays(provider?: string): DayState[] {
+  const useLunchDefaults = provider ? hasDefaultLunchBreak(provider) : false;
   return Array.from({ length: 7 }, (_, i) => ({
     dayOfWeek: i,
     isActive: false,
     startMinute: 9 * 60,
     endMinute: 17 * 60,
-    lunchStartMinute: null,
-    lunchEndMinute: null,
+    lunchStartMinute: useLunchDefaults ? 12 * 60 : null,
+    lunchEndMinute: useLunchDefaults ? 13 * 60 : null,
   }));
 }
 
@@ -349,7 +354,7 @@ function ProviderAvailabilitySection() {
       setProviders(providerList);
       const state: ProviderAvailabilityState = {};
       for (const provider of providerList) {
-        const days = buildDefaultDays();
+        const days = buildDefaultDays(provider);
         const providerSchedule = schedules[provider] ?? {};
         for (const day of days) {
           const saved = providerSchedule[day.dayOfWeek];
@@ -357,8 +362,10 @@ function ProviderAvailabilitySection() {
             day.isActive = saved.isActive;
             day.startMinute = saved.startMinute;
             day.endMinute = saved.endMinute;
-            day.lunchStartMinute = saved.lunchStartMinute;
-            day.lunchEndMinute = saved.lunchEndMinute;
+            day.lunchStartMinute =
+              saved.lunchStartMinute ?? (hasDefaultLunchBreak(provider) ? 12 * 60 : null);
+            day.lunchEndMinute =
+              saved.lunchEndMinute ?? (hasDefaultLunchBreak(provider) ? 13 * 60 : null);
           }
         }
         state[provider] = days;
@@ -385,7 +392,7 @@ function ProviderAvailabilitySection() {
     (provider: string, dayOfWeek: number, patch: Partial<DayState>) => {
       setAvailability((prev) => ({
         ...prev,
-        [provider]: (prev[provider] ?? buildDefaultDays()).map((day) =>
+        [provider]: (prev[provider] ?? buildDefaultDays(provider)).map((day) =>
           day.dayOfWeek === dayOfWeek ? { ...day, ...patch } : day
         ),
       }));
@@ -398,7 +405,7 @@ function ProviderAvailabilitySection() {
       setSaving(provider);
       setError(null);
       setMessage(null);
-      const days = availability[provider] ?? buildDefaultDays();
+      const days = availability[provider] ?? buildDefaultDays(provider);
       for (const day of days) {
         if (day.isActive && day.endMinute <= day.startMinute) {
           setError(`${DAY_LABELS[day.dayOfWeek]}: end time must be after start time.`);
@@ -436,13 +443,21 @@ function ProviderAvailabilitySection() {
               dayOfWeek: day.dayOfWeek,
               startMinute: day.startMinute,
               endMinute: day.endMinute,
-              lunchStartMinute: day.lunchStartMinute,
-              lunchEndMinute: day.lunchEndMinute,
+              lunchStartMinute: day.lunchStartMinute ?? null,
+              lunchEndMinute: day.lunchEndMinute ?? null,
               isActive: day.isActive,
             })),
           }),
         });
-        const data = await res.json();
+        const raw = await res.text();
+        let data: { error?: string } = {};
+        if (raw) {
+          try {
+            data = JSON.parse(raw) as { error?: string };
+          } catch {
+            data = {};
+          }
+        }
         if (!res.ok) throw new Error(data.error || "Unable to save availability.");
         setMessage(`Saved availability for ${provider}.`);
       } catch (err) {
@@ -461,7 +476,7 @@ function ProviderAvailabilitySection() {
   return (
     <div className="space-y-6">
       {providers.map((provider) => {
-        const days = availability[provider] ?? buildDefaultDays();
+        const days = availability[provider] ?? buildDefaultDays(provider);
         return (
           <div key={provider}>
             <div className="flex items-center justify-between mb-2">
@@ -493,8 +508,8 @@ function ProviderAvailabilitySection() {
                     isActive: false,
                     startMinute: 9 * 60,
                     endMinute: 17 * 60,
-                    lunchStartMinute: null,
-                    lunchEndMinute: null,
+                    lunchStartMinute: hasDefaultLunchBreak(provider) ? 12 * 60 : null,
+                    lunchEndMinute: hasDefaultLunchBreak(provider) ? 13 * 60 : null,
                   };
                   return (
                     <tr key={dow} className={cn(idx % 2 === 1 && "bg-[rgba(243,239,232,0.4)]", "hover:bg-[rgba(31,149,184,0.04)]")}>

@@ -152,6 +152,8 @@ model ProviderSchedule {
   dayOfWeek    Int
   startMinute  Int
   endMinute    Int
+  lunchStartMinute Int?
+  lunchEndMinute   Int?
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
 

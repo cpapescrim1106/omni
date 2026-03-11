@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { normalizeProviderName } from "@/lib/provider-names";
+import type { ProviderScheduleMap } from "@/lib/provider-schedule";
 
 const DEFAULT_PROVIDERS = ["Chris Pape", "C + C, SHD"];
 
@@ -39,13 +40,15 @@ export async function GET() {
     a.localeCompare(b)
   );
 
-  const providerSchedules: Record<string, Record<number, { startMinute: number; endMinute: number; isActive: boolean }>> = {};
+  const providerSchedules: ProviderScheduleMap = {};
   for (const row of allSchedules) {
     if (!providerSchedules[row.providerName]) providerSchedules[row.providerName] = {};
     providerSchedules[row.providerName][row.dayOfWeek] = {
       startMinute: row.startMinute,
       endMinute: row.endMinute,
       isActive: row.isActive,
+      lunchStartMinute: row.lunchStartMinute,
+      lunchEndMinute: row.lunchEndMinute,
     };
   }
 
