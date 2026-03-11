@@ -40,8 +40,8 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
       if (!order) {
         throw new Error("Order not found");
       }
-      if (order.status !== "cancelled") {
-        throw new Error("Only cancelled tracked orders can be deleted");
+      if (!["cancelled", "returned"].includes(order.status)) {
+        throw new Error("Only cancelled or returned tracked orders can be deleted");
       }
 
       const orderItemIds = order.lineItems.map((item) => item.id);

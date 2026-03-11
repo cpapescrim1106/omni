@@ -505,3 +505,93 @@ test("cancelled tracked order can be deleted as a single package", async () => {
   });
   assert.equal(remainingDevices.length, 0);
 });
+
+test("returned tracked order can be deleted as a single package", async () => {
+  const patient = await prisma.patient.create({
+    data: {
+      legacyId: `${testTag}-delete-returned-order`,
+      firstName: "Casey",
+      lastName: "Vaughn",
+      status: "Active",
+    },
+  });
+
+  const trackedItem = await prisma.catalogItem.findFirstOrThrow({
+    where: { requiresSerial: true, createsPatientAsset: true },
+  });
+
+  const createResponse = await createPatientOrder(
+    new Request(`http://localhost/api/patients/${patient.id}/orders`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        provider: "Dr. Lane",
+        location: "SHD",
+        lineItems: [{ catalogItemId: trackedItem.id, side: "Right", quantity: 1 }],
+      }),
+    }),
+    { params: Promise.resolve({ id: patient.id }) }
+  );
+
+  assert.equal(createResponse.status, 200);
+  const createData = await readJson(createResponse);
+  const order = createData.order as {
+    id: string;
+    lineItems: Array<{ id: string }>;
+  };
+
+  const receiveResponse = await receiveOrder(
+    new Request(`http://localhost/api/orders/${order.id}/receive`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        items: [
+          {
+            orderItemId: order.lineItems[0]?.id,
+            serialNumber: `SN-RETURN-DELETE-${testTag}`,
+            manufacturerWarrantyEnd: "2029-03-09",
+            lossDamageWarrantyEnd: "2029-03-09",
+          },
+        ],
+      }),
+    }),
+    { params: Promise.resolve({ id: order.id }) }
+  );
+
+  assert.equal(receiveResponse.status, 200);
+
+  const returnResponse = await returnOrder(
+    new Request(`http://localhost/api/orders/${order.id}/return`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ reason: "Wrong device" }),
+    }),
+    { params: Promise.resolve({ id: order.id }) }
+  );
+
+  assert.equal(returnResponse.status, 200);
+
+  const deleteResponse = await deleteOrder(
+    new Request(`http://localhost/api/orders/${order.id}`, {
+      method: "DELETE",
+    }),
+    { params: Promise.resolve({ id: order.id }) }
+  );
+
+  assert.equal(deleteResponse.status, 200);
+
+  const deletedOrder = await prisma.purchaseOrder.findUnique({
+    where: { id: order.id },
+  });
+  assert.equal(deletedOrder, null);
+
+  const remainingSales = await prisma.saleTransaction.findMany({
+    where: { purchaseOrderId: order.id },
+  });
+  assert.equal(remainingSales.length, 0);
+
+  const remainingDevices = await prisma.device.findMany({
+    where: { patientId: patient.id },
+  });
+  assert.equal(remainingDevices.length, 0);
+});
