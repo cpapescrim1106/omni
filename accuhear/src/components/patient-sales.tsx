@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type CatalogItem = {
@@ -190,6 +191,7 @@ export function PatientSales({
   const [voidingTransactionId, setVoidingTransactionId] = useState<string | null>(null);
   const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null);
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
+  const [confirmDeleteKey, setConfirmDeleteKey] = useState<string | null>(null);
   const [voidingPaymentId, setVoidingPaymentId] = useState<string | null>(null);
   const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null);
   const [returnReason, setReturnReason] = useState("Return");
@@ -544,6 +546,7 @@ export function PatientSales({
 
   const deleteCancelledOrder = useCallback(async (orderId: string, deletedSaleIds: string[] = []) => {
     setDeletingOrderId(orderId);
+    setConfirmDeleteKey(null);
     setDeletingTransactionId(null);
     setVoidingTransactionId(null);
     setBusy(true);
@@ -564,6 +567,57 @@ export function PatientSales({
       setBusy(false);
     }
   }, [loadSales]);
+
+  const renderDeleteOrderButton = useCallback((orderId: string, deletedSaleIds: string[], location: "row" | "detail", className?: string) => {
+    const key = `${orderId}:${location}`;
+    return (
+      <Popover modal="trap-focus" open={confirmDeleteKey === key} onOpenChange={(open) => setConfirmDeleteKey(open ? key : null)}>
+        <PopoverTrigger
+          render={
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              className={className}
+              disabled={busy || deletingOrderId === orderId}
+            />
+          }
+        >
+          {deletingOrderId === orderId ? "Deleting..." : "Delete order"}
+        </PopoverTrigger>
+        <PopoverContent>
+          <div className="space-y-1">
+            <div className="font-display text-[13px] font-semibold text-ink-strong">Delete this order package?</div>
+            <div className="text-[12px] leading-relaxed text-ink-muted">
+              This permanently deletes the tracked order, linked invoice, and any cancellation or return transactions tied to it.
+            </div>
+          </div>
+          <div className="mt-3 rounded-[12px] bg-surface-1/80 px-3 py-3 text-[11px] leading-relaxed text-ink-muted">
+            Also removes related sale line items, payments, order documents, generated device records, and device status history created from this order.
+          </div>
+          <div className="mt-3 flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setConfirmDeleteKey(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              disabled={busy || deletingOrderId === orderId}
+              onClick={() => void deleteCancelledOrder(orderId, deletedSaleIds)}
+            >
+              {deletingOrderId === orderId ? "Deleting..." : "Delete order"}
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
+  }, [busy, confirmDeleteKey, deleteCancelledOrder, deletingOrderId]);
 
   const generatePurchaseAgreement = useCallback(async () => {
     if (!selectedSale) return;
@@ -1066,8 +1120,9 @@ export function PatientSales({
                 </div>
                 {ledgerRows.map((row) => {
                   if (row.kind === "sale") {
-                    const canDeleteCancelledOrder =
-                      row.sale.txnType === "invoice" && row.sale.purchaseOrder?.status === "cancelled";
+                    const canDeleteTerminalOrder =
+                      row.sale.txnType === "invoice" &&
+                      (row.sale.purchaseOrder?.status === "cancelled" || row.sale.purchaseOrder?.status === "returned");
                     const hideTransactionVoid =
                       row.sale.purchaseOrder?.status === "cancelled" || row.sale.purchaseOrder?.status === "returned";
                     const hideTransactionDelete =
@@ -1120,24 +1175,20 @@ export function PatientSales({
                               {voidingTransactionId === row.sale.id ? "Voiding..." : "Void"}
                             </Button>
                           ) : null}
-                          {canDeleteCancelledOrder ? (
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              size="sm"
-                              disabled={busy || deletingOrderId === row.sale.purchaseOrderId}
-                              className="h-7 px-2"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                if (!row.sale.purchaseOrderId) return;
-                                const relatedSaleIds = sales
-                                  .filter((sale) => sale.purchaseOrderId === row.sale.purchaseOrderId)
-                                  .map((sale) => sale.id);
-                                void deleteCancelledOrder(row.sale.purchaseOrderId, relatedSaleIds);
-                              }}
+                          {canDeleteTerminalOrder ? (
+                            <div
+                              onClick={(event) => event.stopPropagation()}
+                              onKeyDown={(event) => event.stopPropagation()}
                             >
-                              {deletingOrderId === row.sale.purchaseOrderId ? "Deleting..." : "Delete order"}
-                            </Button>
+                              {renderDeleteOrderButton(
+                                row.sale.purchaseOrderId!,
+                                sales
+                                  .filter((sale) => sale.purchaseOrderId === row.sale.purchaseOrderId)
+                                  .map((sale) => sale.id),
+                                "row",
+                                "h-7 px-2"
+                              )}
+                            </div>
                           ) : null}
                           {!hideTransactionDelete ? (
                             <Button
@@ -1552,40 +1603,31 @@ export function PatientSales({
                 >
                   Return item(s)
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={
-                    busy ||
-                    selectedSale.invoiceStatus === "void" ||
-                    selectedSaleOrder?.status === "cancelled" ||
-                    selectedSaleOrder?.status === "returned" ||
-                    voidingTransactionId === selectedSale.id ||
-                    deletingTransactionId === selectedSale.id
-                  }
-                  className="text-ink-muted line-through decoration-2"
-                  onClick={() => void voidTransaction(selectedSale.id)}
-                >
-                  {voidingTransactionId === selectedSale.id ? "Voiding..." : "Void transaction"}
-                </Button>
-                {selectedSaleOrder?.status === "cancelled" ? (
+                {selectedSaleOrder?.status !== "cancelled" && selectedSaleOrder?.status !== "returned" ? (
                   <Button
                     type="button"
-                    variant="destructive"
+                    variant="outline"
                     size="sm"
-                    disabled={busy || deletingOrderId === selectedSaleOrder.id}
-                    onClick={() =>
-                      void deleteCancelledOrder(
-                        selectedSaleOrder.id,
-                        sales
-                          .filter((sale) => sale.purchaseOrderId === selectedSaleOrder.id)
-                          .map((sale) => sale.id)
-                      )
+                    disabled={
+                      busy ||
+                      selectedSale.invoiceStatus === "void" ||
+                      voidingTransactionId === selectedSale.id ||
+                      deletingTransactionId === selectedSale.id
                     }
+                    className="text-ink-muted line-through decoration-2"
+                    onClick={() => void voidTransaction(selectedSale.id)}
                   >
-                    {deletingOrderId === selectedSaleOrder.id ? "Deleting..." : "Delete cancelled order"}
+                    {voidingTransactionId === selectedSale.id ? "Voiding..." : "Void transaction"}
                   </Button>
+                ) : null}
+                {selectedSaleOrder?.status === "cancelled" || selectedSaleOrder?.status === "returned" ? (
+                  renderDeleteOrderButton(
+                    selectedSaleOrder.id,
+                    sales
+                      .filter((sale) => sale.purchaseOrderId === selectedSaleOrder.id)
+                      .map((sale) => sale.id),
+                    "detail"
+                  )
                 ) : (
                   <Button
                     type="button"
