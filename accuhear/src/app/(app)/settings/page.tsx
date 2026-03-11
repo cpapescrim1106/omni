@@ -7,15 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import type { ProviderScheduleMap } from "@/lib/provider-schedule";
 import { cn } from "@/lib/utils";
 import {
   Briefcase,
   Clock,
-  DollarSign,
   Factory,
-  Link2,
-  Bell,
+  FileText,
+  LayoutTemplate,
   Shield,
+  Users,
   Pencil,
   Star,
   StarOff,
@@ -270,16 +271,16 @@ function toPayload(form: CatalogForm) {
 
 // ---- Settings Sections ----
 
-type SettingsSection = "catalog" | "manufacturers" | "availability" | "pricing" | "warranty" | "notifications" | "integrations";
+type SettingsSection = "catalog" | "manufacturers" | "availability" | "payers" | "documents" | "templates" | "users";
 
 const SETTINGS_NAV: Array<{ id: SettingsSection; label: string; icon: typeof Briefcase; group: number }> = [
   { id: "catalog", label: "Catalog Items", icon: Briefcase, group: 0 },
   { id: "manufacturers", label: "Manufacturers", icon: Factory, group: 0 },
   { id: "availability", label: "Provider Availability", icon: Clock, group: 0 },
-  { id: "pricing", label: "Pricing & Taxes", icon: DollarSign, group: 1 },
-  { id: "warranty", label: "Warranty Defaults", icon: Shield, group: 1 },
-  { id: "notifications", label: "Notifications", icon: Bell, group: 2 },
-  { id: "integrations", label: "Integrations", icon: Link2, group: 2 },
+  { id: "payers", label: "3rd Party Payers", icon: Shield, group: 1 },
+  { id: "documents", label: "Documents", icon: FileText, group: 1 },
+  { id: "templates", label: "Templates", icon: LayoutTemplate, group: 1 },
+  { id: "users", label: "User Admin", icon: Users, group: 2 },
 ];
 
 // ---- Provider Availability ----
@@ -312,6 +313,8 @@ type DayState = {
   isActive: boolean;
   startMinute: number;
   endMinute: number;
+  lunchStartMinute: number | null;
+  lunchEndMinute: number | null;
 };
 
 type ProviderAvailabilityState = Record<string, DayState[]>;
@@ -322,6 +325,8 @@ function buildDefaultDays(): DayState[] {
     isActive: false,
     startMinute: 9 * 60,
     endMinute: 17 * 60,
+    lunchStartMinute: null,
+    lunchEndMinute: null,
   }));
 }
 
@@ -340,8 +345,7 @@ function ProviderAvailabilitySection() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Unable to load availability.");
       const providerList: string[] = data.providers ?? [];
-      const schedules: Record<string, Record<number, { startMinute: number; endMinute: number; isActive: boolean }>> =
-        data.schedules ?? {};
+      const schedules: ProviderScheduleMap = data.schedules ?? {};
       setProviders(providerList);
       const state: ProviderAvailabilityState = {};
       for (const provider of providerList) {
@@ -353,6 +357,8 @@ function ProviderAvailabilitySection() {
             day.isActive = saved.isActive;
             day.startMinute = saved.startMinute;
             day.endMinute = saved.endMinute;
+            day.lunchStartMinute = saved.lunchStartMinute;
+            day.lunchEndMinute = saved.lunchEndMinute;
           }
         }
         state[provider] = days;
@@ -399,6 +405,26 @@ function ProviderAvailabilitySection() {
           setSaving(null);
           return;
         }
+        const hasPartialLunchBreak =
+          (day.lunchStartMinute == null && day.lunchEndMinute != null) ||
+          (day.lunchStartMinute != null && day.lunchEndMinute == null);
+        if (hasPartialLunchBreak) {
+          setError(`${DAY_LABELS[day.dayOfWeek]}: lunch break needs both a start and end time.`);
+          setSaving(null);
+          return;
+        }
+        if (
+          day.isActive &&
+          day.lunchStartMinute != null &&
+          day.lunchEndMinute != null &&
+          (day.lunchEndMinute <= day.lunchStartMinute ||
+            day.lunchStartMinute < day.startMinute ||
+            day.lunchEndMinute > day.endMinute)
+        ) {
+          setError(`${DAY_LABELS[day.dayOfWeek]}: lunch break must stay inside working hours.`);
+          setSaving(null);
+          return;
+        }
       }
       try {
         const res = await fetch("/api/provider-schedules", {
@@ -410,6 +436,8 @@ function ProviderAvailabilitySection() {
               dayOfWeek: day.dayOfWeek,
               startMinute: day.startMinute,
               endMinute: day.endMinute,
+              lunchStartMinute: day.lunchStartMinute,
+              lunchEndMinute: day.lunchEndMinute,
               isActive: day.isActive,
             })),
           }),
@@ -453,6 +481,8 @@ function ProviderAvailabilitySection() {
                   <th className="text-left text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft px-2 py-1 border-b border-surface-2 font-display w-16">Day</th>
                   <th className="text-left text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft px-2 py-1 border-b border-surface-2 font-display">Start</th>
                   <th className="text-left text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft px-2 py-1 border-b border-surface-2 font-display">End</th>
+                  <th className="text-left text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft px-2 py-1 border-b border-surface-2 font-display">Lunch Start</th>
+                  <th className="text-left text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft px-2 py-1 border-b border-surface-2 font-display">Lunch End</th>
                   <th className="text-left text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft px-2 py-1 border-b border-surface-2 font-display">Hours</th>
                 </tr>
               </thead>
@@ -463,6 +493,8 @@ function ProviderAvailabilitySection() {
                     isActive: false,
                     startMinute: 9 * 60,
                     endMinute: 17 * 60,
+                    lunchStartMinute: null,
+                    lunchEndMinute: null,
                   };
                   return (
                     <tr key={dow} className={cn(idx % 2 === 1 && "bg-[rgba(243,239,232,0.4)]", "hover:bg-[rgba(31,149,184,0.04)]")}>
@@ -497,9 +529,41 @@ function ProviderAvailabilitySection() {
                           className="rounded-lg border border-border bg-background px-2 py-0.5 text-xs text-ink disabled:opacity-40 disabled:cursor-not-allowed w-24"
                         />
                       </td>
+                      <td className="px-2 py-[6px] border-b border-surface-1">
+                        <input
+                          type="time"
+                          step="900"
+                          disabled={!day.isActive}
+                          value={day.lunchStartMinute == null ? "" : minutesToTimeString(day.lunchStartMinute)}
+                          onChange={(e) =>
+                            updateDay(provider, dow, {
+                              lunchStartMinute: e.target.value ? timeStringToMinutes(e.target.value) : null,
+                            })
+                          }
+                          className="rounded-lg border border-border bg-background px-2 py-0.5 text-xs text-ink disabled:opacity-40 disabled:cursor-not-allowed w-24"
+                        />
+                      </td>
+                      <td className="px-2 py-[6px] border-b border-surface-1">
+                        <input
+                          type="time"
+                          step="900"
+                          disabled={!day.isActive}
+                          value={day.lunchEndMinute == null ? "" : minutesToTimeString(day.lunchEndMinute)}
+                          onChange={(e) =>
+                            updateDay(provider, dow, {
+                              lunchEndMinute: e.target.value ? timeStringToMinutes(e.target.value) : null,
+                            })
+                          }
+                          className="rounded-lg border border-border bg-background px-2 py-0.5 text-xs text-ink disabled:opacity-40 disabled:cursor-not-allowed w-24"
+                        />
+                      </td>
                       <td className="px-2 py-[6px] border-b border-surface-1 text-xs text-ink-muted">
                         {day.isActive
-                          ? `${formatTimeDisplay(day.startMinute)} – ${formatTimeDisplay(day.endMinute)}`
+                          ? `${formatTimeDisplay(day.startMinute)} – ${formatTimeDisplay(day.endMinute)}${
+                              day.lunchStartMinute != null && day.lunchEndMinute != null
+                                ? ` (Lunch ${formatTimeDisplay(day.lunchStartMinute)} – ${formatTimeDisplay(day.lunchEndMinute)})`
+                                : ""
+                            }`
                           : "Off"}
                       </td>
                     </tr>
@@ -1297,17 +1361,17 @@ export default function SettingsPage() {
         {activeSection === "availability" && <ProviderAvailabilitySection />}
 
         {/* ---- Placeholder Sections ---- */}
-        {activeSection === "pricing" && (
-          <div className="text-[13px] text-ink-muted py-8">Pricing & tax configuration coming soon.</div>
+        {activeSection === "payers" && (
+          <div className="text-[13px] text-ink-muted py-8">3rd party payer configuration coming soon.</div>
         )}
-        {activeSection === "warranty" && (
-          <div className="text-[13px] text-ink-muted py-8">Warranty defaults configuration coming soon.</div>
+        {activeSection === "documents" && (
+          <div className="text-[13px] text-ink-muted py-8">Document settings coming soon.</div>
         )}
-        {activeSection === "notifications" && (
-          <div className="text-[13px] text-ink-muted py-8">Notification settings coming soon.</div>
+        {activeSection === "templates" && (
+          <div className="text-[13px] text-ink-muted py-8">Template management coming soon.</div>
         )}
-        {activeSection === "integrations" && (
-          <div className="text-[13px] text-ink-muted py-8">Integration management coming soon.</div>
+        {activeSection === "users" && (
+          <div className="text-[13px] text-ink-muted py-8">User administration coming soon.</div>
         )}
 
         {/* Toast notifications */}
