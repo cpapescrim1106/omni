@@ -62,7 +62,6 @@ export default async function PatientProfilePage({
   if (!patient) notFound();
   const activeTab = resolvedSearchParams?.tab ?? "Summary";
   const normalizedActiveTab = activeTab === "Ordered/delivered items" ? "Sales history" : activeTab;
-  const purchaseMode = resolvedSearchParams?.purchase ?? "";
   const patientLabel = `${patient.lastName}, ${patient.firstName}${patient.preferredName ? ` (${patient.preferredName})` : ""}`;
 
   const age = patient.dateOfBirth ? dayjs().diff(dayjs(patient.dateOfBirth), "year") : null;
@@ -197,7 +196,7 @@ export default async function PatientProfilePage({
       ) : normalizedActiveTab === "Messaging" ? (
         <PatientMessaging patientId={patient.id} />
       ) : normalizedActiveTab === "Sales history" ? (
-        <PatientSales patientId={patient.id} autoOpenCreate={purchaseMode === "direct" || purchaseMode === "tracked"} />
+        <PatientSales patientId={patient.id} />
       ) : normalizedActiveTab === "Documents" ? (
         <PatientDocuments
           patientId={patient.id}

@@ -1,19 +1,32 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { PackageIcon, ShoppingCartIcon, XIcon } from "lucide-react";
+import { MinusIcon, PackageIcon, PlusIcon, SearchIcon, ShoppingCartIcon, XIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogBody,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type CatalogItem = {
   id: string;
   name: string;
   manufacturer: string | null;
+  category: string;
+  isPinned: boolean;
   requiresSerial: boolean;
   tracksWarranty: boolean;
   createsPatientAsset: boolean;
@@ -21,12 +34,23 @@ type CatalogItem = {
   unitPrice: number;
 };
 
+// ── Tracked order types ─────────────────────────────────────────────────────
+
 type DraftLineItem = {
   catalogItemId: string;
   side: string;
   quantity: number;
   unitPrice: number;
 };
+
+// ── Direct sale types ───────────────────────────────────────────────────────
+
+type DraftSaleItem = {
+  catalogItemId: string;
+  quantity: number;
+};
+
+type Step = "choose" | "devices" | "direct-sale" | "success";
 
 function computeGross(items: DraftLineItem[]) {
   return items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
@@ -36,23 +60,35 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
   const router = useRouter();
 
   const [open, setOpen] = useState(false);
-  const [step, setStep] = useState<"choose" | "devices" | "success">("choose");
-  const [catalog, setCatalog] = useState<CatalogItem[]>([]);
-  const [catalogLoading, setCatalogLoading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [step, setStep] = useState<Step>("choose");
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
+  // Catalogs
+  const [trackedCatalog, setTrackedCatalog] = useState<CatalogItem[]>([]);
+  const [directCatalog, setDirectCatalog] = useState<CatalogItem[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+
+  // Tracked order draft
   const [draftItems, setDraftItems] = useState<DraftLineItem[]>([
     { catalogItemId: "", side: "Left", quantity: 1, unitPrice: 0 },
     { catalogItemId: "", side: "Right", quantity: 1, unitPrice: 0 },
   ]);
-  // null = not overridden, use gross; string = user has typed a custom total
   const [overrideTotal, setOverrideTotal] = useState<string | null>(null);
   const [discountAmount, setDiscountAmount] = useState("");
   const [discountReason, setDiscountReason] = useState("");
 
+  // Direct sale draft
+  const [saleItems, setSaleItems] = useState<DraftSaleItem[]>([]);
+  const [salePaymentAmount, setSalePaymentAmount] = useState("");
+  const [salePaymentMethod, setSalePaymentMethod] = useState("Patient");
+  const [catalogSearch, setCatalogSearch] = useState("");
+
   const resetForm = useCallback(() => {
     setStep("choose");
+    setError(null);
+    setSuccessMessage("");
     setDraftItems([
       { catalogItemId: "", side: "Left", quantity: 1, unitPrice: 0 },
       { catalogItemId: "", side: "Right", quantity: 1, unitPrice: 0 },
@@ -60,7 +96,10 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
     setOverrideTotal(null);
     setDiscountAmount("");
     setDiscountReason("");
-    setError(null);
+    setSaleItems([]);
+    setSalePaymentAmount("");
+    setSalePaymentMethod("Patient");
+    setCatalogSearch("");
   }, []);
 
   const openDialog = useCallback(() => {
@@ -73,43 +112,63 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
     setOpen(false);
   }, [resetForm]);
 
-  const loadCatalog = useCallback(async () => {
-    if (catalog.length) return;
+  // ── Catalog loaders ─────────────────────────────────────────────────────
+
+  const loadTrackedCatalog = useCallback(async () => {
+    if (trackedCatalog.length) return trackedCatalog;
     setCatalogLoading(true);
     try {
       const response = await fetch("/api/catalog?mode=tracked", { cache: "no-store" });
       if (!response.ok) throw new Error("Unable to load catalog");
       const payload = await response.json();
       const items = (payload.items ?? []) as CatalogItem[];
-      setCatalog(items);
-      if (items.length) {
-        setDraftItems([
-          { catalogItemId: items[0].id, side: "Left", quantity: 1, unitPrice: items[0].unitPrice },
-          { catalogItemId: items[0].id, side: "Right", quantity: 1, unitPrice: items[0].unitPrice },
-        ]);
-      }
+      setTrackedCatalog(items);
+      return items;
     } catch {
       setError("Unable to load catalog items.");
+      return [];
     } finally {
       setCatalogLoading(false);
     }
-  }, [catalog.length]);
+  }, [trackedCatalog]);
 
-  const selectDevices = useCallback(async () => {
+  const loadDirectCatalog = useCallback(async () => {
+    if (directCatalog.length) return directCatalog;
+    setCatalogLoading(true);
+    try {
+      const response = await fetch("/api/catalog?mode=direct-sale", { cache: "no-store" });
+      if (!response.ok) throw new Error("Unable to load catalog");
+      const payload = await response.json();
+      const items = (payload.items ?? []) as CatalogItem[];
+      setDirectCatalog(items);
+      return items;
+    } catch {
+      setError("Unable to load catalog items.");
+      return [];
+    } finally {
+      setCatalogLoading(false);
+    }
+  }, [directCatalog]);
+
+  // ── Step transitions ────────────────────────────────────────────────────
+
+  const goToDevices = useCallback(async () => {
     setStep("devices");
-    await loadCatalog();
-  }, [loadCatalog]);
+    const items = await loadTrackedCatalog();
+    if (items.length) {
+      setDraftItems([
+        { catalogItemId: items[0].id, side: "Left", quantity: 1, unitPrice: items[0].unitPrice },
+        { catalogItemId: items[0].id, side: "Right", quantity: 1, unitPrice: items[0].unitPrice },
+      ]);
+    }
+  }, [loadTrackedCatalog]);
 
-  const selectDirectSale = useCallback(() => {
-    closeDialog();
-    router.push(`/patients/${patientId}?tab=${encodeURIComponent("Sales history")}&purchase=direct`);
-  }, [closeDialog, patientId, router]);
+  const goToDirectSale = useCallback(async () => {
+    setStep("direct-sale");
+    await loadDirectCatalog();
+  }, [loadDirectCatalog]);
 
-  const addLine = useCallback(() => {
-    if (!catalog.length) return;
-    const first = catalog[0];
-    setDraftItems((cur) => [...cur, { catalogItemId: first.id, side: "Other", quantity: 1, unitPrice: first.unitPrice }]);
-  }, [catalog]);
+  // ── Tracked order helpers ───────────────────────────────────────────────
 
   const updateItem = useCallback((index: number, patch: Partial<DraftLineItem>) => {
     setDraftItems((cur) =>
@@ -117,22 +176,19 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
         if (i !== index) return entry;
         const updated = { ...entry, ...patch };
         if (patch.catalogItemId && patch.catalogItemId !== entry.catalogItemId) {
-          const cat = catalog.find((c) => c.id === patch.catalogItemId);
+          const cat = trackedCatalog.find((c) => c.id === patch.catalogItemId);
           updated.unitPrice = cat?.unitPrice ?? entry.unitPrice;
         }
         return updated;
       })
     );
-  }, [catalog]);
-
-  const removeLine = useCallback((index: number) => {
-    setDraftItems((cur) => cur.filter((_, i) => i !== index));
-  }, []);
+  }, [trackedCatalog]);
 
   const gross = computeGross(draftItems);
-  // use user's override if they've typed one, otherwise fall back to computed gross
   const editedTotal = overrideTotal !== null ? (Number(overrideTotal) || gross) : gross;
   const displayTotal = overrideTotal !== null ? overrideTotal : String(gross || "");
+
+  // ── Submit: tracked order ───────────────────────────────────────────────
 
   const createOrder = useCallback(async () => {
     if (!draftItems.length || draftItems.some((item) => !item.catalogItemId)) {
@@ -163,6 +219,7 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Unable to create tracked order.");
+      setSuccessMessage("Tracked order created with invoice.");
       setStep("success");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to create tracked order.");
@@ -170,6 +227,104 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
       setSubmitting(false);
     }
   }, [discountAmount, discountReason, draftItems, editedTotal, patientId]);
+
+  // ── Submit: direct sale ─────────────────────────────────────────────────
+
+  const createDirectSale = useCallback(async () => {
+    if (!saleItems.length || saleItems.some((item) => !item.catalogItemId)) {
+      setError("Select an item for every line.");
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const lineItems = saleItems.map((item) => {
+        const catalogItem = directCatalog.find((entry) => entry.id === item.catalogItemId);
+        if (!catalogItem) throw new Error("Invalid catalog selection");
+        return {
+          item: catalogItem.name,
+          itemCategory: catalogItem.category,
+          quantity: item.quantity,
+          unitPrice: catalogItem.unitPrice,
+          revenue: catalogItem.unitPrice * item.quantity,
+        };
+      });
+
+      const response = await fetch(`/api/patients/${patientId}/sales`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          lineItems,
+          payments: salePaymentAmount
+            ? [{ amount: Number(salePaymentAmount), kind: "payment", method: salePaymentMethod }]
+            : [],
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Unable to create direct sale.");
+      setSuccessMessage("Direct sale invoice created.");
+      setStep("success");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to create direct sale.");
+    } finally {
+      setSubmitting(false);
+    }
+  }, [directCatalog, patientId, saleItems, salePaymentAmount, salePaymentMethod]);
+
+  // ── Direct sale helpers ─────────────────────────────────────────────────
+
+  const addToSale = useCallback((catalogItemId: string) => {
+    setSaleItems((cur) => {
+      const existing = cur.find((i) => i.catalogItemId === catalogItemId);
+      if (existing) {
+        return cur.map((i) => (i.catalogItemId === catalogItemId ? { ...i, quantity: i.quantity + 1 } : i));
+      }
+      return [...cur, { catalogItemId, quantity: 1 }];
+    });
+  }, []);
+
+  const updateSaleQty = useCallback((catalogItemId: string, delta: number) => {
+    setSaleItems((cur) => {
+      const updated = cur.map((i) =>
+        i.catalogItemId === catalogItemId ? { ...i, quantity: i.quantity + delta } : i
+      );
+      return updated.filter((i) => i.quantity > 0);
+    });
+  }, []);
+
+  const removeSaleItem = useCallback((catalogItemId: string) => {
+    setSaleItems((cur) => cur.filter((i) => i.catalogItemId !== catalogItemId));
+  }, []);
+
+  const saleTotal = useMemo(() => {
+    return saleItems.reduce((sum, item) => {
+      const cat = directCatalog.find((c) => c.id === item.catalogItemId);
+      return sum + (cat?.unitPrice ?? 0) * item.quantity;
+    }, 0);
+  }, [saleItems, directCatalog]);
+
+  const filteredCatalog = useMemo(() => {
+    const lower = catalogSearch.toLowerCase();
+    return directCatalog.filter(
+      (item) =>
+        item.name.toLowerCase().includes(lower) ||
+        (item.manufacturer ?? "").toLowerCase().includes(lower)
+    );
+  }, [directCatalog, catalogSearch]);
+
+  const groupedCatalog = useMemo(() => {
+    const pinned = filteredCatalog.filter((i) => i.isPinned);
+    const supplies = filteredCatalog.filter((i) => !i.isPinned && i.category !== "service");
+    const services = filteredCatalog.filter((i) => !i.isPinned && i.category === "service");
+    return { pinned, supplies, services };
+  }, [filteredCatalog]);
+
+  // ── Catalog display helper ──────────────────────────────────────────────
+
+  const catalogLabel = (item: CatalogItem) =>
+    `${item.manufacturer ? `${item.manufacturer} ` : ""}${item.name}`;
+
+  // ── Render ──────────────────────────────────────────────────────────────
 
   return (
     <>
@@ -184,272 +339,477 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
       </Button>
 
       <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) closeDialog(); }}>
-        <DialogContent className="w-[460px] p-0 overflow-hidden" showCloseButton={false} style={{ maxHeight: "90dvh" }}>
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-surface-2 px-4 py-3">
-          <div className="text-sm font-semibold text-ink-strong">
-            {step === "choose" && "New purchase"}
-            {step === "devices" && "Tracked order — Devices"}
-            {step === "success" && "Order created"}
-          </div>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  type="button"
-                  onClick={closeDialog}
-                  variant="ghost"
-                  size="icon-sm"
-                  className="h-7 w-7 text-ink-muted"
-                  aria-label="Close"
-                />
-              }
-            >
-              <XIcon size={14} />
-            </TooltipTrigger>
-            <TooltipContent>Close</TooltipContent>
-          </Tooltip>
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4">
-
-          {/* Step: choose type */}
-          {step === "choose" && (
-            <div className="grid gap-3">
-              <Button
-                type="button"
-                variant="secondary"
-                size="default"
-                onClick={() => void selectDevices()}
-                className="flex h-auto items-center justify-start gap-3 rounded-2xl border border-surface-2 bg-white p-3 text-left whitespace-normal"
-              >
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-brand-ink/10 text-brand-ink">
-                  <PackageIcon size={14} />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-[13px] font-semibold text-ink-strong">Devices</div>
-                  <div className="mt-0.5 text-[11px] leading-snug text-ink-muted">Tracked order — hearing aids, earmolds, serialized accessories.</div>
-                </div>
-              </Button>
-
-              <Button
-                type="button"
-                variant="secondary"
-                size="default"
-                onClick={selectDirectSale}
-                className="flex h-auto items-center justify-start gap-3 rounded-2xl border border-surface-2 bg-white p-3 text-left whitespace-normal"
-              >
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-brand-ink/10 text-brand-ink">
-                  <ShoppingCartIcon size={14} />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-[13px] font-semibold text-ink-strong">Supplies / Service</div>
-                  <div className="mt-0.5 text-[11px] leading-snug text-ink-muted">Direct sale — batteries, domes, filters, repairs, office visits.</div>
-                </div>
-              </Button>
-            </div>
-          )}
-
-          {/* Step: create devices order */}
-          {step === "devices" && (
-            <div className="space-y-4">
-              {error ? (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              ) : null}
-
-              {catalogLoading ? (
-                <div className="py-6 text-center text-sm text-ink-muted">Loading catalog…</div>
-              ) : !catalog.length ? (
-                <Alert variant="warning">
-                  <AlertDescription>No tracked catalog items configured. Add items in Settings first.</AlertDescription>
-                </Alert>
-              ) : (
-                <>
-                  {/* Line items */}
-                  <div className="space-y-2">
-                    {draftItems.map((item, index) => (
-                      <div
-                        key={`line-${index}`}
-                        className="flex items-center gap-2 rounded-2xl border border-surface-2 bg-surface-1/40 p-3"
-                      >
-                        <Select value={item.catalogItemId} onValueChange={(value) => updateItem(index, { catalogItemId: value ?? item.catalogItemId })}>
-                          <SelectTrigger className="min-w-0 flex-1 bg-white text-sm">
-                            <span className="truncate">
-                              {(() => {
-                                const cat = catalog.find((c) => c.id === item.catalogItemId);
-                                return cat ? `${cat.manufacturer ? `${cat.manufacturer} ` : ""}${cat.name}` : "Select device";
-                              })()}
-                            </span>
-                          </SelectTrigger>
-                          <SelectContent>
-                          {catalog.map((c) => {
-                            const displayName = `${c.manufacturer ? `${c.manufacturer} ` : ""}${c.name}`;
-                            return (
-                              <SelectItem key={c.id} value={c.id} label={displayName}>
-                                {displayName}
-                              </SelectItem>
-                            );
-                          })}
-                          </SelectContent>
-                        </Select>
-                        <Select value={item.side} onValueChange={(value) => updateItem(index, { side: value ?? item.side })}>
-                          <SelectTrigger className="w-20 flex-none bg-white px-2 text-sm">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Left">Left</SelectItem>
-                            <SelectItem value="Right">Right</SelectItem>
-                            <SelectItem value="Other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Input
-                          type="number"
-                          min={1}
-                          className="w-12 flex-none px-2 text-center text-sm"
-                          value={item.quantity}
-                          onChange={(e) => updateItem(index, { quantity: Math.max(1, Number(e.target.value) || 1) })}
-                        />
-                        <Tooltip>
-                          <TooltipTrigger
-                            render={
-                              <Button
-                                type="button"
-                                onClick={() => removeLine(index)}
-                                disabled={draftItems.length === 1}
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 flex-none rounded-lg text-ink-muted"
-                              />
-                            }
-                          >
-                            <XIcon size={14} />
-                          </TooltipTrigger>
-                          <TooltipContent>Remove line</TooltipContent>
-                        </Tooltip>
-                      </div>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={addLine}
-                      className="w-fit text-brand-blue"
-                    >
-                      + Add line
-                    </Button>
-                  </div>
-
-                  {/* Discount + Total */}
-                  <div className="space-y-2 rounded-2xl border border-surface-2 bg-surface-1/40 p-4">
-                    <div className="flex items-center gap-2">
-                      <Input
-                        className="min-w-0 flex-1 text-sm placeholder:text-ink-soft"
-                        placeholder="Discount reason (optional)"
-                        value={discountReason}
-                        onChange={(e) => setDiscountReason(e.target.value)}
-                      />
-                      <div className="relative flex-none">
-                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-ink-muted">$</span>
-                        <Input
-                          type="number"
-                          min={0}
-                          step={0.01}
-                          className="w-24 py-2 pl-7 pr-3 text-right text-sm"
-                          placeholder="0"
-                          value={discountAmount}
-                          onChange={(e) => setDiscountAmount(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-4 border-t border-surface-2 pt-2">
-                      <span className="text-xs text-ink-muted">Total</span>
-                      <div className="relative">
-                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-ink-muted">$</span>
-                        <Input
-                          type="number"
-                          min={0}
-                          step={0.01}
-                          className="w-32 py-2 pl-7 pr-3 text-right text-sm font-semibold text-ink-strong"
-                          value={displayTotal}
-                          onChange={(e) => setOverrideTotal(e.target.value)}
-                          onBlur={(e) => {
-                            const val = Number(e.target.value);
-                            if (!Number.isFinite(val) || val < 0) setOverrideTotal(null);
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </>
+        <DialogContent
+          className={cn("transition-[width] duration-150", step === "direct-sale" ? "w-[640px]" : "w-[480px]")}
+          showCloseButton={false}
+          style={{ maxHeight: "90dvh", display: "flex", flexDirection: "column" }}
+        >
+          {/* ── Header ─────────────────────────────────────────────── */}
+          <DialogHeader className="flex-row items-center justify-between gap-4 border-b border-surface-2 px-4 py-3">
+            <div>
+              <DialogTitle>
+                {step === "choose" && "New purchase"}
+                {step === "devices" && "Tracked order"}
+                {step === "direct-sale" && "Direct sale"}
+                {step === "success" && "Purchase created"}
+              </DialogTitle>
+              {step === "devices" && (
+                <DialogDescription>Hearing aids, earmolds, serialized accessories</DialogDescription>
+              )}
+              {step === "direct-sale" && (
+                <DialogDescription>Batteries, services, supplies</DialogDescription>
               )}
             </div>
-          )}
-
-          {/* Step: success */}
-          {step === "success" && (
-            <div className="space-y-4 py-2">
-              <div className="rounded-2xl bg-success/10 px-4 py-3 text-sm text-success">
-                Tracked order created with invoice.
-              </div>
-              <p className="text-sm text-ink-muted">
-                Serial numbers and warranty dates are captured when you receive the items from the manufacturer.
-              </p>
-              <a
-                href={`/patients/${patientId}?tab=${encodeURIComponent("Sales history")}`}
-                className="inline-block rounded-full bg-brand-blue/10 px-4 py-2 text-sm font-semibold text-brand-ink hover:bg-brand-blue/20"
-                onClick={closeDialog}
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    onClick={closeDialog}
+                    variant="ghost"
+                    size="icon-sm"
+                    className="h-7 w-7 flex-none text-ink-muted"
+                    aria-label="Close"
+                  />
+                }
               >
-                View in Sales history →
-              </a>
-            </div>
+                <XIcon size={14} />
+              </TooltipTrigger>
+              <TooltipContent>Close</TooltipContent>
+            </Tooltip>
+          </DialogHeader>
+
+          {/* ── Body ───────────────────────────────────────────────── */}
+          <DialogBody className={cn("flex-1 overflow-x-hidden", step === "direct-sale" ? "flex min-h-0 overflow-y-hidden p-0" : "overflow-y-auto")}>
+
+            {/* Step: choose type */}
+            {step === "choose" && (
+              <div className="grid gap-3">
+                <button
+                  type="button"
+                  onClick={() => void goToDevices()}
+                  className="flex items-center gap-3 rounded-[14px] border border-surface-2 bg-white p-3 text-left transition-colors hover:border-brand-blue/30 hover:bg-[rgba(31,149,184,0.03)]"
+                >
+                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[10px] bg-brand-ink/8 text-brand-ink">
+                    <PackageIcon size={16} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[13px] font-semibold text-ink-strong">Devices</div>
+                    <div className="mt-0.5 text-[11px] leading-snug text-ink-muted">
+                      Tracked order — hearing aids, earmolds, serialized accessories
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => void goToDirectSale()}
+                  className="flex items-center gap-3 rounded-[14px] border border-surface-2 bg-white p-3 text-left transition-colors hover:border-brand-blue/30 hover:bg-[rgba(31,149,184,0.03)]"
+                >
+                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[10px] bg-brand-ink/8 text-brand-ink">
+                    <ShoppingCartIcon size={16} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[13px] font-semibold text-ink-strong">Supplies / Service</div>
+                    <div className="mt-0.5 text-[11px] leading-snug text-ink-muted">
+                      Direct sale — batteries, domes, filters, repairs, office visits
+                    </div>
+                  </div>
+                </button>
+              </div>
+            )}
+
+            {/* Step: tracked order (devices) */}
+            {step === "devices" && (
+              <div className="space-y-4">
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+
+                {catalogLoading ? (
+                  <div className="py-6 text-center text-sm text-ink-muted">Loading catalog...</div>
+                ) : !trackedCatalog.length ? (
+                  <Alert variant="warning">
+                    <AlertDescription>No tracked catalog items configured. Add items in Settings first.</AlertDescription>
+                  </Alert>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      {draftItems.map((item, index) => (
+                        <div
+                          key={`line-${index}`}
+                          className="flex items-center gap-2 rounded-[12px] border border-[rgba(38,34,96,0.08)] bg-white p-3"
+                        >
+                          <Select
+                            value={item.catalogItemId}
+                            onValueChange={(value) => updateItem(index, { catalogItemId: value ?? item.catalogItemId })}
+                          >
+                            <SelectTrigger className="min-w-0 flex-1 text-sm">
+                              <span className="truncate">
+                                {(() => {
+                                  const cat = trackedCatalog.find((c) => c.id === item.catalogItemId);
+                                  return cat ? catalogLabel(cat) : "Select device";
+                                })()}
+                              </span>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {trackedCatalog.map((c) => (
+                                <SelectItem key={c.id} value={c.id} label={catalogLabel(c)}>
+                                  {catalogLabel(c)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Select
+                            value={item.side}
+                            onValueChange={(value) => updateItem(index, { side: value ?? item.side })}
+                          >
+                            <SelectTrigger className="w-20 flex-none px-2 text-sm">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Left">Left</SelectItem>
+                              <SelectItem value="Right">Right</SelectItem>
+                              <SelectItem value="Other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            type="number"
+                            min={1}
+                            className="w-12 flex-none px-2 text-center text-sm"
+                            value={item.quantity}
+                            onChange={(e) => updateItem(index, { quantity: Math.max(1, Number(e.target.value) || 1) })}
+                          />
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={
+                                <Button
+                                  type="button"
+                                  onClick={() => setDraftItems((cur) => cur.filter((_, i) => i !== index))}
+                                  disabled={draftItems.length === 1}
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  className="flex-none text-ink-muted"
+                                />
+                              }
+                            >
+                              <XIcon size={14} />
+                            </TooltipTrigger>
+                            <TooltipContent>Remove line</TooltipContent>
+                          </Tooltip>
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          if (!trackedCatalog.length) return;
+                          const first = trackedCatalog[0];
+                          setDraftItems((cur) => [...cur, { catalogItemId: first.id, side: "Other", quantity: 1, unitPrice: first.unitPrice }]);
+                        }}
+                        className="w-fit text-brand-blue"
+                      >
+                        <PlusIcon size={14} className="mr-1" />
+                        Add line
+                      </Button>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Input
+                          className="min-w-0 flex-1 text-sm placeholder:text-ink-soft"
+                          placeholder="Discount reason (optional)"
+                          value={discountReason}
+                          onChange={(e) => setDiscountReason(e.target.value)}
+                        />
+                        <div className="relative flex-none">
+                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-ink-muted">$</span>
+                          <Input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            className="w-24 py-2 pl-7 pr-3 text-right text-sm"
+                            placeholder="0"
+                            value={discountAmount}
+                            onChange={(e) => setDiscountAmount(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-4 border-t border-surface-2 pt-2">
+                        <span className="text-xs text-ink-muted">Total</span>
+                        <div className="relative">
+                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-ink-muted">$</span>
+                          <Input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            className="w-32 py-2 pl-7 pr-3 text-right text-sm font-semibold text-ink-strong"
+                            value={displayTotal}
+                            onChange={(e) => setOverrideTotal(e.target.value)}
+                            onBlur={(e) => {
+                              const val = Number(e.target.value);
+                              if (!Number.isFinite(val) || val < 0) setOverrideTotal(null);
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Step: direct sale — split-panel POS layout */}
+            {step === "direct-sale" && (
+              <div className="flex min-h-[380px] flex-1">
+                {error && (
+                  <Alert variant="destructive" className="absolute left-4 right-4 top-2 z-10">
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+
+                {catalogLoading ? (
+                  <div className="flex flex-1 items-center justify-center text-sm text-ink-muted">Loading catalog...</div>
+                ) : !directCatalog.length ? (
+                  <div className="flex flex-1 items-center justify-center p-4">
+                    <Alert variant="warning">
+                      <AlertDescription>No direct-sale catalog items configured. Add items in Settings first.</AlertDescription>
+                    </Alert>
+                  </div>
+                ) : (
+                  <>
+                    {/* Left: Catalog */}
+                    <div className="flex w-[280px] flex-none flex-col border-r border-surface-2">
+                      <div className="border-b border-surface-2 px-3 py-2">
+                        <div className="relative">
+                          <SearchIcon size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-soft" />
+                          <Input
+                            className="h-[30px] pl-8 text-[12px]"
+                            placeholder="Search items..."
+                            value={catalogSearch}
+                            onChange={(e) => setCatalogSearch(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex-1 overflow-y-auto">
+                        {([
+                          ["Pinned", groupedCatalog.pinned],
+                          ["Supplies", groupedCatalog.supplies],
+                          ["Services", groupedCatalog.services],
+                        ] as const).map(([label, items]) =>
+                          items.length > 0 && (
+                            <div key={label}>
+                              <div className="px-3 pb-1 pt-2.5 font-display text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-soft">
+                                {label}
+                              </div>
+                              {items.map((item) => (
+                                <button
+                                  key={item.id}
+                                  type="button"
+                                  onClick={() => addToSale(item.id)}
+                                  className="group flex w-full items-center gap-2 px-3 py-[5px] text-left transition-colors hover:bg-[rgba(31,149,184,0.04)] active:bg-[rgba(31,149,184,0.08)]"
+                                >
+                                  {item.isPinned && (
+                                    <span className="inline-block h-[5px] w-[5px] flex-none rounded-full bg-brand-blue" />
+                                  )}
+                                  <span className="min-w-0 flex-1 truncate text-[12px] text-ink">{item.name}</span>
+                                  <span className="flex-none font-display text-[11px] text-ink-muted">
+                                    ${item.unitPrice}
+                                  </span>
+                                  <span className="flex h-[18px] w-[18px] flex-none items-center justify-center rounded-full bg-surface-2 text-ink-muted opacity-0 transition-all group-hover:opacity-100 group-hover:bg-brand-blue group-hover:text-white">
+                                    <PlusIcon size={11} />
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          )
+                        )}
+                        {!filteredCatalog.length && (
+                          <div className="px-3 py-6 text-center text-[12px] text-ink-soft">No items match</div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Right: Cart + Payment */}
+                    <div className="flex min-w-0 flex-1 flex-col">
+                      <div className="flex-1 overflow-y-auto px-3 py-2">
+                        {!saleItems.length ? (
+                          <div className="flex h-full items-center justify-center text-[12px] text-ink-soft">
+                            Click items on the left to add them
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            {saleItems.map((item) => {
+                              const cat = directCatalog.find((c) => c.id === item.catalogItemId);
+                              if (!cat) return null;
+                              const lineTotal = cat.unitPrice * item.quantity;
+                              return (
+                                <div
+                                  key={item.catalogItemId}
+                                  className="flex items-center gap-2 rounded-[8px] bg-surface-1 px-2.5 py-[6px]"
+                                >
+                                  <span className="min-w-0 flex-1 truncate text-[12px] text-ink" title={cat.name}>
+                                    {cat.name}
+                                  </span>
+                                  <div className="flex flex-none items-center gap-0.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => updateSaleQty(item.catalogItemId, -1)}
+                                      className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-surface-2 text-ink-muted transition-colors hover:bg-surface-3"
+                                    >
+                                      <MinusIcon size={11} />
+                                    </button>
+                                    <span className="w-[22px] text-center font-display text-[12px] font-semibold text-ink-strong">
+                                      {item.quantity}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => updateSaleQty(item.catalogItemId, 1)}
+                                      className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-surface-2 text-ink-muted transition-colors hover:bg-surface-3"
+                                    >
+                                      <PlusIcon size={11} />
+                                    </button>
+                                  </div>
+                                  <span className="w-[52px] flex-none text-right font-display text-[12px] font-semibold text-ink">
+                                    ${lineTotal.toFixed(2)}
+                                  </span>
+                                  <Tooltip>
+                                    <TooltipTrigger
+                                      render={
+                                        <button
+                                          type="button"
+                                          onClick={() => removeSaleItem(item.catalogItemId)}
+                                          className="flex h-[18px] w-[18px] flex-none items-center justify-center rounded-full text-ink-soft transition-colors hover:text-danger"
+                                        />
+                                      }
+                                    >
+                                      <XIcon size={12} />
+                                    </TooltipTrigger>
+                                    <TooltipContent>Remove</TooltipContent>
+                                  </Tooltip>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Payment */}
+                      <div className="border-t border-surface-2 px-3 py-2.5">
+                        <div className="flex gap-2">
+                          <div className="flex-1">
+                            <Label>Initial payment</Label>
+                            <div className="relative mt-1">
+                              <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[12px] text-ink-muted">$</span>
+                              <Input
+                                type="number"
+                                min={0}
+                                step={0.01}
+                                className="h-[30px] pl-6 text-[12px]"
+                                value={salePaymentAmount}
+                                onChange={(e) => setSalePaymentAmount(e.target.value)}
+                                placeholder="0.00"
+                              />
+                            </div>
+                          </div>
+                          <div className="flex-1">
+                            <Label>Payment method</Label>
+                            <Input
+                              className="mt-1 h-[30px] text-[12px]"
+                              value={salePaymentMethod}
+                              onChange={(e) => setSalePaymentMethod(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Step: success */}
+            {step === "success" && (
+              <div className="space-y-3 py-1">
+                <div className="rounded-[12px] bg-success/10 px-4 py-3 text-sm font-medium text-success">
+                  {successMessage}
+                </div>
+                {successMessage.includes("Tracked") && (
+                  <p className="text-xs text-ink-muted">
+                    Serial numbers and warranty dates are captured when you receive the items from the manufacturer.
+                  </p>
+                )}
+              </div>
+            )}
+          </DialogBody>
+
+          {/* ── Footer ─────────────────────────────────────────────── */}
+          {step === "devices" && (
+            <DialogFooter className="justify-between">
+              <Button type="button" onClick={() => setStep("choose")} variant="ghost" size="sm">
+                Back
+              </Button>
+              <Button
+                type="button"
+                disabled={submitting || !trackedCatalog.length || !draftItems.length || draftItems.some((item) => !item.catalogItemId)}
+                onClick={() => void createOrder()}
+                variant="default"
+                size="sm"
+              >
+                {submitting ? "Creating..." : "Create order + invoice"}
+              </Button>
+            </DialogFooter>
           )}
-        </div>
 
-        {/* Footer */}
-        {step === "devices" && (
-          <div className="flex items-center justify-between border-t border-surface-2 px-4 py-3">
-            <Button
-              type="button"
-              onClick={() => setStep("choose")}
-              variant="ghost"
-              size="sm"
-            >
-              ← Back
-            </Button>
-            <Button
-              type="button"
-              disabled={
-                submitting ||
-                !catalog.length ||
-                draftItems.length === 0 ||
-                draftItems.some((item) => !item.catalogItemId)
-              }
-              onClick={() => void createOrder()}
-              variant="default"
-              size="sm"
-              className="bg-brand-ink hover:bg-brand-ink/90"
-            >
-              {submitting ? "Creating…" : "Create order + invoice"}
-            </Button>
-          </div>
-        )}
+          {step === "direct-sale" && (
+            <DialogFooter className="justify-between">
+              <div className="flex items-center gap-2">
+                <Button type="button" onClick={() => setStep("choose")} variant="ghost" size="sm">
+                  Back
+                </Button>
+                {saleItems.length > 0 && (
+                  <span className="font-display text-[14px] font-semibold text-ink-strong">
+                    <span className="mr-1.5 text-[11px] font-normal text-ink-muted">Total</span>
+                    ${saleTotal.toFixed(2)}
+                  </span>
+                )}
+              </div>
+              <Button
+                type="button"
+                disabled={submitting || !saleItems.length}
+                onClick={() => void createDirectSale()}
+                variant="default"
+                size="sm"
+              >
+                {submitting ? "Creating..." : "Create invoice"}
+              </Button>
+            </DialogFooter>
+          )}
 
-        {step === "success" && (
-          <div className="flex justify-end border-t border-surface-2 px-4 py-3">
-            <Button
-              type="button"
-              onClick={closeDialog}
-              variant="secondary"
-              size="sm"
-            >
-              Close
-            </Button>
-          </div>
-        )}
+          {step === "success" && (
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  closeDialog();
+                  router.push(`/patients/${patientId}?tab=${encodeURIComponent("Sales history")}`);
+                  router.refresh();
+                }}
+              >
+                View in Sales history
+              </Button>
+              <Button type="button" onClick={closeDialog} variant="secondary" size="sm">
+                Close
+              </Button>
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
     </>

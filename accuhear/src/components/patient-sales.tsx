@@ -10,14 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-type CatalogItem = {
-  id: string;
-  name: string;
-  manufacturer: string | null;
-  category: string;
-  unitPrice: number;
-};
-
 type TrackedCatalogItem = {
   id: string;
   name: string;
@@ -74,10 +66,6 @@ type SaleTransaction = {
   purchaseOrder: { id: string; status: string; itemCount: number } | null;
 };
 
-type DraftSaleItem = {
-  catalogItemId: string;
-  quantity: number;
-};
 
 type OrderLineItem = {
   id: string;
@@ -162,29 +150,19 @@ function rowTypeLabel(transaction: SaleTransaction) {
 
 export function PatientSales({
   patientId,
-  autoOpenCreate = false,
 }: {
   patientId: string;
-  autoOpenCreate?: boolean;
 }) {
   const [sales, setSales] = useState<SaleTransaction[]>([]);
-  const [catalog, setCatalog] = useState<CatalogItem[]>([]);
   const [trackedCatalog, setTrackedCatalog] = useState<TrackedCatalogItem[]>([]);
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
-  const [showCreateSale, setShowCreateSale] = useState(false);
   const [showCreateTrackedOrder, setShowCreateTrackedOrder] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [showReturnForm, setShowReturnForm] = useState(false);
-  const [draftItems, setDraftItems] = useState<DraftSaleItem[]>([]);
-  const [draftProvider, setDraftProvider] = useState("");
-  const [draftLocation, setDraftLocation] = useState("");
-  const [draftNotes, setDraftNotes] = useState("");
-  const [draftPaymentAmount, setDraftPaymentAmount] = useState("");
-  const [draftPaymentMethod, setDraftPaymentMethod] = useState("Patient");
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("Patient");
   const [paymentKind, setPaymentKind] = useState("payment");
@@ -216,24 +194,21 @@ export function PatientSales({
     setLoading(true);
     setError(null);
     try {
-      const [salesResponse, catalogResponse, trackedCatalogResponse, ordersResponse] = await Promise.all([
+      const [salesResponse, trackedCatalogResponse, ordersResponse] = await Promise.all([
         fetch(`/api/patients/${patientId}/sales`, { cache: "no-store" }),
-        fetch("/api/catalog?mode=direct-sale", { cache: "no-store" }),
         fetch("/api/catalog?mode=tracked", { cache: "no-store" }),
         fetch(`/api/patients/${patientId}/orders`, { cache: "no-store" }),
       ]);
-      if (!salesResponse.ok || !catalogResponse.ok || !trackedCatalogResponse.ok || !ordersResponse.ok) {
+      if (!salesResponse.ok || !trackedCatalogResponse.ok || !ordersResponse.ok) {
         throw new Error("Unable to load sales.");
       }
-      const [salesPayload, catalogPayload, trackedCatalogPayload, ordersPayload] = await Promise.all([
+      const [salesPayload, trackedCatalogPayload, ordersPayload] = await Promise.all([
         salesResponse.json(),
-        catalogResponse.json(),
         trackedCatalogResponse.json(),
         ordersResponse.json(),
       ]);
       const saleRows = (salesPayload.sales ?? []) as SaleTransaction[];
       setSales(saleRows);
-      setCatalog((catalogPayload.items ?? []) as CatalogItem[]);
       setTrackedCatalog((trackedCatalogPayload.items ?? []) as TrackedCatalogItem[]);
       setOrders((ordersPayload.orders ?? []) as OrderRecord[]);
       setSelectedSaleId((current) => current ?? saleRows[0]?.id ?? null);
@@ -247,16 +222,6 @@ export function PatientSales({
   useEffect(() => {
     void loadSales();
   }, [loadSales]);
-
-  useEffect(() => {
-    if (catalog.length === 0 || draftItems.length > 0) return;
-    setDraftItems([{ catalogItemId: catalog[0].id, quantity: 1 }]);
-  }, [catalog, draftItems.length]);
-
-  useEffect(() => {
-    if (!autoOpenCreate || !catalog.length) return;
-    setShowCreateSale(true);
-  }, [autoOpenCreate, catalog.length]);
 
   const selectedSale = useMemo(
     () => sales.find((sale) => sale.id === selectedSaleId) ?? sales[0] ?? null,
@@ -291,7 +256,6 @@ export function PatientSales({
 
   const openCreateTrackedOrder = useCallback(() => {
     setShowCreateTrackedOrder(true);
-    setShowCreateSale(false);
     setTrackedDraftItems([{ catalogItemId: "", side: "Left", quantity: 1 }]);
     setTrackedDraftNotes("");
     setTrackedDraftDeposit("");
@@ -299,78 +263,6 @@ export function PatientSales({
     setMessage(null);
   }, []);
 
-  const openCreateDirectSale = useCallback(() => {
-    setShowCreateSale(true);
-    setShowCreateTrackedOrder(false);
-    setMessage(null);
-  }, []);
-
-  const createDirectSale = useCallback(async () => {
-    setBusy(true);
-    setMessage(null);
-    try {
-      const lineItems = draftItems.map((item) => {
-        const catalogItem = catalog.find((entry) => entry.id === item.catalogItemId);
-        if (!catalogItem) {
-          throw new Error("Invalid catalog selection");
-        }
-        return {
-          item: catalogItem.name,
-          itemCategory: catalogItem.category,
-          quantity: item.quantity,
-          unitPrice: catalogItem.unitPrice,
-          revenue: catalogItem.unitPrice * item.quantity,
-        };
-      });
-
-      const response = await fetch(`/api/patients/${patientId}/sales`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          provider: draftProvider || null,
-          location: draftLocation || null,
-          notes: draftNotes || null,
-          lineItems,
-          payments: draftPaymentAmount
-            ? [
-                {
-                  amount: Number(draftPaymentAmount),
-                  kind: "payment",
-                  method: draftPaymentMethod,
-                },
-              ]
-            : [],
-        }),
-      });
-      const payload = await response.json();
-      if (!response.ok) {
-        throw new Error(payload.error || "Unable to create direct sale.");
-      }
-      setShowCreateSale(false);
-      setDraftProvider("");
-      setDraftLocation("");
-      setDraftNotes("");
-      setDraftPaymentAmount("");
-      setDraftPaymentMethod("Patient");
-      setMessage("Direct sale invoice created.");
-      await loadSales();
-      setSelectedSaleId(payload.sale?.id ?? null);
-    } catch (createError) {
-      setError(createError instanceof Error ? createError.message : "Unable to create direct sale.");
-    } finally {
-      setBusy(false);
-    }
-  }, [
-    catalog,
-    draftItems,
-    draftLocation,
-    draftNotes,
-    draftPaymentAmount,
-    draftPaymentMethod,
-    draftProvider,
-    loadSales,
-    patientId,
-  ]);
 
   const createTrackedOrder = useCallback(async () => {
     setBusy(true);
@@ -874,9 +766,6 @@ export function PatientSales({
           <div className="text-sm text-ink-muted">Financial ledger only. Click an invoice to review payments, fulfillment, and agreements.</div>
         </div>
         <div className="flex gap-2">
-          <Button type="button" variant="secondary" size="sm" onClick={openCreateDirectSale}>
-            New direct sale
-          </Button>
           <Button type="button" size="sm" onClick={openCreateTrackedOrder}>
             New tracked order
           </Button>
@@ -892,118 +781,6 @@ export function PatientSales({
         <Alert variant="destructive" className="mt-4">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
-      ) : null}
-
-      {showCreateSale ? (
-        <div className="mt-6 rounded-[18px] border border-[rgba(31,149,184,0.15)] bg-[rgba(31,149,184,0.04)] p-4" data-testid="direct-sale-panel">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <div className="section-title">Direct sale</div>
-              <div className="text-xs text-ink-muted">Use this for consumables, batteries, domes, filters, and service charges.</div>
-            </div>
-            <Button type="button" variant="ghost" size="sm" onClick={() => setShowCreateSale(false)}>
-              Close
-            </Button>
-          </div>
-
-          <div className="mt-4 space-y-3">
-            {draftItems.map((item, index) => (
-              <div key={`sale-item-${index}`} className="grid gap-3 rounded-[18px] border border-[rgba(38,34,96,0.08)] bg-[rgba(255,255,255,0.82)] p-4 lg:grid-cols-[1.5fr_0.75fr_auto]">
-                <Label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
-                  Item
-                  <Select
-                    value={item.catalogItemId}
-                    onValueChange={(value) =>
-                      setDraftItems((current) =>
-                        current.map((entry, entryIndex) =>
-                          entryIndex === index ? { ...entry, catalogItemId: value || "" } : entry
-                        )
-                      )
-                    }
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {catalog.map((catalogItem) => (
-                        <SelectItem key={catalogItem.id} value={catalogItem.id}>
-                          {catalogItem.manufacturer ? `${catalogItem.manufacturer} ` : ""}
-                          {catalogItem.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Label>
-                <Label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
-                  Qty
-                  <Input
-                    type="number"
-                    min={1}
-                    className="mt-1"
-                    value={item.quantity}
-                    onChange={(event) =>
-                      setDraftItems((current) =>
-                        current.map((entry, entryIndex) =>
-                          entryIndex === index
-                            ? { ...entry, quantity: Math.max(1, Number(event.target.value) || 1) }
-                            : entry
-                        )
-                      )
-                    }
-                  />
-                </Label>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="self-end"
-                  disabled={draftItems.length === 1}
-                  onClick={() => setDraftItems((current) => current.filter((_, entryIndex) => entryIndex !== index))}
-                >
-                  Remove
-                </Button>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-4 grid gap-3 lg:grid-cols-2">
-            <Label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
-              Provider
-              <Input className="mt-1" value={draftProvider} onChange={(event) => setDraftProvider(event.target.value)} />
-            </Label>
-            <Label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
-              Location
-              <Input className="mt-1" value={draftLocation} onChange={(event) => setDraftLocation(event.target.value)} />
-            </Label>
-            <Label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft lg:col-span-2">
-              Notes
-              <Input className="mt-1" value={draftNotes} onChange={(event) => setDraftNotes(event.target.value)} />
-            </Label>
-            <Label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
-              Initial payment
-              <Input className="mt-1" value={draftPaymentAmount} onChange={(event) => setDraftPaymentAmount(event.target.value)} placeholder="Optional" />
-            </Label>
-            <Label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
-              Payment method
-              <Input className="mt-1" value={draftPaymentMethod} onChange={(event) => setDraftPaymentMethod(event.target.value)} />
-            </Label>
-          </div>
-
-          <div className="mt-4 flex gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => setDraftItems((current) => [...current, { catalogItemId: catalog[0]?.id ?? "", quantity: 1 }])}
-              disabled={!catalog.length}
-            >
-              Add line
-            </Button>
-            <Button type="button" size="sm" disabled={busy || !draftItems.length} onClick={() => void createDirectSale()}>
-              {busy ? "Creating..." : "Create invoice"}
-            </Button>
-          </div>
-        </div>
       ) : null}
 
       {showCreateTrackedOrder ? (

@@ -92,7 +92,7 @@ const STARTER_CATALOG: Array<{
   {
     name: "Wax Filter Pack",
     manufacturer: "Oticon",
-    category: "consumable",
+    category: "supplies",
     requiresSerial: false,
     tracksWarranty: false,
     createsPatientAsset: false,
@@ -104,7 +104,7 @@ const STARTER_CATALOG: Array<{
   {
     name: "Dome Pack",
     manufacturer: "Oticon",
-    category: "consumable",
+    category: "supplies",
     requiresSerial: false,
     tracksWarranty: false,
     createsPatientAsset: false,
@@ -116,7 +116,7 @@ const STARTER_CATALOG: Array<{
   {
     name: "Battery Pack 312",
     manufacturer: "Power One",
-    category: "consumable",
+    category: "supplies",
     batteryCellSize: "312",
     batteryCellQuantity: 6,
     requiresSerial: false,
@@ -274,7 +274,7 @@ const STARTER_CATALOG: Array<{
   {
     name: "Cleaning Wires (pkg of 5)",
     manufacturer: "Managed Care",
-    category: "accessory",
+    category: "supplies",
     accessoryCategory: "Other",
     requiresSerial: false,
     tracksWarranty: false,
@@ -287,7 +287,7 @@ const STARTER_CATALOG: Array<{
   {
     name: "Eargene .5oz",
     manufacturer: "Unknown",
-    category: "accessory",
+    category: "supplies",
     accessoryCategory: "Other",
     requiresSerial: false,
     tracksWarranty: false,
@@ -300,7 +300,7 @@ const STARTER_CATALOG: Array<{
   {
     name: "Nano Cleaners (box of 20)",
     manufacturer: "Oaktree",
-    category: "accessory",
+    category: "supplies",
     accessoryCategory: "Other",
     requiresSerial: false,
     tracksWarranty: false,
@@ -313,7 +313,7 @@ const STARTER_CATALOG: Array<{
   {
     name: "Oticon domes package",
     manufacturer: "Oticon",
-    category: "accessory",
+    category: "supplies",
     accessoryCategory: "Other",
     requiresSerial: false,
     tracksWarranty: false,
@@ -326,7 +326,7 @@ const STARTER_CATALOG: Array<{
   {
     name: "OtoClip BTE Binaural",
     manufacturer: "Oaktree",
-    category: "accessory",
+    category: "supplies",
     accessoryCategory: "Other",
     requiresSerial: false,
     tracksWarranty: false,
@@ -339,7 +339,7 @@ const STARTER_CATALOG: Array<{
   {
     name: "OtoClip BTE Monaural",
     manufacturer: "Oaktree",
-    category: "accessory",
+    category: "supplies",
     accessoryCategory: "Other",
     requiresSerial: false,
     tracksWarranty: false,
@@ -352,7 +352,7 @@ const STARTER_CATALOG: Array<{
   {
     name: "Stay Dri",
     manufacturer: "Oaktree",
-    category: "accessory",
+    category: "supplies",
     accessoryCategory: "Other",
     requiresSerial: false,
     tracksWarranty: false,
@@ -365,7 +365,7 @@ const STARTER_CATALOG: Array<{
   {
     name: "Wax Filters",
     manufacturer: "Managed Care",
-    category: "accessory",
+    category: "supplies",
     accessoryCategory: "Other",
     requiresSerial: false,
     tracksWarranty: false,
@@ -378,7 +378,7 @@ const STARTER_CATALOG: Array<{
   {
     name: "Wax removal kit",
     manufacturer: "Oaktree",
-    category: "accessory",
+    category: "supplies",
     accessoryCategory: "Other",
     requiresSerial: false,
     tracksWarranty: false,
@@ -390,7 +390,7 @@ const STARTER_CATALOG: Array<{
   },
   {
     name: "Battery Sleeve",
-    category: "consumable",
+    category: "supplies",
     batteryCellSize: "Other",
     batteryCellQuantity: 8,
     requiresSerial: false,
@@ -404,7 +404,7 @@ const STARTER_CATALOG: Array<{
   {
     name: "Oticon Lithium Ion",
     manufacturer: "Oticon",
-    category: "consumable",
+    category: "supplies",
     batteryCellSize: "Other",
     batteryCellQuantity: 1,
     requiresSerial: false,
@@ -571,7 +571,7 @@ const STARTER_CATALOG: Array<{
   {
     name: "Connect Clip",
     manufacturer: "Oticon",
-    category: "accessory",
+    category: "serialized_accessory",
     requiresSerial: true,
     tracksWarranty: true,
     createsPatientAsset: true,
@@ -585,7 +585,7 @@ const STARTER_CATALOG: Array<{
   {
     name: "ConnectLine TV Adapter",
     manufacturer: "Oticon",
-    category: "accessory",
+    category: "serialized_accessory",
     requiresSerial: true,
     tracksWarranty: true,
     createsPatientAsset: true,
@@ -599,7 +599,7 @@ const STARTER_CATALOG: Array<{
   {
     name: "Remote Control 3.0",
     manufacturer: "Oticon",
-    category: "accessory",
+    category: "serialized_accessory",
     requiresSerial: true,
     tracksWarranty: true,
     createsPatientAsset: true,
@@ -613,7 +613,7 @@ const STARTER_CATALOG: Array<{
   {
     name: "Signia MiniPocket Remote",
     manufacturer: "Signia",
-    category: "accessory",
+    category: "serialized_accessory",
     requiresSerial: true,
     tracksWarranty: true,
     createsPatientAsset: true,
@@ -627,7 +627,7 @@ const STARTER_CATALOG: Array<{
   {
     name: "StreamLine Microphone",
     manufacturer: "Signia",
-    category: "accessory",
+    category: "serialized_accessory",
     requiresSerial: true,
     tracksWarranty: true,
     createsPatientAsset: true,
@@ -642,7 +642,7 @@ const STARTER_CATALOG: Array<{
   {
     name: "Managed Care/3rd Party Orderable",
     manufacturer: "Managed Care",
-    category: "service",
+    category: "serialized_accessory",
     requiresSerial: true,
     tracksWarranty: true,
     createsPatientAsset: true,
@@ -656,7 +656,7 @@ const STARTER_CATALOG: Array<{
   {
     name: "ReCertified Orderable",
     manufacturer: "Recertified",
-    category: "service",
+    category: "serialized_accessory",
     requiresSerial: true,
     tracksWarranty: true,
     createsPatientAsset: true,

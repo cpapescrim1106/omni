@@ -34,7 +34,7 @@ type CatalogItemCategory =
   | "serialized_accessory"
   | "earmold"
   | "accessory"
-  | "consumable"
+  | "supplies"
   | "service";
 
 type CatalogManufacturer = {
@@ -115,7 +115,7 @@ const CATEGORIES: Array<{ value: CatalogItemCategory; label: string }> = [
   { value: "serialized_accessory", label: "Serialized Accessory" },
   { value: "earmold", label: "Earmold" },
   { value: "accessory", label: "Accessory" },
-  { value: "consumable", label: "Consumable" },
+  { value: "supplies", label: "Supplies" },
   { value: "service", label: "Service" },
 ];
 

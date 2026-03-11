@@ -19,7 +19,7 @@ function parseCategories(searchParams: URLSearchParams) {
 
   const mode = searchParams.get("mode");
   if (mode === "tracked") return TRACKED_ITEM_CATEGORIES;
-  if (mode === "direct-sale") return ["consumable", "service", "accessory"] as CatalogItemCategory[];
+  if (mode === "direct-sale") return ["service", "accessory", "supplies"] as CatalogItemCategory[];
   return null;
 }
 

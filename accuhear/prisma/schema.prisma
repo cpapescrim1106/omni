@@ -362,7 +362,7 @@ enum CatalogItemCategory {
   serialized_accessory
   earmold
   accessory
-  consumable
+  supplies
   service
 }
 
