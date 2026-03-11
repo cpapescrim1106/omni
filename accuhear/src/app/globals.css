@@ -932,11 +932,11 @@ a {
   overflow: hidden;
   transition: width 0.2s ease, max-width 0.2s ease, box-shadow 0.2s ease;
 }
-.schedule-shell.is-hoverable:hover,
+.schedule-shell.is-hoverable:has(.schedule-sidebar:hover),
 .schedule-shell.is-hoverable:has(.schedule-sidebar :focus-visible) {
   grid-template-columns: 240px 1fr;
 }
-.schedule-shell.is-hoverable:hover .schedule-sidebar,
+.schedule-shell.is-hoverable:has(.schedule-sidebar:hover) .schedule-sidebar,
 .schedule-shell.is-hoverable:has(.schedule-sidebar :focus-visible) .schedule-sidebar {
   width: 240px;
   min-width: 240px;
@@ -950,7 +950,7 @@ a {
   pointer-events: none;
   transition: opacity 0.15s ease;
 }
-.schedule-shell.is-hoverable:hover .schedule-sidebar > :not(.schedule-sidebar-pin):not(.schedule-sidebar-icons),
+.schedule-shell.is-hoverable:has(.schedule-sidebar:hover) .schedule-sidebar > :not(.schedule-sidebar-pin):not(.schedule-sidebar-icons),
 .schedule-shell.is-hoverable:has(.schedule-sidebar :focus-visible) .schedule-sidebar > :not(.schedule-sidebar-pin):not(.schedule-sidebar-icons) {
   opacity: 1;
   pointer-events: auto;
@@ -967,7 +967,7 @@ a {
 .schedule-shell.is-hoverable .schedule-sidebar-icons {
   display: flex;
 }
-.schedule-shell.is-hoverable:hover .schedule-sidebar-icons,
+.schedule-shell.is-hoverable:has(.schedule-sidebar:hover) .schedule-sidebar-icons,
 .schedule-shell.is-hoverable:has(.schedule-sidebar :focus-visible) .schedule-sidebar-icons {
   display: none;
 }
@@ -1669,9 +1669,13 @@ a {
 
 .patient-header-stat-value {
   font-family: var(--font-display), "Space Grotesk", sans-serif;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--ink-strong);
+}
+
+.patient-header-stat-value-danger {
+  color: var(--danger);
 }
 
 .patient-header-stat-sep {

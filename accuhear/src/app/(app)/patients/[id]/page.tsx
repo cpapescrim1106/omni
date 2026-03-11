@@ -157,20 +157,18 @@ export default async function PatientProfilePage({
           </div>
 
           <div className="patient-header-stats">
-            {[
-              { label: "Bal", value: formatCurrency(patientBalance) },
-              { label: "Reimb", value: "$0.00" },
-              { label: "Punct", value: "1m early" },
-              { label: "No-show", value: "0%" },
-            ].map((stat, i) => (
-              <Fragment key={stat.label}>
-                {i > 0 && <span className="patient-header-stat-sep" />}
-                <span className="patient-header-stat">
-                  <span className="patient-header-stat-label">{stat.label}</span>
-                  <span className="patient-header-stat-value">{stat.value}</span>
-                </span>
-              </Fragment>
-            ))}
+            <span className="patient-header-stat">
+              <span className="patient-header-stat-label">Bal</span>
+              <span
+                className={
+                  patientBalance > 0
+                    ? "patient-header-stat-value patient-header-stat-value-danger"
+                    : "patient-header-stat-value"
+                }
+              >
+                {formatCurrency(patientBalance)}
+              </span>
+            </span>
           </div>
         </div>
 
