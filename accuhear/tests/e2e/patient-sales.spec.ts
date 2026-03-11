@@ -96,6 +96,21 @@ test.describe.serial("Patient sales flow", () => {
     await page.getByRole("button", { name: "Save payment" }).click();
     await expect(page.getByText("Payment recorded.")).toBeVisible();
 
+    const paymentRow = page.getByTestId("sales-row").filter({ hasText: "$18.00" }).filter({ hasText: "Payment" }).first();
+    await expect(paymentRow).toBeVisible();
+
+    await paymentRow.getByRole("button", { name: "Void" }).click();
+    await expect(page.getByText("Payment voided.")).toBeVisible();
+
+    const refundRow = page.getByTestId("sales-row").filter({ hasText: "$18.00" }).filter({ hasText: "refund" }).first();
+    await expect(refundRow).toBeVisible();
+    await expect(refundRow.getByText("refund")).toBeVisible();
+
+    const refundDelete = refundRow.getByRole("button", { name: "Delete" });
+    await refundDelete.click();
+    await expect(page.getByText("Payment deleted.")).toBeVisible();
+    await expect(page.getByTestId("sales-row").filter({ hasText: "$18.00" }).filter({ hasText: "refund" })).toHaveCount(0);
+
     await page.getByRole("button", { name: "Generate purchase agreement" }).click();
     await expect(page.getByText("Purchase agreement generated.")).toBeVisible();
     await expect(page.getByTestId("sales-detail")).toContainText("Purchase Agreement");
