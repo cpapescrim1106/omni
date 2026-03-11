@@ -918,41 +918,40 @@ a {
   display: grid;
   gap: 18px;
   grid-template-columns: 240px 1fr;
+  transition: grid-template-columns 0.2s ease;
 }
 
 /* Hoverable (unpinned) state — sidebar collapses to slim strip, expands on hover */
 .schedule-shell.is-hoverable {
   grid-template-columns: 40px 1fr;
-  position: relative;
 }
 .schedule-shell.is-hoverable .schedule-sidebar {
   width: 40px;
+  min-width: 40px;
+  max-width: 40px;
   overflow: hidden;
-  transition: width 0.2s ease, box-shadow 0.2s ease;
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 20;
-  background: var(--surface-1);
-  border-radius: 16px;
+  transition: width 0.2s ease, max-width 0.2s ease, box-shadow 0.2s ease;
 }
-.schedule-shell.is-hoverable .schedule-sidebar:hover {
+.schedule-shell.is-hoverable:hover,
+.schedule-shell.is-hoverable:has(.schedule-sidebar :focus-visible) {
+  grid-template-columns: 240px 1fr;
+}
+.schedule-shell.is-hoverable:hover .schedule-sidebar,
+.schedule-shell.is-hoverable:has(.schedule-sidebar :focus-visible) .schedule-sidebar {
   width: 240px;
+  min-width: 240px;
+  max-width: 240px;
   overflow-y: auto;
   overflow-x: hidden;
   box-shadow: 4px 0 24px rgba(0, 0, 0, 0.08);
-}
-/* Board must stay in column 2 since sidebar is absolutely positioned */
-.schedule-shell.is-hoverable .schedule-board {
-  grid-column: 2;
 }
 .schedule-shell.is-hoverable .schedule-sidebar > :not(.schedule-sidebar-pin):not(.schedule-sidebar-icons) {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.15s ease;
 }
-.schedule-shell.is-hoverable .schedule-sidebar:hover > :not(.schedule-sidebar-pin):not(.schedule-sidebar-icons) {
+.schedule-shell.is-hoverable:hover .schedule-sidebar > :not(.schedule-sidebar-pin):not(.schedule-sidebar-icons),
+.schedule-shell.is-hoverable:has(.schedule-sidebar :focus-visible) .schedule-sidebar > :not(.schedule-sidebar-pin):not(.schedule-sidebar-icons) {
   opacity: 1;
   pointer-events: auto;
 }
@@ -968,7 +967,8 @@ a {
 .schedule-shell.is-hoverable .schedule-sidebar-icons {
   display: flex;
 }
-.schedule-shell.is-hoverable .schedule-sidebar:hover .schedule-sidebar-icons {
+.schedule-shell.is-hoverable:hover .schedule-sidebar-icons,
+.schedule-shell.is-hoverable:has(.schedule-sidebar :focus-visible) .schedule-sidebar-icons {
   display: none;
 }
 
