@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MinusIcon, PackageIcon, PlusIcon, SearchIcon, ShoppingCartIcon, XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -50,7 +51,7 @@ type DraftSaleItem = {
   quantity: number;
 };
 
-type Step = "choose" | "devices" | "direct-sale" | "success";
+type Step = "devices" | "direct-sale" | "success";
 
 function computeGross(items: DraftLineItem[]) {
   return items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
@@ -59,8 +60,8 @@ function computeGross(items: DraftLineItem[]) {
 export function PurchaseButton({ patientId }: { patientId: string }) {
   const router = useRouter();
 
-  const [open, setOpen] = useState(false);
-  const [step, setStep] = useState<Step>("choose");
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [dialogStep, setDialogStep] = useState<Step | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
@@ -83,10 +84,10 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
   const [saleItems, setSaleItems] = useState<DraftSaleItem[]>([]);
   const [salePaymentAmount, setSalePaymentAmount] = useState("");
   const [salePaymentMethod, setSalePaymentMethod] = useState("Patient");
+  const [availablePaymentMethods, setAvailablePaymentMethods] = useState<Array<{ id: string; name: string }>>([]);
   const [catalogSearch, setCatalogSearch] = useState("");
 
   const resetForm = useCallback(() => {
-    setStep("choose");
     setError(null);
     setSuccessMessage("");
     setDraftItems([
@@ -102,15 +103,21 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
     setCatalogSearch("");
   }, []);
 
-  const openDialog = useCallback(() => {
-    resetForm();
-    setOpen(true);
-  }, [resetForm]);
-
   const closeDialog = useCallback(() => {
     resetForm();
-    setOpen(false);
+    setDialogStep(null);
   }, [resetForm]);
+
+  useEffect(() => {
+    fetch("/api/payment-methods?enabledOnly=1")
+      .then((r) => r.json())
+      .then((data) => {
+        const methods = data.items ?? [];
+        setAvailablePaymentMethods(methods);
+        if (methods.length) setSalePaymentMethod(methods[0].name);
+      })
+      .catch(() => {});
+  }, []);
 
   // ── Catalog loaders ─────────────────────────────────────────────────────
 
@@ -153,7 +160,9 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
   // ── Step transitions ────────────────────────────────────────────────────
 
   const goToDevices = useCallback(async () => {
-    setStep("devices");
+    resetForm();
+    setPopoverOpen(false);
+    setDialogStep("devices");
     const items = await loadTrackedCatalog();
     if (items.length) {
       setDraftItems([
@@ -161,12 +170,14 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
         { catalogItemId: items[0].id, side: "Right", quantity: 1, unitPrice: items[0].unitPrice },
       ]);
     }
-  }, [loadTrackedCatalog]);
+  }, [loadTrackedCatalog, resetForm]);
 
   const goToDirectSale = useCallback(async () => {
-    setStep("direct-sale");
+    resetForm();
+    setPopoverOpen(false);
+    setDialogStep("direct-sale");
     await loadDirectCatalog();
-  }, [loadDirectCatalog]);
+  }, [loadDirectCatalog, resetForm]);
 
   // ── Tracked order helpers ───────────────────────────────────────────────
 
@@ -220,7 +231,7 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Unable to create tracked order.");
       setSuccessMessage("Tracked order created with invoice.");
-      setStep("success");
+      setDialogStep("success");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to create tracked order.");
     } finally {
@@ -263,7 +274,7 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Unable to create direct sale.");
       setSuccessMessage("Direct sale invoice created.");
-      setStep("success");
+      setDialogStep("success");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to create direct sale.");
     } finally {
@@ -328,35 +339,73 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
 
   return (
     <>
-      <Button
-        type="button"
-        onClick={openDialog}
-        variant="default"
-        size="sm"
-        className="bg-success text-white shadow-[0_10px_24px_rgba(34,197,94,0.22)] hover:bg-success/90"
-      >
-        Purchase
-      </Button>
+      <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+        <PopoverTrigger
+          render={
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              className="bg-success text-white shadow-[0_10px_24px_rgba(34,197,94,0.22)] hover:bg-success/90"
+            />
+          }
+        >
+          Purchase
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-[260px] p-2">
+          <div className="grid gap-1">
+            <button
+              type="button"
+              onClick={() => void goToDevices()}
+              className="flex items-center gap-3 rounded-[10px] px-2.5 py-2 text-left transition-colors hover:bg-[rgba(31,149,184,0.04)] active:bg-[rgba(31,149,184,0.08)]"
+            >
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[8px] bg-brand-ink/8 text-brand-ink">
+                <PackageIcon size={15} />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[12px] font-semibold text-ink-strong">Devices</div>
+                <div className="text-[10px] leading-snug text-ink-muted">
+                  Hearing aids, earmolds, accessories
+                </div>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => void goToDirectSale()}
+              className="flex items-center gap-3 rounded-[10px] px-2.5 py-2 text-left transition-colors hover:bg-[rgba(31,149,184,0.04)] active:bg-[rgba(31,149,184,0.08)]"
+            >
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[8px] bg-brand-ink/8 text-brand-ink">
+                <ShoppingCartIcon size={15} />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[12px] font-semibold text-ink-strong">Supplies / Service</div>
+                <div className="text-[10px] leading-snug text-ink-muted">
+                  Batteries, domes, filters, repairs
+                </div>
+              </div>
+            </button>
+          </div>
+        </PopoverContent>
+      </Popover>
 
-      <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) closeDialog(); }}>
+      <Dialog open={dialogStep !== null} onOpenChange={(nextOpen) => { if (!nextOpen) closeDialog(); }}>
         <DialogContent
-          className={cn("transition-[width] duration-150", step === "direct-sale" ? "w-[640px]" : "w-[480px]")}
+          className={cn("transition-[width] duration-150", dialogStep === "direct-sale" ? "w-[700px] max-w-[700px]" : "w-[480px]")}
           showCloseButton={false}
-          style={{ maxHeight: "90dvh", display: "flex", flexDirection: "column" }}
+          style={{ maxHeight: "70dvh", display: "flex", flexDirection: "column" }}
         >
           {/* ── Header ─────────────────────────────────────────────── */}
           <DialogHeader className="flex-row items-center justify-between gap-4 border-b border-surface-2 px-4 py-3">
             <div>
               <DialogTitle>
-                {step === "choose" && "New purchase"}
-                {step === "devices" && "Tracked order"}
-                {step === "direct-sale" && "Direct sale"}
-                {step === "success" && "Purchase created"}
+                {dialogStep === "devices" && "Tracked order"}
+                {dialogStep === "direct-sale" && "Direct sale"}
+                {dialogStep === "success" && "Purchase created"}
               </DialogTitle>
-              {step === "devices" && (
+              {dialogStep === "devices" && (
                 <DialogDescription>Hearing aids, earmolds, serialized accessories</DialogDescription>
               )}
-              {step === "direct-sale" && (
+              {dialogStep === "direct-sale" && (
                 <DialogDescription>Batteries, services, supplies</DialogDescription>
               )}
             </div>
@@ -380,47 +429,10 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
           </DialogHeader>
 
           {/* ── Body ───────────────────────────────────────────────── */}
-          <DialogBody className={cn("flex-1 overflow-x-hidden", step === "direct-sale" ? "flex min-h-0 overflow-y-hidden p-0" : "overflow-y-auto")}>
-
-            {/* Step: choose type */}
-            {step === "choose" && (
-              <div className="grid gap-3">
-                <button
-                  type="button"
-                  onClick={() => void goToDevices()}
-                  className="flex items-center gap-3 rounded-[14px] border border-surface-2 bg-white p-3 text-left transition-colors hover:border-brand-blue/30 hover:bg-[rgba(31,149,184,0.03)]"
-                >
-                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[10px] bg-brand-ink/8 text-brand-ink">
-                    <PackageIcon size={16} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-[13px] font-semibold text-ink-strong">Devices</div>
-                    <div className="mt-0.5 text-[11px] leading-snug text-ink-muted">
-                      Tracked order — hearing aids, earmolds, serialized accessories
-                    </div>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => void goToDirectSale()}
-                  className="flex items-center gap-3 rounded-[14px] border border-surface-2 bg-white p-3 text-left transition-colors hover:border-brand-blue/30 hover:bg-[rgba(31,149,184,0.03)]"
-                >
-                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[10px] bg-brand-ink/8 text-brand-ink">
-                    <ShoppingCartIcon size={16} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-[13px] font-semibold text-ink-strong">Supplies / Service</div>
-                    <div className="mt-0.5 text-[11px] leading-snug text-ink-muted">
-                      Direct sale — batteries, domes, filters, repairs, office visits
-                    </div>
-                  </div>
-                </button>
-              </div>
-            )}
+          <DialogBody className={cn("flex-1 overflow-x-hidden", dialogStep === "direct-sale" ? "flex min-h-0 overflow-y-hidden p-0" : "overflow-y-auto")}>
 
             {/* Step: tracked order (devices) */}
-            {step === "devices" && (
+            {dialogStep === "devices" && (
               <div className="space-y-4">
                 {error && (
                   <Alert variant="destructive">
@@ -565,7 +577,7 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
             )}
 
             {/* Step: direct sale — split-panel POS layout */}
-            {step === "direct-sale" && (
+            {dialogStep === "direct-sale" && (
               <div className="flex min-h-[380px] flex-1">
                 {error && (
                   <Alert variant="destructive" className="absolute left-4 right-4 top-2 z-10">
@@ -719,11 +731,16 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
                           </div>
                           <div className="flex-1">
                             <Label>Payment method</Label>
-                            <Input
-                              className="mt-1 h-[30px] text-[12px]"
-                              value={salePaymentMethod}
-                              onChange={(e) => setSalePaymentMethod(e.target.value)}
-                            />
+                            <Select value={salePaymentMethod} onValueChange={(v) => v && setSalePaymentMethod(v)}>
+                              <SelectTrigger className="mt-1 h-[30px] text-[12px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {availablePaymentMethods.map((m) => (
+                                  <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
                         </div>
                       </div>
@@ -734,7 +751,7 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
             )}
 
             {/* Step: success */}
-            {step === "success" && (
+            {dialogStep === "success" && (
               <div className="space-y-3 py-1">
                 <div className="rounded-[12px] bg-success/10 px-4 py-3 text-sm font-medium text-success">
                   {successMessage}
@@ -749,9 +766,9 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
           </DialogBody>
 
           {/* ── Footer ─────────────────────────────────────────────── */}
-          {step === "devices" && (
+          {dialogStep === "devices" && (
             <DialogFooter className="justify-between">
-              <Button type="button" onClick={() => setStep("choose")} variant="ghost" size="sm">
+              <Button type="button" onClick={closeDialog} variant="ghost" size="sm">
                 Back
               </Button>
               <Button
@@ -766,10 +783,10 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
             </DialogFooter>
           )}
 
-          {step === "direct-sale" && (
+          {dialogStep === "direct-sale" && (
             <DialogFooter className="justify-between">
               <div className="flex items-center gap-2">
-                <Button type="button" onClick={() => setStep("choose")} variant="ghost" size="sm">
+                <Button type="button" onClick={closeDialog} variant="ghost" size="sm">
                   Back
                 </Button>
                 {saleItems.length > 0 && (
@@ -779,19 +796,24 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
                   </span>
                 )}
               </div>
-              <Button
-                type="button"
-                disabled={submitting || !saleItems.length}
-                onClick={() => void createDirectSale()}
-                variant="default"
-                size="sm"
-              >
-                {submitting ? "Creating..." : "Create invoice"}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button type="button" onClick={closeDialog} variant="outline" size="sm">
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  disabled={submitting || !saleItems.length}
+                  onClick={() => void createDirectSale()}
+                  variant="default"
+                  size="sm"
+                >
+                  {submitting ? "Creating..." : "Create invoice"}
+                </Button>
+              </div>
             </DialogFooter>
           )}
 
-          {step === "success" && (
+          {dialogStep === "success" && (
             <DialogFooter>
               <Button
                 type="button"
