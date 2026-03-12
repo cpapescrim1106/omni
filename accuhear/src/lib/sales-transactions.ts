@@ -115,6 +115,11 @@ function isTerminalTrackedOrderTransaction(sale: SaleTransactionWithRelations) {
   return sale.purchaseOrder?.status === "cancelled" || sale.purchaseOrder?.status === "returned";
 }
 
+function isActiveTrackedOrderTransaction(sale: SaleTransactionWithRelations) {
+  if (!sale.purchaseOrderId) return false;
+  return sale.purchaseOrder?.status !== "cancelled" && sale.purchaseOrder?.status !== "returned";
+}
+
 export async function voidSaleTransaction(
   tx: PrismaClient | Prisma.TransactionClient,
   saleId: string
@@ -122,6 +127,9 @@ export async function voidSaleTransaction(
   const sale = await loadSaleWithRelations(tx, saleId);
   if (!sale) throw new Error("Transaction not found");
   if (sale.invoiceStatus === "void") throw new Error("Transaction already voided");
+  if (isActiveTrackedOrderTransaction(sale)) {
+    throw new Error("Active tracked order transactions must be cancelled from the linked order");
+  }
   if (isTerminalTrackedOrderTransaction(sale)) {
     throw new Error("Cancelled or returned tracked order transactions cannot be voided");
   }
@@ -174,6 +182,9 @@ export async function deleteSaleTransaction(
 ) {
   const sale = await loadSaleWithRelations(tx, saleId);
   if (!sale) throw new Error("Transaction not found");
+  if (isActiveTrackedOrderTransaction(sale)) {
+    throw new Error("Active tracked order transactions must be cancelled from the linked order");
+  }
   if (isTerminalTrackedOrderTransaction(sale)) {
     throw new Error("Cancelled or returned tracked order transactions cannot be deleted");
   }

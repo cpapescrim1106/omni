@@ -16,7 +16,7 @@
     "scanner:bridge:windows": "tsx scripts/windows-scanner-bridge.ts",
     "rc:setup-webhook": "tsx scripts/setup-rc-webhook.ts",
     "test:e2e": "playwright test",
-    "test:integration": "npx prisma db push --accept-data-loss && node --test --import tsx --import ./tests/helpers/test-setup.ts tests/integration/*.spec.ts"
+    "test:integration": "TEST_DATABASE_URL=\"${TEST_DATABASE_URL:-postgresql://cpape:cpape@localhost:5433/accuhear_test?schema=public}\" bash ./scripts/prepare-test-db.sh && DATABASE_URL=\"${TEST_DATABASE_URL:-postgresql://cpape:cpape@localhost:5433/accuhear_test?schema=public}\" TEST_DATABASE_URL=\"${TEST_DATABASE_URL:-postgresql://cpape:cpape@localhost:5433/accuhear_test?schema=public}\" node --test --import tsx --import ./tests/helpers/test-setup.ts tests/integration/*.spec.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.2.0",

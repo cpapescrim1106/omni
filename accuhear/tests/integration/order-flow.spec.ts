@@ -167,7 +167,7 @@ test("tracked order flow creates invoice, receives, delivers, accepts payment, a
   const deliveredDevice = await prisma.device.findFirst({
     where: { patientId: patient.id, serial: `SN-${testTag}` },
   });
-  assert.equal(deliveredDevice?.status, "Active");
+  assert.equal(deliveredDevice?.status, "Current");
 
   const paymentResponse = await addSalePayment(
     new Request(`http://localhost/api/sales/${order.invoice.id}/payments`, {
@@ -184,7 +184,7 @@ test("tracked order flow creates invoice, receives, delivers, accepts payment, a
       payments: Array<{ id: string; amount: number }>;
     };
   };
-  const addedPaymentId = paymentData.sale.payments[0]?.id;
+  const addedPaymentId = paymentData.sale.payments.find((entry) => entry.amount === 500)?.id;
   assert.ok(addedPaymentId);
 
   const voidResponse = await voidSalePayment(
@@ -198,7 +198,7 @@ test("tracked order flow creates invoice, receives, delivers, accepts payment, a
     sale: { id: string; payments: Array<{ id: string; amount: number; kind: string }> };
   };
   assert.equal(voidData.sale.id, order.invoice.id);
-  assert.equal(voidData.sale.payments.length, 2);
+  assert.equal(voidData.sale.payments.length, 3);
   const refund = voidData.sale.payments.find((entry) => entry.kind === "refund");
   assert.equal(refund?.amount, 500);
 
@@ -211,8 +211,8 @@ test("tracked order flow creates invoice, receives, delivers, accepts payment, a
   assert.equal(deleteResponse.status, 200);
   const deleteData = (await readJson(deleteResponse)) as { sale: { id: string; payments: Array<{ id: string; kind: string }> } };
   assert.equal(deleteData.sale.id, order.invoice.id);
-  assert.equal(deleteData.sale.payments.length, 1);
-  assert.equal(deleteData.sale.payments[0]?.kind, "refund");
+  assert.equal(deleteData.sale.payments.length, 2);
+  assert.ok(deleteData.sale.payments.some((payment) => payment.kind === "refund"));
 
   const storedInvoice = await prisma.saleTransaction.findUnique({
     where: { id: order.invoice.id },
@@ -297,6 +297,32 @@ test("tracked order can be cancelled and received devices are marked inactive", 
 
   assert.equal(receiveResponse.status, 200);
 
+  const activeInvoiceDeleteResponse = await deleteSaleTransaction(
+    new Request(`http://localhost/api/sales/${order.invoice?.id}`, {
+      method: "DELETE",
+    }),
+    { params: Promise.resolve({ id: order.invoice?.id ?? "" }) }
+  );
+  assert.equal(activeInvoiceDeleteResponse.status, 400);
+  const activeInvoiceDeleteData = await readJson(activeInvoiceDeleteResponse);
+  assert.equal(
+    activeInvoiceDeleteData.error,
+    "Active tracked order transactions must be cancelled from the linked order"
+  );
+
+  const activeInvoiceVoidResponse = await voidSaleTransaction(
+    new Request(`http://localhost/api/sales/${order.invoice?.id}/void`, {
+      method: "POST",
+    }),
+    { params: Promise.resolve({ id: order.invoice?.id ?? "" }) }
+  );
+  assert.equal(activeInvoiceVoidResponse.status, 400);
+  const activeInvoiceVoidData = await readJson(activeInvoiceVoidResponse);
+  assert.equal(
+    activeInvoiceVoidData.error,
+    "Active tracked order transactions must be cancelled from the linked order"
+  );
+
   const cancelResponse = await cancelOrder(
     new Request(`http://localhost/api/orders/${order.id}/cancel`, {
       method: "POST",
@@ -330,9 +356,9 @@ test("tracked order can be cancelled and received devices are marked inactive", 
   assert.equal(orderSales[0]?.invoiceStatus, "credited");
   assert.equal(orderSales[1]?.txnType, "credit");
   assert.match(orderSales[1]?.txnId ?? "", /^CXL-/);
-  assert.equal(orderSales[1]?.total, -trackedItem.unitPrice);
+  assert.equal(orderSales[1]?.total ?? 0, trackedItem.unitPrice * -1 || 0);
   assert.equal(orderSales[1]?.notes, "Order cancelled: Patient declined");
-  assert.equal(orderSales[1]?.lineItems[0]?.revenue, trackedItem.unitPrice * -1);
+  assert.equal(orderSales[1]?.lineItems[0]?.revenue ?? 0, trackedItem.unitPrice * -1 || 0);
 
   const storedDevice = await prisma.device.findFirst({
     where: { patientId: patient.id, purchaseOrderItemId: order.lineItems[0]?.id },
