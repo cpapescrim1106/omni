@@ -19,7 +19,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type CatalogItem = {
@@ -101,6 +100,7 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
     setSalePaymentAmount("");
     setSalePaymentMethod(availablePaymentMethods[0]?.name ?? "");
     setCatalogSearch("");
+    setTrackedSearch("");
   }, [availablePaymentMethods]);
 
   const closeDialog = useCallback(() => {
@@ -161,15 +161,11 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
 
   const goToDevices = useCallback(async () => {
     resetForm();
+    setTrackedSearch("");
+    setDraftItems([]);
     setPopoverOpen(false);
     setDialogStep("devices");
-    const items = await loadTrackedCatalog();
-    if (items.length) {
-      setDraftItems([
-        { catalogItemId: items[0].id, side: "Left", quantity: 1, unitPrice: items[0].unitPrice },
-        { catalogItemId: items[0].id, side: "Right", quantity: 1, unitPrice: items[0].unitPrice },
-      ]);
-    }
+    await loadTrackedCatalog();
   }, [loadTrackedCatalog, resetForm]);
 
   const goToDirectSale = useCallback(async () => {
@@ -179,25 +175,91 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
     await loadDirectCatalog();
   }, [loadDirectCatalog, resetForm]);
 
+  // Tracked catalog search
+  const [trackedSearch, setTrackedSearch] = useState("");
+
   // ── Tracked order helpers ───────────────────────────────────────────────
 
-  const updateItem = useCallback((index: number, patch: Partial<DraftLineItem>) => {
-    setDraftItems((cur) =>
-      cur.map((entry, i) => {
-        if (i !== index) return entry;
-        const updated = { ...entry, ...patch };
-        if (patch.catalogItemId && patch.catalogItemId !== entry.catalogItemId) {
-          const cat = trackedCatalog.find((c) => c.id === patch.catalogItemId);
-          updated.unitPrice = cat?.unitPrice ?? entry.unitPrice;
-        }
-        return updated;
-      })
-    );
+  const addToOrder = useCallback((catalogItemId: string) => {
+    const cat = trackedCatalog.find((c) => c.id === catalogItemId);
+    if (!cat) return;
+    setDraftItems((cur) => {
+      const existing = cur.find((i) => i.catalogItemId === catalogItemId && i.side === "Other");
+      if (existing) {
+        return cur.map((i) =>
+          i.catalogItemId === catalogItemId && i.side === "Other"
+            ? { ...i, quantity: i.quantity + 1 }
+            : i
+        );
+      }
+      return [...cur, { catalogItemId, side: "Other", quantity: 1, unitPrice: cat.unitPrice }];
+    });
   }, [trackedCatalog]);
+
+  const updateDraftSide = useCallback((index: number, side: string) => {
+    setDraftItems((cur) => cur.map((entry, i) => (i === index ? { ...entry, side } : entry)));
+  }, []);
+
+  const updateDraftQty = useCallback((index: number, delta: number) => {
+    setDraftItems((cur) => {
+      const updated = cur.map((entry, i) =>
+        i === index ? { ...entry, quantity: entry.quantity + delta } : entry
+      );
+      return updated.filter((i) => i.quantity > 0);
+    });
+  }, []);
+
+  const removeDraftItem = useCallback((index: number) => {
+    setDraftItems((cur) => cur.filter((_, i) => i !== index));
+  }, []);
 
   const gross = computeGross(draftItems);
   const editedTotal = overrideTotal !== null ? (Number(overrideTotal) || gross) : gross;
   const displayTotal = overrideTotal !== null ? overrideTotal : String(gross || "");
+
+  // ── Tracked catalog grouping with manufacturer recommendations ────────
+
+  const cartManufacturers = useMemo(() => {
+    const mfrs = new Set<string>();
+    for (const item of draftItems) {
+      const cat = trackedCatalog.find((c) => c.id === item.catalogItemId);
+      if (cat?.manufacturer) mfrs.add(cat.manufacturer);
+    }
+    return mfrs;
+  }, [draftItems, trackedCatalog]);
+
+  const filteredTrackedCatalog = useMemo(() => {
+    const lower = trackedSearch.toLowerCase();
+    return trackedCatalog.filter(
+      (item) =>
+        item.name.toLowerCase().includes(lower) ||
+        (item.manufacturer ?? "").toLowerCase().includes(lower)
+    );
+  }, [trackedCatalog, trackedSearch]);
+
+  const groupedTrackedCatalog = useMemo(() => {
+    const cartIds = new Set(draftItems.map((i) => i.catalogItemId));
+    const recommended = cartManufacturers.size > 0
+      ? filteredTrackedCatalog
+          .filter(
+            (i) => i.category !== "hearing_aid" && i.manufacturer && cartManufacturers.has(i.manufacturer) && !cartIds.has(i.id)
+          )
+          .sort((a, b) => {
+            const order = (i: CatalogItem) =>
+              i.category === "serialized_accessory" && /charger/i.test(i.name) ? 0
+              : i.category === "earmold" && /standard/i.test(i.name) ? 1
+              : i.category === "earmold" ? 2
+              : i.category === "serialized_accessory" && /tv.?adapter/i.test(i.name) ? 3
+              : i.category === "serialized_accessory" && /connect.?clip/i.test(i.name) ? 4
+              : 5;
+            return order(a) - order(b);
+          })
+      : [];
+    const hearingAids = filteredTrackedCatalog.filter((i) => i.category === "hearing_aid");
+    const accessories = filteredTrackedCatalog.filter((i) => i.category === "serialized_accessory");
+    const earmolds = filteredTrackedCatalog.filter((i) => i.category === "earmold");
+    return { recommended, hearingAids, accessories, earmolds };
+  }, [filteredTrackedCatalog, cartManufacturers, draftItems]);
 
   // ── Submit: tracked order ───────────────────────────────────────────────
 
@@ -390,7 +452,7 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
 
       <Dialog open={dialogStep !== null} onOpenChange={(nextOpen) => { if (!nextOpen) closeDialog(); }}>
         <DialogContent
-          className={cn("transition-[width] duration-150", dialogStep === "direct-sale" ? "w-[700px] max-w-[700px]" : "w-[480px]")}
+          className={cn("transition-[width] duration-150", (dialogStep === "direct-sale" || dialogStep === "devices") ? "w-[700px] max-w-[700px]" : "w-[480px]")}
           showCloseButton={false}
           style={{ maxHeight: "70dvh", display: "flex", flexDirection: "column" }}
         >
@@ -429,145 +491,201 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
           </DialogHeader>
 
           {/* ── Body ───────────────────────────────────────────────── */}
-          <DialogBody className={cn("flex-1 overflow-x-hidden", dialogStep === "direct-sale" ? "flex min-h-0 overflow-y-hidden p-0" : "overflow-y-auto")}>
+          <DialogBody className={cn("flex-1 overflow-x-hidden", (dialogStep === "direct-sale" || dialogStep === "devices") ? "flex min-h-0 overflow-y-hidden p-0" : "overflow-y-auto")}>
 
-            {/* Step: tracked order (devices) */}
+            {/* Step: tracked order (devices) — split-panel layout */}
             {dialogStep === "devices" && (
-              <div className="space-y-4">
+              <div className="flex min-h-[380px] flex-1">
                 {error && (
-                  <Alert variant="destructive">
+                  <Alert variant="destructive" className="absolute left-4 right-4 top-2 z-10">
                     <AlertDescription>{error}</AlertDescription>
                   </Alert>
                 )}
 
                 {catalogLoading ? (
-                  <div className="py-6 text-center text-sm text-ink-muted">Loading catalog...</div>
+                  <div className="flex flex-1 items-center justify-center text-sm text-ink-muted">Loading catalog...</div>
                 ) : !trackedCatalog.length ? (
-                  <Alert variant="warning">
-                    <AlertDescription>No tracked catalog items configured. Add items in Settings first.</AlertDescription>
-                  </Alert>
+                  <div className="flex flex-1 items-center justify-center p-4">
+                    <Alert variant="warning">
+                      <AlertDescription>No tracked catalog items configured. Add items in Settings first.</AlertDescription>
+                    </Alert>
+                  </div>
                 ) : (
                   <>
-                    <div className="space-y-2">
-                      {draftItems.map((item, index) => (
-                        <div
-                          key={`line-${index}`}
-                          className="flex items-center gap-2 rounded-[12px] border border-[rgba(38,34,96,0.08)] bg-white p-3"
-                        >
-                          <Select
-                            value={item.catalogItemId}
-                            onValueChange={(value) => updateItem(index, { catalogItemId: value ?? item.catalogItemId })}
-                          >
-                            <SelectTrigger className="min-w-0 flex-1 text-sm">
-                              <span className="truncate">
-                                {(() => {
-                                  const cat = trackedCatalog.find((c) => c.id === item.catalogItemId);
-                                  return cat ? catalogLabel(cat) : "Select device";
-                                })()}
-                              </span>
-                            </SelectTrigger>
-                            <SelectContent>
-                              {trackedCatalog.map((c) => (
-                                <SelectItem key={c.id} value={c.id} label={catalogLabel(c)}>
-                                  {catalogLabel(c)}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Select
-                            value={item.side}
-                            onValueChange={(value) => updateItem(index, { side: value ?? item.side })}
-                          >
-                            <SelectTrigger className="w-20 flex-none px-2 text-sm">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Left">Left</SelectItem>
-                              <SelectItem value="Right">Right</SelectItem>
-                              <SelectItem value="Other">Other</SelectItem>
-                            </SelectContent>
-                          </Select>
+                    {/* Left: Tracked catalog */}
+                    <div className="flex w-[280px] flex-none flex-col border-r border-surface-2">
+                      <div className="border-b border-surface-2 px-3 py-2">
+                        <div className="relative">
+                          <SearchIcon size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-soft" />
                           <Input
-                            type="number"
-                            min={1}
-                            className="w-12 flex-none px-2 text-center text-sm"
-                            value={item.quantity}
-                            onChange={(e) => updateItem(index, { quantity: Math.max(1, Number(e.target.value) || 1) })}
-                          />
-                          <Tooltip>
-                            <TooltipTrigger
-                              render={
-                                <Button
-                                  type="button"
-                                  onClick={() => setDraftItems((cur) => cur.filter((_, i) => i !== index))}
-                                  disabled={draftItems.length === 1}
-                                  variant="ghost"
-                                  size="icon-sm"
-                                  className="flex-none text-ink-muted"
-                                />
-                              }
-                            >
-                              <XIcon size={14} />
-                            </TooltipTrigger>
-                            <TooltipContent>Remove line</TooltipContent>
-                          </Tooltip>
-                        </div>
-                      ))}
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          if (!trackedCatalog.length) return;
-                          const first = trackedCatalog[0];
-                          setDraftItems((cur) => [...cur, { catalogItemId: first.id, side: "Other", quantity: 1, unitPrice: first.unitPrice }]);
-                        }}
-                        className="w-fit text-brand-blue"
-                      >
-                        <PlusIcon size={14} className="mr-1" />
-                        Add line
-                      </Button>
-                    </div>
-
-                    <Separator />
-
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Input
-                          className="min-w-0 flex-1 text-sm placeholder:text-ink-soft"
-                          placeholder="Discount reason (optional)"
-                          value={discountReason}
-                          onChange={(e) => setDiscountReason(e.target.value)}
-                        />
-                        <div className="relative flex-none">
-                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-ink-muted">$</span>
-                          <Input
-                            type="number"
-                            min={0}
-                            step={0.01}
-                            className="w-24 py-2 pl-7 pr-3 text-right text-sm"
-                            placeholder="0"
-                            value={discountAmount}
-                            onChange={(e) => setDiscountAmount(e.target.value)}
+                            className="h-[30px] pl-8 text-[12px]"
+                            placeholder="Search devices..."
+                            value={trackedSearch}
+                            onChange={(e) => setTrackedSearch(e.target.value)}
                           />
                         </div>
                       </div>
-                      <div className="flex items-center justify-between gap-4 border-t border-surface-2 pt-2">
-                        <span className="text-xs text-ink-muted">Total</span>
-                        <div className="relative">
-                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-ink-muted">$</span>
+                      <div className="flex-1 overflow-y-auto">
+                        {([
+                          ["Recommended", groupedTrackedCatalog.recommended],
+                          ["Hearing Aids", groupedTrackedCatalog.hearingAids],
+                          ["Accessories", groupedTrackedCatalog.accessories],
+                          ["Earmolds", groupedTrackedCatalog.earmolds],
+                        ] as const).map(([label, items]) =>
+                          items.length > 0 && (
+                            <div key={label}>
+                              <div className={cn(
+                                "px-3 pb-1 pt-2.5 font-display text-[10px] font-semibold uppercase tracking-[0.08em]",
+                                label === "Recommended" ? "text-brand-blue" : "text-ink-soft"
+                              )}>
+                                {label}
+                              </div>
+                              {items.map((item) => (
+                                <button
+                                  key={`${label}-${item.id}`}
+                                  type="button"
+                                  onClick={() => addToOrder(item.id)}
+                                  className="group flex w-full items-center gap-2 px-3 py-[5px] text-left transition-colors hover:bg-[rgba(31,149,184,0.04)] active:bg-[rgba(31,149,184,0.08)]"
+                                >
+                                  {label === "Recommended" && (
+                                    <span className="inline-block h-[5px] w-[5px] flex-none rounded-full bg-brand-blue" />
+                                  )}
+                                  <span className="min-w-0 flex-1 truncate text-[12px] text-ink">
+                                    {item.manufacturer ? `${item.manufacturer} ` : ""}{item.name}
+                                  </span>
+                                  <span className="flex-none font-display text-[11px] text-ink-muted">
+                                    ${item.unitPrice}
+                                  </span>
+                                  <span className="flex h-[18px] w-[18px] flex-none items-center justify-center rounded-full bg-surface-2 text-ink-muted opacity-0 transition-all group-hover:opacity-100 group-hover:bg-brand-blue group-hover:text-white">
+                                    <PlusIcon size={11} />
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          )
+                        )}
+                        {!filteredTrackedCatalog.length && (
+                          <div className="px-3 py-6 text-center text-[12px] text-ink-soft">No items match</div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Right: Cart + Discount/Total */}
+                    <div className="flex min-w-0 flex-1 flex-col">
+                      <div className="flex-1 overflow-y-auto px-3 py-2">
+                        {!draftItems.length ? (
+                          <div className="flex h-full items-center justify-center text-[12px] text-ink-soft">
+                            Click items on the left to add them
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            {draftItems.map((item, index) => {
+                              const cat = trackedCatalog.find((c) => c.id === item.catalogItemId);
+                              if (!cat) return null;
+                              const lineTotal = cat.unitPrice * item.quantity;
+                              return (
+                                <div
+                                  key={`line-${index}`}
+                                  className="flex items-center gap-2 rounded-[8px] bg-surface-1 px-2.5 py-[6px]"
+                                >
+                                  <span className="min-w-0 flex-1 truncate text-[12px] text-ink" title={catalogLabel(cat)}>
+                                    {catalogLabel(cat)}
+                                  </span>
+                                  <Select
+                                    value={item.side}
+                                    onValueChange={(v) => v && updateDraftSide(index, v)}
+                                  >
+                                    <SelectTrigger className="h-[22px] w-[62px] flex-none px-1.5 text-[11px]">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="Left">Left</SelectItem>
+                                      <SelectItem value="Right">Right</SelectItem>
+                                      <SelectItem value="Other">Other</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <div className="flex flex-none items-center gap-0.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => updateDraftQty(index, -1)}
+                                      className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-surface-2 text-ink-muted transition-colors hover:bg-surface-3"
+                                    >
+                                      <MinusIcon size={11} />
+                                    </button>
+                                    <span className="w-[22px] text-center font-display text-[12px] font-semibold text-ink-strong">
+                                      {item.quantity}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => updateDraftQty(index, 1)}
+                                      className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-surface-2 text-ink-muted transition-colors hover:bg-surface-3"
+                                    >
+                                      <PlusIcon size={11} />
+                                    </button>
+                                  </div>
+                                  <span className="w-[52px] flex-none text-right font-display text-[12px] font-semibold text-ink">
+                                    ${lineTotal.toFixed(2)}
+                                  </span>
+                                  <Tooltip>
+                                    <TooltipTrigger
+                                      render={
+                                        <button
+                                          type="button"
+                                          onClick={() => removeDraftItem(index)}
+                                          className="flex h-[18px] w-[18px] flex-none items-center justify-center rounded-full text-ink-soft transition-colors hover:text-danger"
+                                        />
+                                      }
+                                    >
+                                      <XIcon size={12} />
+                                    </TooltipTrigger>
+                                    <TooltipContent>Remove</TooltipContent>
+                                  </Tooltip>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Discount + Total */}
+                      <div className="space-y-2 border-t border-surface-2 px-3 py-2.5">
+                        <div className="flex items-center gap-2">
                           <Input
-                            type="number"
-                            min={0}
-                            step={0.01}
-                            className="w-32 py-2 pl-7 pr-3 text-right text-sm font-semibold text-ink-strong"
-                            value={displayTotal}
-                            onChange={(e) => setOverrideTotal(e.target.value)}
-                            onBlur={(e) => {
-                              const val = Number(e.target.value);
-                              if (!Number.isFinite(val) || val < 0) setOverrideTotal(null);
-                            }}
+                            className="min-w-0 flex-1 h-[30px] text-[12px] placeholder:text-ink-soft"
+                            placeholder="Discount reason (optional)"
+                            value={discountReason}
+                            onChange={(e) => setDiscountReason(e.target.value)}
                           />
+                          <div className="relative flex-none">
+                            <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[12px] text-ink-muted">$</span>
+                            <Input
+                              type="number"
+                              min={0}
+                              step={0.01}
+                              className="h-[30px] w-[80px] pl-6 pr-2 text-right text-[12px]"
+                              placeholder="0"
+                              value={discountAmount}
+                              onChange={(e) => setDiscountAmount(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between gap-4 border-t border-surface-2 pt-2">
+                          <span className="text-[11px] text-ink-muted">Total</span>
+                          <div className="relative">
+                            <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[12px] text-ink-muted">$</span>
+                            <Input
+                              type="number"
+                              min={0}
+                              step={0.01}
+                              className="h-[30px] w-[100px] pl-6 pr-2 text-right text-[12px] font-semibold text-ink-strong"
+                              value={displayTotal}
+                              onChange={(e) => setOverrideTotal(e.target.value)}
+                              onBlur={(e) => {
+                                const val = Number(e.target.value);
+                                if (!Number.isFinite(val) || val < 0) setOverrideTotal(null);
+                              }}
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -759,18 +877,31 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
           {/* ── Footer ─────────────────────────────────────────────── */}
           {dialogStep === "devices" && (
             <DialogFooter className="justify-between">
-              <Button type="button" onClick={closeDialog} variant="ghost" size="sm">
-                Back
-              </Button>
-              <Button
-                type="button"
-                disabled={submitting || !trackedCatalog.length || !draftItems.length || draftItems.some((item) => !item.catalogItemId)}
-                onClick={() => void createOrder()}
-                variant="default"
-                size="sm"
-              >
-                {submitting ? "Creating..." : "Create order + invoice"}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button type="button" onClick={closeDialog} variant="ghost" size="sm">
+                  Back
+                </Button>
+                {draftItems.length > 0 && (
+                  <span className="font-display text-[14px] font-semibold text-ink-strong">
+                    <span className="mr-1.5 text-[11px] font-normal text-ink-muted">Total</span>
+                    ${editedTotal.toFixed(2)}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button type="button" onClick={closeDialog} variant="outline" size="sm">
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  disabled={submitting || !trackedCatalog.length || !draftItems.length}
+                  onClick={() => void createOrder()}
+                  variant="default"
+                  size="sm"
+                >
+                  {submitting ? "Creating..." : "Create order + invoice"}
+                </Button>
+              </div>
             </DialogFooter>
           )}
 
