@@ -47,6 +47,11 @@ export async function POST(request: Request) {
   const lastName = typeof body.lastName === "string" ? body.lastName.trim() : "";
   const preferredName = typeof body.preferredName === "string" ? body.preferredName.trim() : "";
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+  const address = typeof body.address === "string" ? body.address.trim() : "";
+  const addressLine2 = typeof body.addressLine2 === "string" ? body.addressLine2.trim() : "";
+  const city = typeof body.city === "string" ? body.city.trim() : "";
+  const state = typeof body.state === "string" ? body.state.trim().toUpperCase() : "";
+  const zip = typeof body.zip === "string" ? body.zip.trim() : "";
   const phone = typeof body.phone === "string" ? body.phone.trim() : "";
   const phoneType = typeof body.phoneType === "string" ? body.phoneType.trim().toUpperCase() : "MOBILE";
   const status = typeof body.status === "string" ? body.status.trim() : "Active";
@@ -77,6 +82,11 @@ export async function POST(request: Request) {
       preferredName: preferredName || null,
       dateOfBirth,
       email: email || null,
+      address: address || null,
+      addressLine2: addressLine2 || null,
+      city: city || null,
+      state: state || null,
+      zip: zip || null,
       status: status || "Active",
       providerName: providerName || null,
       location: location || null,

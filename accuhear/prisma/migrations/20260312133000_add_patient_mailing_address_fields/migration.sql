@@ -1,0 +1,6 @@
+ALTER TABLE "Patient"
+ADD COLUMN "address" TEXT,
+ADD COLUMN "addressLine2" TEXT,
+ADD COLUMN "city" TEXT,
+ADD COLUMN "state" TEXT,
+ADD COLUMN "zip" TEXT;

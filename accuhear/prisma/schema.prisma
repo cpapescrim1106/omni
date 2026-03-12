@@ -15,6 +15,11 @@ model Patient {
   preferredName String?
   dateOfBirth   DateTime?
   email         String?
+  address       String?
+  addressLine2  String?
+  city          String?
+  state         String?
+  zip           String?
   status        String?
   providerName  String?
   location      String?
@@ -23,6 +28,7 @@ model Patient {
   updatedAt     DateTime  @updatedAt
 
   phones            PhoneNumber[]
+  searchIndex       PatientSearchIndex? @ignore
   appointments      Appointment[]
   journalEntries    JournalEntry[]
   marketingContacts MarketingContact[]
@@ -50,6 +56,36 @@ model PhoneNumber {
   isPrimary  Boolean @default(false)
 
   @@index([normalized])
+}
+
+model PatientSearchIndex {
+  patientId     String   @id @map("patient_id")
+  patient       Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  legacyId      String?  @map("legacy_id")
+  firstName     String   @map("first_name")
+  lastName      String   @map("last_name")
+  preferredName String?  @map("preferred_name")
+  fullName      String   @map("full_name")
+  nameSearch    String   @map("name_search")
+  email         String?
+  status        String?
+  providerName  String?  @map("provider_name")
+  location      String?
+  dateOfBirth   DateTime? @map("date_of_birth") @db.Date
+  phonesE164    String[] @default([]) @map("phones_e164")
+  payerNames    String[] @default([]) @map("payer_names")
+  payerSearch   String   @default("") @map("payer_search")
+  serialNumbers String[] @default([]) @map("serial_numbers")
+  updatedAt     DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@index([email], map: "patient_search_email_idx")
+  @@index([legacyId], map: "patient_search_legacy_idx")
+  @@index([nameSearch(ops: raw("gin_trgm_ops"))], type: Gin, map: "patient_search_name_trgm_idx")
+  @@index([payerSearch(ops: raw("gin_trgm_ops"))], type: Gin, map: "patient_search_payer_trgm_idx")
+  @@index([phonesE164], type: Gin, map: "patient_search_phone_idx")
+  @@index([serialNumbers], type: Gin, map: "patient_search_serial_idx")
+  @@map("patient_search")
+  @@ignore
 }
 
 model AppointmentType {
