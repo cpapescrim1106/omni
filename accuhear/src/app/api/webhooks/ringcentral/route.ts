@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getValidationToken } from "@/lib/ringcentral/webhook-verify";
+import { verifyRingCentralSignature } from "@/lib/ringcentral/webhook-verify";
 import { claimWebhookEvent, markWebhookEventFailed, markWebhookEventProcessed } from "@/lib/messaging/webhook-events";
 import { detectConsentKeyword, updateSmsConsent } from "@/lib/messaging/consent";
 import { findPatientByPhone, normalizeToE164 } from "@/lib/messaging/phone";
@@ -64,6 +65,19 @@ function parseTimestamp(value: unknown) {
   return Number.isNaN(asDate.getTime()) ? null : asDate;
 }
 
+function getRequestUrl(request: Request) {
+  if ("nextUrl" in request) {
+    const nextUrl = (request as NextRequest).nextUrl;
+    if (nextUrl) return nextUrl;
+  }
+
+  try {
+    return new URL(request.url);
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: NextRequest) {
   // Some webhook providers validate "reachability" with GET/HEAD before sending POSTs.
   // Return 200 and echo the validation token if present to be tolerant of these checks.
@@ -80,13 +94,16 @@ export async function POST(request: NextRequest) {
 
   const rawBody = await request.text();
   const token = getValidationToken(request.headers);
-  const queryToken = request.nextUrl.searchParams.get("rc_token");
+  const requestUrl = getRequestUrl(request);
+  const queryToken = requestUrl?.searchParams.get("rc_token");
   const queryOk = Boolean(queryToken && queryToken === secret);
+  const signature = request.headers.get("X-RingCentral-Signature");
+  const signatureOk = verifyRingCentralSignature({ rawBody, signatureHeader: signature, secret });
 
   // RingCentral validates webhook URLs by POSTing an empty request with a Validation-Token header,
   // and expects the same Validation-Token echoed in the response headers.
   // See: https://developers.ringcentral.com/guide/notifications/webhooks/creating-webhooks
-  if (token && !rawBody) {
+  if (token && (!rawBody || rawBody.trim() === "{}")) {
     return new NextResponse("", {
       status: 200,
       headers: { "Validation-Token": token, "Content-Type": "application/json" },
@@ -97,10 +114,11 @@ export async function POST(request: NextRequest) {
   // `deliveryMode.validationToken` at subscription creation time.
   // We accept either a matching Validation-Token or our query param fallback.
   const headerOk = Boolean(token && token === secret);
-  if (!headerOk && !queryOk) {
+  if (!headerOk && !queryOk && !signatureOk) {
     console.warn("ringcentral webhook: missing or invalid validation token", {
       hasValidationToken: Boolean(token),
       validationTokenLen: token?.length ?? 0,
+      hasSignature: Boolean(signature),
       bodyLen: rawBody.length,
       userAgent: request.headers.get("user-agent") ?? undefined,
       contentType: request.headers.get("content-type") ?? undefined,

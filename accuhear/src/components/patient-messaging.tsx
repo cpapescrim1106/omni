@@ -34,11 +34,16 @@ const STATUS_LABELS: Record<Message["status"], string> = {
 
 const STATUS_STYLES: Record<Message["status"], string> = {
   queued: "neutral",
-  sent: "blue",
+  sent: "success",
   delivered: "success",
   failed: "danger",
   received: "orange",
 };
+
+function getStatusLabel(channel: MessageThread["channel"], status: Message["status"]) {
+  if (channel === "sms" && status === "sent") return "Sent to carrier";
+  return STATUS_LABELS[status];
+}
 
 const FOLDERS = [
   { label: "Unanswered" },
@@ -309,7 +314,7 @@ export function PatientMessaging({ patientId }: { patientId: string }) {
                                     data-testid="messaging-message-status"
                                     variant={STATUS_STYLES[message.status] as "neutral" | "blue" | "success" | "danger" | "orange"}
                                   >
-                                    {STATUS_LABELS[message.status]}
+                                    {getStatusLabel(thread.channel, message.status)}
                                   </Badge>
                                 </div>
                                 {isFailed ? (
