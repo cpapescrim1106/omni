@@ -452,9 +452,10 @@ model CatalogItem {
 
 model CatalogManufacturer {
   id        String   @id @default(cuid())
-  name      String   @unique
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
+  name           String   @unique
+  active         Boolean  @default(true)
+  accountNumber  String?
+  createdAt      DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([active, name])
@@ -694,4 +695,17 @@ model AudiogramPoint {
 enum AudiogramEar {
   L
   R
+}
+
+model ClinicSettings {
+  id          String   @id @default("singleton")
+  clinicName  String   @default("")
+  address     String   @default("")
+  city        String   @default("")
+  state       String   @default("")
+  zip         String   @default("")
+  phone       String   @default("")
+  email       String   @default("")
+  contactName String   @default("")
+  updatedAt   DateTime @updatedAt
 }

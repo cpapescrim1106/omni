@@ -860,11 +860,13 @@ export function formatCatalogManufacturer(item: {
   id: string;
   name: string;
   active: boolean;
+  accountNumber: string | null;
 }) {
   return {
     id: item.id,
     name: item.name,
     active: item.active,
+    accountNumber: item.accountNumber,
   };
 }
 
@@ -1103,6 +1105,139 @@ const STARTER_PAYMENT_METHODS = [
   "Check",
   "Discover",
 ];
+
+// ── Order form detection ──────────────────────────────────────────────────
+
+export type OrderFormType = "earmold_order" | "custom_device_order";
+
+export type OrderFormDetection = {
+  formType: OrderFormType;
+  manufacturer: string | null;
+  /** Style of the hearing aid in the order (e.g. "miniRITE R", "BTE") — used to pick earmold form variant */
+  hearingAidStyle: string | null;
+  /** Family/platform of the hearing aid (e.g. "Intent", "Signature Series") — used to pick form variant */
+  hearingAidFamily: string | null;
+};
+
+const CUSTOM_HEARING_AID_STYLES = ["cic", "fs", "hs", "canal", "iic", "itc", "ite", "full shell", "half shell"];
+
+type DetectableCatalogItem = { id: string; category: string; style: string | null; manufacturer?: string | null; family?: string | null };
+
+export function detectOrderFormType(
+  lineItems: Array<{ catalogItemId: string | null }>,
+  catalogItems: DetectableCatalogItem[]
+): OrderFormDetection | null {
+  const catalogById = new Map(catalogItems.map((c) => [c.id, c]));
+
+  // Find the hearing aid in the order (for style/family context)
+  let hearingAid: DetectableCatalogItem | null = null;
+  for (const item of lineItems) {
+    const cat = catalogById.get(item.catalogItemId ?? "");
+    if (cat?.category === "hearing_aid") { hearingAid = cat; break; }
+  }
+
+  // Check for earmolds first (separate form from custom devices)
+  for (const item of lineItems) {
+    const cat = catalogById.get(item.catalogItemId ?? "");
+    if (cat?.category === "earmold") {
+      // Use the earmold's manufacturer, or fall back to the hearing aid's manufacturer
+      const mfr = cat.manufacturer ?? hearingAid?.manufacturer ?? null;
+      return {
+        formType: "earmold_order",
+        manufacturer: mfr,
+        hearingAidStyle: hearingAid?.style ?? null,
+        hearingAidFamily: hearingAid?.family ?? null,
+      };
+    }
+  }
+
+  // Check for custom hearing aid styles
+  if (hearingAid?.style) {
+    const normalized = hearingAid.style.toLowerCase().trim();
+    if (CUSTOM_HEARING_AID_STYLES.some((s) => normalized.includes(s))) {
+      return {
+        formType: "custom_device_order",
+        manufacturer: hearingAid.manufacturer ?? null,
+        hearingAidStyle: hearingAid.style,
+        hearingAidFamily: hearingAid.family ?? null,
+      };
+    }
+  }
+
+  return null;
+}
+
+// ── Form file selection ───────────────────────────────────────────────────
+
+const FORMS_DIR = "var/manufacturer-forms";
+
+/**
+ * Picks the correct manufacturer PDF based on detection result.
+ * Returns a path relative to the project root, or null if no matching form.
+ */
+export function selectOrderFormPath(detection: OrderFormDetection): string | null {
+  const mfr = (detection.manufacturer ?? "").toLowerCase();
+  const style = (detection.hearingAidStyle ?? "").toLowerCase();
+  const family = (detection.hearingAidFamily ?? "").toLowerCase();
+
+  if (mfr === "oticon") {
+    if (detection.formType === "custom_device_order") {
+      return `${FORMS_DIR}/oticon/custom-device.pdf`;
+    }
+    // Earmold — pick by hearing aid style
+    if (style.includes("bte")) {
+      return `${FORMS_DIR}/oticon/bte-earmold.pdf`;
+    }
+    // miniRITE — pick by family/platform
+    if (family.includes("sirius")) {
+      return `${FORMS_DIR}/oticon/minirite-earmold-sirius.pdf`;
+    }
+    // Default miniRITE (Polaris, Velox, Inium Sense, Intent, etc.)
+    return `${FORMS_DIR}/oticon/minirite-earmold-polaris.pdf`;
+  }
+
+  if (mfr === "starkey") {
+    if (detection.formType === "custom_device_order") {
+      if (family.includes("signature")) {
+        return `${FORMS_DIR}/starkey/signature-series-custom.pdf`;
+      }
+      return `${FORMS_DIR}/starkey/custom-device.pdf`;
+    }
+    // Earmold — check if RIC style gets the RIC receiver form
+    if (style.includes("ric")) {
+      return `${FORMS_DIR}/starkey/ric-receiver.pdf`;
+    }
+    return `${FORMS_DIR}/starkey/earmold.pdf`;
+  }
+
+  if (mfr === "signia") {
+    if (detection.formType === "custom_device_order") {
+      return `${FORMS_DIR}/signia/custom-device.pdf`;
+    }
+    return `${FORMS_DIR}/signia/ric-earmold.pdf`;
+  }
+
+  return null;
+}
+
+export async function detectOrderFormTypeForOrder(orderId: string) {
+  const order = await prisma.purchaseOrder.findUnique({
+    where: { id: orderId },
+    include: { lineItems: true },
+  });
+  if (!order) return null;
+
+  const catalogIds = order.lineItems
+    .map((li) => li.catalogItemId)
+    .filter((id): id is string => id !== null);
+
+  const catalogItems = await prisma.catalogItem.findMany({
+    where: { id: { in: catalogIds } },
+    select: { id: true, category: true, style: true, manufacturer: true, family: true },
+  });
+
+  return detectOrderFormType(order.lineItems, catalogItems);
+}
 
 export async function ensurePaymentMethods(prismaClient: typeof prisma = prisma) {
   for (let i = 0; i < STARTER_PAYMENT_METHODS.length; i++) {

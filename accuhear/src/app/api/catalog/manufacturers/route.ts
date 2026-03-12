@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
   const name = typeof body?.name === "string" ? body.name.trim() : "";
+  const accountNumber = typeof body?.accountNumber === "string" ? body.accountNumber.trim() : undefined;
   if (!name) {
     return NextResponse.json({ error: "Manufacturer name is required" }, { status: 400 });
   }
@@ -29,8 +30,8 @@ export async function POST(request: NextRequest) {
   try {
     const item = await prisma.catalogManufacturer.upsert({
       where: { name },
-      update: { active: true },
-      create: { name, active: true },
+      update: { active: true, ...(accountNumber !== undefined && { accountNumber }) },
+      create: { name, active: true, ...(accountNumber !== undefined && { accountNumber }) },
     });
     return NextResponse.json({ item: formatCatalogManufacturer(item) }, { status: 201 });
   } catch (error) {

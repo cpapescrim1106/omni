@@ -11,6 +11,7 @@ import type { ProviderScheduleMap } from "@/lib/provider-schedule";
 import { cn } from "@/lib/utils";
 import {
   Briefcase,
+  Building2,
   Clock,
   CreditCard,
   Factory,
@@ -43,6 +44,7 @@ type CatalogManufacturer = {
   id: string;
   name: string;
   active: boolean;
+  accountNumber: string | null;
 };
 
 type CatalogItem = {
@@ -273,9 +275,10 @@ function toPayload(form: CatalogForm) {
 
 // ---- Settings Sections ----
 
-type SettingsSection = "catalog" | "manufacturers" | "availability" | "payment-methods" | "payers" | "documents" | "templates" | "users";
+type SettingsSection = "clinic" | "catalog" | "manufacturers" | "availability" | "payment-methods" | "payers" | "documents" | "templates" | "users";
 
 const SETTINGS_NAV: Array<{ id: SettingsSection; label: string; icon: typeof Briefcase; group: number }> = [
+  { id: "clinic", label: "Clinic Information", icon: Building2, group: 0 },
   { id: "catalog", label: "Catalog Items", icon: Briefcase, group: 0 },
   { id: "manufacturers", label: "Manufacturers", icon: Factory, group: 0 },
   { id: "availability", label: "Provider Availability", icon: Clock, group: 0 },
@@ -823,6 +826,17 @@ export default function SettingsPage() {
   const [showNewCatalogItemForm, setShowNewCatalogItemForm] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState<Array<{ id: string; name: string; enabled: boolean; isCustom: boolean; sortOrder: number }>>([]);
   const [newPaymentMethodName, setNewPaymentMethodName] = useState("");
+  const [clinicSettings, setClinicSettings] = useState({
+    clinicName: "",
+    address: "",
+    city: "",
+    state: "",
+    zip: "",
+    phone: "",
+    email: "",
+    contactName: "",
+  });
+  const [clinicLoading, setClinicLoading] = useState(false);
 
   const setErrorMessage = useCallback((nextError: string | null) => {
     setError(nextError);
@@ -860,6 +874,42 @@ export default function SettingsPage() {
     }
   }, []);
 
+  const loadClinicSettings = useCallback(async () => {
+    try {
+      const res = await fetch("/api/settings/clinic");
+      if (res.ok) {
+        const data = await res.json();
+        setClinicSettings({
+          clinicName: data.clinicName ?? "",
+          address: data.address ?? "",
+          city: data.city ?? "",
+          state: data.state ?? "",
+          zip: data.zip ?? "",
+          phone: data.phone ?? "",
+          email: data.email ?? "",
+          contactName: data.contactName ?? "",
+        });
+      }
+    } catch {}
+  }, []);
+
+  const saveClinicSettings = useCallback(async () => {
+    setClinicLoading(true);
+    try {
+      const res = await fetch("/api/settings/clinic", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(clinicSettings),
+      });
+      if (!res.ok) throw new Error("Save failed");
+      setMessageText("Clinic settings saved.");
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : "Unable to save clinic settings.");
+    } finally {
+      setClinicLoading(false);
+    }
+  }, [clinicSettings, setMessageText, setErrorMessage]);
+
   useEffect(() => {
     void loadCatalog();
   }, [loadCatalog]);
@@ -869,6 +919,12 @@ export default function SettingsPage() {
       void loadPaymentMethods();
     }
   }, [activeSection, loadPaymentMethods]);
+
+  useEffect(() => {
+    if (activeSection === "clinic") {
+      void loadClinicSettings();
+    }
+  }, [activeSection, loadClinicSettings]);
 
   useEffect(() => {
     if (!message) return;
@@ -1106,6 +1162,9 @@ export default function SettingsPage() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-2xl font-bold text-ink-strong font-display">{sectionLabel}</h1>
+            {activeSection === "clinic" && (
+              <p className="mt-1 text-[13px] text-ink-muted">Manage your clinic&apos;s contact and address information.</p>
+            )}
             {activeSection === "catalog" && (
               <p className="mt-1 text-[13px] text-ink-muted">Manage hearing aids, accessories, and service items available for sale.</p>
             )}
@@ -1126,6 +1185,73 @@ export default function SettingsPage() {
             </Button>
           )}
         </div>
+
+        {/* ---- Clinic Information Section ---- */}
+        {activeSection === "clinic" && (
+          <div className="space-y-4 max-w-lg">
+            <div>
+              <Label>Clinic Name</Label>
+              <Input
+                value={clinicSettings.clinicName}
+                onChange={(e) => setClinicSettings((s) => ({ ...s, clinicName: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label>Address</Label>
+              <Input
+                value={clinicSettings.address}
+                onChange={(e) => setClinicSettings((s) => ({ ...s, address: e.target.value }))}
+              />
+            </div>
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <Label>City</Label>
+                <Input
+                  value={clinicSettings.city}
+                  onChange={(e) => setClinicSettings((s) => ({ ...s, city: e.target.value }))}
+                />
+              </div>
+              <div className="w-20">
+                <Label>State</Label>
+                <Input
+                  value={clinicSettings.state}
+                  onChange={(e) => setClinicSettings((s) => ({ ...s, state: e.target.value }))}
+                />
+              </div>
+              <div className="w-28">
+                <Label>ZIP</Label>
+                <Input
+                  value={clinicSettings.zip}
+                  onChange={(e) => setClinicSettings((s) => ({ ...s, zip: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Phone</Label>
+              <Input
+                value={clinicSettings.phone}
+                onChange={(e) => setClinicSettings((s) => ({ ...s, phone: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label>Email</Label>
+              <Input
+                value={clinicSettings.email}
+                onChange={(e) => setClinicSettings((s) => ({ ...s, email: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label>Contact Name</Label>
+              <Input
+                value={clinicSettings.contactName}
+                onChange={(e) => setClinicSettings((s) => ({ ...s, contactName: e.target.value }))}
+              />
+            </div>
+            <Button onClick={saveClinicSettings} disabled={clinicLoading}>
+              {clinicLoading ? "Saving..." : "Save Clinic Settings"}
+            </Button>
+          </div>
+        )}
 
         {/* ---- Catalog Section ---- */}
         {activeSection === "catalog" && (
@@ -1348,6 +1474,7 @@ export default function SettingsPage() {
               <tr>
                 <th className="text-left text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft px-2 py-[5px] border-b border-surface-2 font-display">Name</th>
                 <th className="text-left text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft px-2 py-[5px] border-b border-surface-2 font-display">Status</th>
+                <th className="text-left text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft px-2 py-[5px] border-b border-surface-2 font-display">Account #</th>
                 <th className="text-left text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft px-2 py-[5px] border-b border-surface-2 font-display w-32">Actions</th>
               </tr>
             </thead>
@@ -1360,6 +1487,28 @@ export default function SettingsPage() {
                       <span className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", mfr.active ? "bg-success" : "bg-ink-soft")} />
                       <span className="text-xs">{mfr.active ? "Active" : "Inactive"}</span>
                     </div>
+                  </td>
+                  <td className="px-2 py-[6px] border-b border-surface-1">
+                    <Input
+                      className="h-7 w-36 text-xs"
+                      placeholder="—"
+                      defaultValue={mfr.accountNumber ?? ""}
+                      onBlur={async (e) => {
+                        const val = e.target.value.trim();
+                        if (val === (mfr.accountNumber ?? "")) return;
+                        try {
+                          await fetch(`/api/catalog/manufacturers/${mfr.id}`, {
+                            method: "PATCH",
+                            headers: { "content-type": "application/json" },
+                            body: JSON.stringify({ accountNumber: val }),
+                          });
+                          await loadCatalog();
+                        } catch {}
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                      }}
+                    />
                   </td>
                   <td className="px-2 py-[6px] border-b border-surface-1">
                     <Button
@@ -1389,7 +1538,7 @@ export default function SettingsPage() {
               ))}
               {!manufacturers.length && (
                 <tr>
-                  <td colSpan={3} className="px-2 py-3 text-xs text-ink-muted">No manufacturers configured.</td>
+                  <td colSpan={4} className="px-2 py-3 text-xs text-ink-muted">No manufacturers configured.</td>
                 </tr>
               )}
             </tbody>
