@@ -83,7 +83,7 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
   // Direct sale draft
   const [saleItems, setSaleItems] = useState<DraftSaleItem[]>([]);
   const [salePaymentAmount, setSalePaymentAmount] = useState("");
-  const [salePaymentMethod, setSalePaymentMethod] = useState("Patient");
+  const [salePaymentMethod, setSalePaymentMethod] = useState("");
   const [availablePaymentMethods, setAvailablePaymentMethods] = useState<Array<{ id: string; name: string }>>([]);
   const [catalogSearch, setCatalogSearch] = useState("");
 
@@ -99,9 +99,9 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
     setDiscountReason("");
     setSaleItems([]);
     setSalePaymentAmount("");
-    setSalePaymentMethod("Patient");
+    setSalePaymentMethod(availablePaymentMethods[0]?.name ?? "");
     setCatalogSearch("");
-  }, []);
+  }, [availablePaymentMethods]);
 
   const closeDialog = useCallback(() => {
     resetForm();
@@ -239,6 +239,13 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
     }
   }, [discountAmount, discountReason, draftItems, editedTotal, patientId]);
 
+  const saleTotal = useMemo(() => {
+    return saleItems.reduce((sum, item) => {
+      const cat = directCatalog.find((c) => c.id === item.catalogItemId);
+      return sum + (cat?.unitPrice ?? 0) * item.quantity;
+    }, 0);
+  }, [saleItems, directCatalog]);
+
   // ── Submit: direct sale ─────────────────────────────────────────────────
 
   const createDirectSale = useCallback(async () => {
@@ -266,8 +273,8 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           lineItems,
-          payments: salePaymentAmount
-            ? [{ amount: Number(salePaymentAmount), kind: "payment", method: salePaymentMethod }]
+          payments: saleTotal > 0
+            ? [{ amount: saleTotal, kind: "payment", method: salePaymentMethod }]
             : [],
         }),
       });
@@ -280,7 +287,7 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
     } finally {
       setSubmitting(false);
     }
-  }, [directCatalog, patientId, saleItems, salePaymentAmount, salePaymentMethod]);
+  }, [directCatalog, patientId, saleItems, saleTotal, salePaymentMethod]);
 
   // ── Direct sale helpers ─────────────────────────────────────────────────
 
@@ -306,13 +313,6 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
   const removeSaleItem = useCallback((catalogItemId: string) => {
     setSaleItems((cur) => cur.filter((i) => i.catalogItemId !== catalogItemId));
   }, []);
-
-  const saleTotal = useMemo(() => {
-    return saleItems.reduce((sum, item) => {
-      const cat = directCatalog.find((c) => c.id === item.catalogItemId);
-      return sum + (cat?.unitPrice ?? 0) * item.quantity;
-    }, 0);
-  }, [saleItems, directCatalog]);
 
   const filteredCatalog = useMemo(() => {
     const lower = catalogSearch.toLowerCase();
@@ -713,24 +713,15 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
 
                       {/* Payment */}
                       <div className="border-t border-surface-2 px-3 py-2.5">
-                        <div className="flex gap-2">
+                        <div className="flex items-end gap-2">
                           <div className="flex-1">
-                            <Label>Initial payment</Label>
-                            <div className="relative mt-1">
-                              <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[12px] text-ink-muted">$</span>
-                              <Input
-                                type="number"
-                                min={0}
-                                step={0.01}
-                                className="h-[30px] pl-6 text-[12px]"
-                                value={salePaymentAmount}
-                                onChange={(e) => setSalePaymentAmount(e.target.value)}
-                                placeholder="0.00"
-                              />
+                            <Label>Payment</Label>
+                            <div className="mt-1 flex h-[30px] items-center rounded-[8px] border border-input bg-surface-1 px-[10px] text-[12px] font-semibold text-ink-strong">
+                              ${saleTotal.toFixed(2)}
                             </div>
                           </div>
                           <div className="flex-1">
-                            <Label>Payment method</Label>
+                            <Label>Method</Label>
                             <Select value={salePaymentMethod} onValueChange={(v) => v && setSalePaymentMethod(v)}>
                               <SelectTrigger className="mt-1 h-[30px] text-[12px]">
                                 <SelectValue />

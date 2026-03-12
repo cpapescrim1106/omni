@@ -1093,3 +1093,24 @@ export async function addJournalEntry(
     },
   });
 }
+
+const STARTER_PAYMENT_METHODS = [
+  "Visa",
+  "Mastercard",
+  "Debit",
+  "Cash",
+  "American Express",
+  "Check",
+  "Discover",
+];
+
+export async function ensurePaymentMethods(prismaClient: typeof prisma = prisma) {
+  for (let i = 0; i < STARTER_PAYMENT_METHODS.length; i++) {
+    const name = STARTER_PAYMENT_METHODS[i];
+    await prismaClient.paymentMethod.upsert({
+      where: { name },
+      update: {},
+      create: { name, enabled: true, isCustom: false, sortOrder: i },
+    });
+  }
+}

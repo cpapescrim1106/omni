@@ -164,7 +164,7 @@ export function PatientSales({
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [showReturnForm, setShowReturnForm] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("Patient");
+  const [paymentMethod, setPaymentMethod] = useState("");
   const [paymentKind, setPaymentKind] = useState("payment");
   const [voidingTransactionId, setVoidingTransactionId] = useState<string | null>(null);
   const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null);
@@ -180,7 +180,8 @@ export function PatientSales({
   const [trackedDraftItems, setTrackedDraftItems] = useState<DraftTrackedItem[]>([]);
   const [trackedDraftNotes, setTrackedDraftNotes] = useState("");
   const [trackedDraftDeposit, setTrackedDraftDeposit] = useState("");
-  const [trackedDraftDepositMethod, setTrackedDraftDepositMethod] = useState("Patient");
+  const [trackedDraftDepositMethod, setTrackedDraftDepositMethod] = useState("");
+  const [availablePaymentMethods, setAvailablePaymentMethods] = useState<Array<{ id: string; name: string }>>([]);
 
   // Order lifecycle state
   const [receiveOrderId, setReceiveOrderId] = useState<string | null>(null);
@@ -223,6 +224,20 @@ export function PatientSales({
     void loadSales();
   }, [loadSales]);
 
+  useEffect(() => {
+    fetch("/api/payment-methods?enabledOnly=1")
+      .then((r) => r.json())
+      .then((data) => {
+        const methods = data.items ?? [];
+        setAvailablePaymentMethods(methods);
+        if (methods.length) {
+          setPaymentMethod(methods[0].name);
+          setTrackedDraftDepositMethod(methods[0].name);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const selectedSale = useMemo(
     () => sales.find((sale) => sale.id === selectedSaleId) ?? sales[0] ?? null,
     [sales, selectedSaleId]
@@ -259,9 +274,9 @@ export function PatientSales({
     setTrackedDraftItems([{ catalogItemId: "", side: "Left", quantity: 1 }]);
     setTrackedDraftNotes("");
     setTrackedDraftDeposit("");
-    setTrackedDraftDepositMethod("Patient");
+    setTrackedDraftDepositMethod(availablePaymentMethods[0]?.name ?? "");
     setMessage(null);
-  }, []);
+  }, [availablePaymentMethods]);
 
 
   const createTrackedOrder = useCallback(async () => {
@@ -337,7 +352,7 @@ export function PatientSales({
       }
       setShowPaymentForm(false);
       setPaymentAmount("");
-      setPaymentMethod("Patient");
+      setPaymentMethod(availablePaymentMethods[0]?.name ?? "");
       setPaymentKind("payment");
       setMessage("Payment recorded.");
       await loadSales();
@@ -889,7 +904,16 @@ export function PatientSales({
             </Label>
             <Label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
               Deposit method
-              <Input className="mt-1" value={trackedDraftDepositMethod} onChange={(event) => setTrackedDraftDepositMethod(event.target.value)} />
+              <Select value={trackedDraftDepositMethod} onValueChange={(v) => v && setTrackedDraftDepositMethod(v)}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {availablePaymentMethods.map((m) => (
+                    <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </Label>
             <Label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
               Notes
@@ -1255,7 +1279,16 @@ export function PatientSales({
                     </Label>
                     <Label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
                       Method
-                      <Input className="mt-1" value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)} />
+                      <Select value={paymentMethod} onValueChange={(v) => v && setPaymentMethod(v)}>
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availablePaymentMethods.map((m) => (
+                            <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </Label>
                     <Label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
                       Kind

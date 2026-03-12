@@ -12,10 +12,12 @@ import { cn } from "@/lib/utils";
 import {
   Briefcase,
   Clock,
+  CreditCard,
   Factory,
   FileText,
   LayoutTemplate,
   Shield,
+  Trash2,
   Users,
   Pencil,
   Star,
@@ -271,12 +273,13 @@ function toPayload(form: CatalogForm) {
 
 // ---- Settings Sections ----
 
-type SettingsSection = "catalog" | "manufacturers" | "availability" | "payers" | "documents" | "templates" | "users";
+type SettingsSection = "catalog" | "manufacturers" | "availability" | "payment-methods" | "payers" | "documents" | "templates" | "users";
 
 const SETTINGS_NAV: Array<{ id: SettingsSection; label: string; icon: typeof Briefcase; group: number }> = [
   { id: "catalog", label: "Catalog Items", icon: Briefcase, group: 0 },
   { id: "manufacturers", label: "Manufacturers", icon: Factory, group: 0 },
   { id: "availability", label: "Provider Availability", icon: Clock, group: 0 },
+  { id: "payment-methods", label: "Payment Methods", icon: CreditCard, group: 0 },
   { id: "payers", label: "3rd Party Payers", icon: Shield, group: 1 },
   { id: "documents", label: "Documents", icon: FileText, group: 1 },
   { id: "templates", label: "Templates", icon: LayoutTemplate, group: 1 },
@@ -818,6 +821,8 @@ export default function SettingsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingForm, setEditingForm] = useState<CatalogForm>({ ...EMPTY_FORM });
   const [showNewCatalogItemForm, setShowNewCatalogItemForm] = useState(false);
+  const [paymentMethods, setPaymentMethods] = useState<Array<{ id: string; name: string; enabled: boolean; isCustom: boolean; sortOrder: number }>>([]);
+  const [newPaymentMethodName, setNewPaymentMethodName] = useState("");
 
   const setErrorMessage = useCallback((nextError: string | null) => {
     setError(nextError);
@@ -845,9 +850,25 @@ export default function SettingsPage() {
     }
   }, [setErrorMessage]);
 
+  const loadPaymentMethods = useCallback(async () => {
+    try {
+      const res = await fetch("/api/payment-methods");
+      const data = await res.json();
+      setPaymentMethods(data.items ?? []);
+    } catch {
+      // silent
+    }
+  }, []);
+
   useEffect(() => {
     void loadCatalog();
   }, [loadCatalog]);
+
+  useEffect(() => {
+    if (activeSection === "payment-methods") {
+      void loadPaymentMethods();
+    }
+  }, [activeSection, loadPaymentMethods]);
 
   useEffect(() => {
     if (!message) return;
@@ -1093,6 +1114,9 @@ export default function SettingsPage() {
             )}
             {activeSection === "availability" && (
               <p className="mt-1 text-[13px] text-ink-muted">Set weekly working hours per provider. Unavailable slots are blocked on the schedule board.</p>
+            )}
+            {activeSection === "payment-methods" && (
+              <p className="mt-1 text-[13px] text-ink-muted">Configure accepted payment methods for invoices and sales.</p>
             )}
           </div>
           {activeSection === "catalog" && (
@@ -1374,6 +1398,148 @@ export default function SettingsPage() {
 
         {/* ---- Provider Availability Section ---- */}
         {activeSection === "availability" && <ProviderAvailabilitySection />}
+
+        {activeSection === "payment-methods" && (
+          <>
+            {/* Add custom method form */}
+            <div className="mb-4 flex items-end gap-2">
+              <Label className="text-[10px] font-semibold uppercase tracking-[0.05em] text-ink-soft">
+                Add custom method
+                <Input
+                  className="mt-1 w-[240px]"
+                  placeholder="e.g. PayPal, Venmo..."
+                  value={newPaymentMethodName}
+                  onChange={(e) => setNewPaymentMethodName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newPaymentMethodName.trim()) {
+                      void (async () => {
+                        try {
+                          const res = await fetch("/api/payment-methods", {
+                            method: "POST",
+                            headers: { "content-type": "application/json" },
+                            body: JSON.stringify({ name: newPaymentMethodName.trim() }),
+                          });
+                          if (!res.ok) {
+                            const data = await res.json();
+                            throw new Error(data.error || "Failed to create");
+                          }
+                          setNewPaymentMethodName("");
+                          setMessageText("Payment method added.");
+                          await loadPaymentMethods();
+                        } catch (err) {
+                          setErrorMessage(err instanceof Error ? err.message : "Unable to add payment method.");
+                        }
+                      })();
+                    }
+                  }}
+                />
+              </Label>
+              <Button
+                type="button"
+                size="sm"
+                disabled={!newPaymentMethodName.trim()}
+                onClick={async () => {
+                  try {
+                    const res = await fetch("/api/payment-methods", {
+                      method: "POST",
+                      headers: { "content-type": "application/json" },
+                      body: JSON.stringify({ name: newPaymentMethodName.trim() }),
+                    });
+                    if (!res.ok) {
+                      const data = await res.json();
+                      throw new Error(data.error || "Failed to create");
+                    }
+                    setNewPaymentMethodName("");
+                    setMessageText("Payment method added.");
+                    await loadPaymentMethods();
+                  } catch (err) {
+                    setErrorMessage(err instanceof Error ? err.message : "Unable to add payment method.");
+                  }
+                }}
+              >
+                <Plus size={14} />
+                Add
+              </Button>
+            </div>
+
+            <table className="w-full border-collapse">
+              <thead>
+                <tr>
+                  <th className="text-left text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft px-2 py-[5px] border-b border-surface-2 font-display">Name</th>
+                  <th className="text-left text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft px-2 py-[5px] border-b border-surface-2 font-display">Type</th>
+                  <th className="text-left text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft px-2 py-[5px] border-b border-surface-2 font-display">Status</th>
+                  <th className="text-left text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-soft px-2 py-[5px] border-b border-surface-2 font-display w-40">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paymentMethods.map((method, idx) => (
+                  <tr key={method.id} className={cn(idx % 2 === 1 && "bg-[rgba(243,239,232,0.4)]", "hover:bg-[rgba(31,149,184,0.04)]")}>
+                    <td className="px-2 py-[6px] border-b border-surface-1 text-xs font-medium text-ink-strong">{method.name}</td>
+                    <td className="px-2 py-[6px] border-b border-surface-1 text-xs text-ink-muted">{method.isCustom ? "Custom" : "Built-in"}</td>
+                    <td className="px-2 py-[6px] border-b border-surface-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", method.enabled ? "bg-success" : "bg-ink-soft")} />
+                        <span className="text-xs">{method.enabled ? "Enabled" : "Disabled"}</span>
+                      </div>
+                    </td>
+                    <td className="px-2 py-[6px] border-b border-surface-1">
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              const res = await fetch(`/api/payment-methods/${method.id}`, {
+                                method: "PATCH",
+                                headers: { "content-type": "application/json" },
+                                body: JSON.stringify({ enabled: !method.enabled }),
+                              });
+                              if (!res.ok) throw new Error("Failed to update");
+                              setMessageText(method.enabled ? "Payment method disabled." : "Payment method enabled.");
+                              await loadPaymentMethods();
+                            } catch (err) {
+                              setErrorMessage(err instanceof Error ? err.message : "Unable to update.");
+                            }
+                          }}
+                        >
+                          {method.enabled ? <ToggleRight size={14} className="mr-1 text-success" /> : <ToggleLeft size={14} className="mr-1" />}
+                          {method.enabled ? "Disable" : "Enable"}
+                        </Button>
+                        {method.isCustom && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-danger hover:text-danger"
+                            onClick={async () => {
+                              try {
+                                const res = await fetch(`/api/payment-methods/${method.id}`, { method: "DELETE" });
+                                if (!res.ok) throw new Error("Failed to delete");
+                                setMessageText("Payment method removed.");
+                                await loadPaymentMethods();
+                              } catch (err) {
+                                setErrorMessage(err instanceof Error ? err.message : "Unable to delete.");
+                              }
+                            }}
+                          >
+                            <Trash2 size={14} className="mr-1" />
+                            Delete
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {!paymentMethods.length && (
+                  <tr>
+                    <td colSpan={4} className="px-2 py-3 text-xs text-ink-muted">No payment methods configured.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </>
+        )}
 
         {/* ---- Placeholder Sections ---- */}
         {activeSection === "payers" && (
