@@ -5,6 +5,7 @@ This app now has the minimum backend scaffolding to connect to Click2Mail:
 - environment variables for credentials and API base URL
 - a server-side Click2Mail client
 - a health-check route at `/api/integrations/click2mail/health`
+- a real send route at `/api/patients/:id/documents/:documentId/mail/click2mail`
 - mailing address fields on `Patient`
 
 ## 1. Create a Click2Mail staging account
@@ -72,27 +73,36 @@ curl http://localhost:3100/api/integrations/click2mail/health
 
 If credentials are valid, the route returns your Click2Mail credit response from `/credit`.
 
-## 5. Decide the first mail flow
+## 5. Send a real mail piece from the app
 
-There are two integration patterns:
+The app now uses Click2Mail's documented standard flow:
 
-1. Template-based single piece
-2. Full job pipeline
+1. upload a document with `POST /documents`
+2. create a one-address list with `POST /addressLists`
+3. create a job with `POST /jobs`
+4. submit the job with `POST /jobs/{id}/submit`
 
-Template-based single piece is the right starting point for this app. Click2Mail exposes `POST /jobs/jobTemplate/submitonepiece` for that workflow.
+Current route behavior:
 
-Official docs:
+- requires `CLICK2MAIL_ENABLED=true`
+- requires patient `address`, `city`, `state`, and `zip`
+- requires the selected document to be stored locally
+- currently supports PDF documents only
+- uses env-driven print options and submits with `billingType=User Credit` by default
 
-- `https://developers.click2mail.com/reference/submitonepiece`
-- `https://developers.click2mail.com/docs/submit-a-job`
+Example:
+
+```bash
+curl -X POST http://localhost:3100/api/patients/PATIENT_ID/documents/DOCUMENT_ID/mail/click2mail
+```
 
 ## 6. Recommended implementation order in this app
 
 1. Add mailing address capture/editing to the patient workflow.
-2. Add a server route that loads a patient, validates address completeness, and submits one mail piece through a Click2Mail template.
-3. Save the returned Click2Mail job id in your database.
+2. Exercise the send route with a real patient PDF once credit is loaded into Click2Mail.
+3. Save the returned Click2Mail job id in a dedicated table instead of journal-only logging.
 4. Add a status-sync route using `GET /jobs/{id}`.
-5. Write a journal entry so staff can see when a letter was submitted and mailed.
+5. Expose staff controls in the UI for mail submission and status review.
 
 ## 7. Important constraint in the current app
 
