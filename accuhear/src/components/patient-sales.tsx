@@ -7,8 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FileTextIcon } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 type TrackedCatalogItem = {
   id: string;
@@ -150,8 +152,10 @@ function rowTypeLabel(transaction: SaleTransaction) {
 
 export function PatientSales({
   patientId,
+  canManageInvoices,
 }: {
   patientId: string;
+  canManageInvoices: boolean;
 }) {
   const [sales, setSales] = useState<SaleTransaction[]>([]);
   const [trackedCatalog, setTrackedCatalog] = useState<TrackedCatalogItem[]>([]);
@@ -1011,7 +1015,7 @@ export function PatientSales({
                         </span>
                         <span className="min-w-0 truncate text-ink-muted">{formatCurrency(row.sale.balance)}</span>
                         <span className="flex items-start justify-end gap-2">
-                          {row.sale.invoiceStatus !== "void" && !hideTransactionVoid ? (
+                          {canManageInvoices && row.sale.invoiceStatus !== "void" && !hideTransactionVoid ? (
                             <Button
                               type="button"
                               variant="outline"
@@ -1026,7 +1030,7 @@ export function PatientSales({
                               {voidingTransactionId === row.sale.id ? "Voiding..." : "Void"}
                             </Button>
                           ) : null}
-                          {canDeleteTerminalOrder ? (
+                          {canManageInvoices && canDeleteTerminalOrder ? (
                             <div
                               onClick={(event) => event.stopPropagation()}
                               onKeyDown={(event) => event.stopPropagation()}
@@ -1163,9 +1167,28 @@ export function PatientSales({
                             {formatDate(order.createdAt)} · {order.status.replaceAll("_", " ")}
                           </div>
                         </div>
-                        <div className="text-right text-xs text-ink-muted">
-                          <div>{order.invoice?.txnId ?? "No invoice"}</div>
-                          <div>{formatCurrency(order.invoice?.balance)}</div>
+                        <div className="flex items-center gap-2">
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={
+                                <button
+                                  type="button"
+                                  className="flex h-[26px] w-[26px] items-center justify-center rounded-[6px] text-ink-muted transition-colors hover:bg-surface-2 hover:text-brand-blue"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    window.open(`/api/orders/${order.id}/manufacturer-doc`, "_blank");
+                                  }}
+                                />
+                              }
+                            >
+                              <FileTextIcon size={14} />
+                            </TooltipTrigger>
+                            <TooltipContent>Order form</TooltipContent>
+                          </Tooltip>
+                          <div className="text-right text-xs text-ink-muted">
+                            <div>{order.invoice?.txnId ?? "No invoice"}</div>
+                            <div>{formatCurrency(order.invoice?.balance)}</div>
+                          </div>
                         </div>
                       </div>
                     </Button>
@@ -1239,7 +1262,7 @@ export function PatientSales({
                             </div>
                           </div>
                           <div className="flex flex-row flex-wrap items-start gap-2">
-                            {payment.kind !== "refund" ? (
+                            {canManageInvoices && payment.kind !== "refund" ? (
                               <Button
                                 type="button"
                                 variant="outline"
@@ -1251,16 +1274,18 @@ export function PatientSales({
                                 {voidingPaymentId === payment.id ? "Voiding..." : "Void"}
                               </Button>
                             ) : null}
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              size="sm"
-                              disabled={busy || deletingPaymentId === payment.id || voidingPaymentId === payment.id}
-                              className="h-7 px-2"
-                              onClick={() => void deletePayment(selectedSale.id, payment.id)}
-                            >
-                              {deletingPaymentId === payment.id ? "Deleting..." : "Delete"}
-                            </Button>
+                            {canManageInvoices ? (
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                disabled={busy || deletingPaymentId === payment.id || voidingPaymentId === payment.id}
+                                className="h-7 px-2"
+                                onClick={() => void deletePayment(selectedSale.id, payment.id)}
+                              >
+                                {deletingPaymentId === payment.id ? "Deleting..." : "Delete"}
+                              </Button>
+                            ) : null}
                           </div>
                         </div>
                       </div>
@@ -1456,7 +1481,7 @@ export function PatientSales({
                 >
                   Return item(s)
                 </Button>
-                {selectedSaleOrder?.status !== "cancelled" && selectedSaleOrder?.status !== "returned" ? (
+                {canManageInvoices && selectedSaleOrder?.status !== "cancelled" && selectedSaleOrder?.status !== "returned" ? (
                   <Button
                     type="button"
                     variant="outline"
@@ -1473,17 +1498,17 @@ export function PatientSales({
                     {voidingTransactionId === selectedSale.id ? "Voiding..." : "Void transaction"}
                   </Button>
                 ) : null}
-                {selectedSaleOrder?.status === "cancelled" || selectedSaleOrder?.status === "returned" ? (
-                  renderDeleteOrderButton(
-                    selectedSaleOrder.id,
-                    sales
-                      .filter((sale) => sale.purchaseOrderId === selectedSaleOrder.id)
-                      .map((sale) => sale.id),
-                    "detail"
-                  )
-                ) : (
-                  renderDeleteTransactionButton(selectedSale.id, "detail")
-                )}
+                {canManageInvoices
+                  ? selectedSaleOrder?.status === "cancelled" || selectedSaleOrder?.status === "returned"
+                    ? renderDeleteOrderButton(
+                        selectedSaleOrder.id,
+                        sales
+                          .filter((sale) => sale.purchaseOrderId === selectedSaleOrder.id)
+                          .map((sale) => sale.id),
+                        "detail"
+                      )
+                    : renderDeleteTransactionButton(selectedSale.id, "detail")
+                  : null}
                 {/* Order lifecycle action buttons — only when sale has a linked order */}
                 {selectedSaleOrder ? (
                   <>

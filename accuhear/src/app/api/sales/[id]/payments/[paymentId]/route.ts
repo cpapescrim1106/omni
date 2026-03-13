@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { addJournalEntry, computeInvoiceStatus, formatSaleTransaction } from "@/lib/commerce";
 import { Prisma, PrismaClient } from "@prisma/client";
+import { requireApiAdmin } from "@/lib/auth/api";
 
 type SaleTransactionWithRelations = Prisma.SaleTransactionGetPayload<{
   include: {
@@ -32,6 +33,11 @@ async function loadSaleWithRelations(
 }
 
 export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string; paymentId: string }> }) {
+  const auth = await requireApiAdmin();
+  if (auth.error) {
+    return auth.error;
+  }
+
   const { id: saleId, paymentId } = await params;
   if (!saleId) {
     return NextResponse.json({ error: "Missing sale id" }, { status: 400 });
@@ -103,6 +109,11 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
 }
 
 export async function POST(_request: NextRequest, { params }: { params: Promise<{ id: string; paymentId: string }> }) {
+  const auth = await requireApiAdmin();
+  if (auth.error) {
+    return auth.error;
+  }
+
   const { id: saleId, paymentId } = await params;
   if (!saleId) {
     return NextResponse.json({ error: "Missing sale id" }, { status: 400 });

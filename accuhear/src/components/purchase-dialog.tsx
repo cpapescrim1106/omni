@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { MinusIcon, PackageIcon, PlusIcon, SearchIcon, ShoppingCartIcon, XIcon } from "lucide-react";
+import { FileTextIcon, MinusIcon, PackageIcon, PlusIcon, PrinterIcon, SearchIcon, ShoppingCartIcon, XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ type CatalogItem = {
   name: string;
   manufacturer: string | null;
   category: string;
+  style: string | null;
   isPinned: boolean;
   requiresSerial: boolean;
   tracksWarranty: boolean;
@@ -56,6 +57,21 @@ function computeGross(items: DraftLineItem[]) {
   return items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
 }
 
+const CUSTOM_STYLES = ["cic", "fs", "hs", "canal", "iic", "itc", "ite", "full shell", "half shell"];
+
+function needsOrderForm(items: DraftLineItem[], catalog: CatalogItem[]) {
+  for (const item of items) {
+    const cat = catalog.find((c) => c.id === item.catalogItemId);
+    if (!cat) continue;
+    if (cat.category === "earmold") return true;
+    if (cat.category === "hearing_aid" && cat.style) {
+      const s = cat.style.toLowerCase();
+      if (CUSTOM_STYLES.some((cs) => s.includes(cs))) return true;
+    }
+  }
+  return false;
+}
+
 export function PurchaseButton({ patientId }: { patientId: string }) {
   const router = useRouter();
 
@@ -64,6 +80,8 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
+  const [orderFormNeeded, setOrderFormNeeded] = useState(false);
 
   // Catalogs
   const [trackedCatalog, setTrackedCatalog] = useState<CatalogItem[]>([]);
@@ -101,6 +119,8 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
     setSalePaymentMethod(availablePaymentMethods[0]?.name ?? "");
     setCatalogSearch("");
     setTrackedSearch("");
+    setCreatedOrderId(null);
+    setOrderFormNeeded(false);
   }, [availablePaymentMethods]);
 
   const closeDialog = useCallback(() => {
@@ -292,6 +312,9 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Unable to create tracked order.");
+      const orderId = payload.order?.id as string | undefined;
+      setCreatedOrderId(orderId ?? null);
+      setOrderFormNeeded(needsOrderForm(draftItems, trackedCatalog));
       setSuccessMessage("Tracked order created with invoice.");
       setDialogStep("success");
     } catch (err) {
@@ -299,7 +322,7 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
     } finally {
       setSubmitting(false);
     }
-  }, [discountAmount, discountReason, draftItems, editedTotal, patientId]);
+  }, [discountAmount, discountReason, draftItems, editedTotal, patientId, trackedCatalog]);
 
   const saleTotal = useMemo(() => {
     return saleItems.reduce((sum, item) => {
@@ -869,6 +892,29 @@ export function PurchaseButton({ patientId }: { patientId: string }) {
                   <p className="text-xs text-ink-muted">
                     Serial numbers and warranty dates are captured when you receive the items from the manufacturer.
                   </p>
+                )}
+                {orderFormNeeded && createdOrderId && (
+                  <div className="rounded-[12px] border border-brand-blue/20 bg-brand-blue/5 px-4 py-3">
+                    <div className="flex items-center gap-2 text-sm font-medium text-ink-strong">
+                      <FileTextIcon size={16} className="text-brand-blue" />
+                      Manufacturer order form required
+                    </div>
+                    <p className="mt-1 text-xs text-ink-muted">
+                      This order includes items that need a manufacturer order form.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="default"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => {
+                        window.open(`/api/orders/${createdOrderId}/manufacturer-doc`, "_blank");
+                      }}
+                    >
+                      <PrinterIcon size={14} className="mr-1.5" />
+                      Print order form
+                    </Button>
+                  </div>
                 )}
               </div>
             )}

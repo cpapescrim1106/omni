@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { UserManagementSection } from "@/components/settings/user-management-section";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ProviderScheduleMap } from "@/lib/provider-schedule";
 import { cn } from "@/lib/utils";
@@ -1177,6 +1178,9 @@ export default function SettingsPage() {
             {activeSection === "payment-methods" && (
               <p className="mt-1 text-[13px] text-ink-muted">Configure accepted payment methods for invoices and sales.</p>
             )}
+            {activeSection === "users" && (
+              <p className="mt-1 text-[13px] text-ink-muted">Create logins, assign roles, and reset passwords for staff accounts.</p>
+            )}
           </div>
           {activeSection === "catalog" && (
             <Button type="button" onClick={() => setShowNewCatalogItemForm((c) => !c)}>
@@ -1701,7 +1705,7 @@ export default function SettingsPage() {
           <div className="text-[13px] text-ink-muted py-8">Template management coming soon.</div>
         )}
         {activeSection === "users" && (
-          <div className="text-[13px] text-ink-muted py-8">User administration coming soon.</div>
+          <UserManagementSection active={activeSection === "users"} />
         )}
 
         {/* Toast notifications */}

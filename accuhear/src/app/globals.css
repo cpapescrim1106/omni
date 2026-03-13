@@ -291,14 +291,32 @@ a {
 
 .nav-bottom {
   width: 100%;
-  padding: 8px 12px;
+  min-height: 56px;
+  padding: 8px 0;
   border-top: 1px solid rgba(255,255,255,0.08);
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   color: rgba(255,255,255,0.45);
   font-size: 11px;
   white-space: nowrap;
+  overflow: hidden;
+}
+
+.left-nav:hover .nav-bottom,
+.left-nav:focus-within .nav-bottom {
+  min-height: 44px;
+  padding: 8px 12px;
+  flex-direction: row;
+  align-items: center;
+}
+
+.nav-bottom-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .nav-bottom-dot {
@@ -307,6 +325,89 @@ a {
   border-radius: 50%;
   background: var(--success);
   flex-shrink: 0;
+}
+
+.nav-bottom-meta {
+  min-width: 0;
+  flex: 1;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease-out;
+}
+
+.nav-bottom-email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: rgba(255,255,255,0.78);
+}
+
+.nav-bottom-role {
+  margin-top: 2px;
+  font-family: var(--font-display), "Space Grotesk", sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.42);
+}
+
+.nav-bottom-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.left-nav:hover .nav-bottom-meta,
+.left-nav:focus-within .nav-bottom-meta,
+.left-nav:focus-within .nav-bottom-meta {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.nav-logout-btn {
+  display: inline-flex;
+  height: 24px;
+  width: 24px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255,255,255,0.72);
+  transition: width 0.15s ease-out, padding 0.15s ease-out, border-color 0.15s ease-out, color 0.15s ease-out,
+    background-color 0.15s ease-out;
+}
+
+.nav-logout-btn:hover {
+  border-color: rgba(255,255,255,0.3);
+  color: #fff;
+  background: rgba(255,255,255,0.06);
+}
+
+.nav-logout-label {
+  opacity: 0;
+  width: 0;
+  font-family: var(--font-display), "Space Grotesk", sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: opacity 0.15s ease-out;
+}
+
+.left-nav:hover .nav-logout-btn,
+.left-nav:focus-within .nav-logout-btn {
+  width: auto;
+  padding: 0 8px;
+}
+
+.left-nav:hover .nav-logout-label,
+.left-nav:focus-within .nav-logout-label {
+  width: auto;
+  opacity: 1;
 }
 
 /* ─── Patient Rail ─── */

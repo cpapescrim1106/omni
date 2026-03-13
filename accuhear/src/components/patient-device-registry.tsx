@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
-import { ChevronRightIcon, PackageIcon, TruckIcon, XCircleIcon } from "lucide-react";
+import { ChevronRightIcon, FileTextIcon, PackageIcon, TruckIcon, XCircleIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -360,6 +360,14 @@ export function PatientDeviceRegistry({ patientId, devices, inOrderItems }: Pati
 
     return (
       <div style={{ display: "flex", gap: 2, marginTop: 2 }}>
+        <Tooltip>
+          <TooltipTrigger
+            render={<button type="button" className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-[4px] bg-transparent p-0 text-ink-muted hover:bg-surface-2 hover:text-brand-blue" onClick={() => window.open(`/api/orders/${group.orderId}/manufacturer-doc`, "_blank")} />}
+          >
+            <FileTextIcon size={12} />
+          </TooltipTrigger>
+          <TooltipContent>Order form</TooltipContent>
+        </Tooltip>
         {hasOrdered && (
           <Tooltip>
             <TooltipTrigger

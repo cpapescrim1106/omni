@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import dayjs from "dayjs";
 import { computePatientBalance } from "@/lib/commerce";
+import { isAdminRole, requirePageUser } from "@/lib/auth/session";
 import { getPatientById } from "@/lib/patient-data";
 import { Button } from "@/components/ui/button";
 import { PatientJournal } from "@/components/patient-journal";
@@ -58,6 +59,7 @@ export default async function PatientProfilePage({
   const resolvedParams = params instanceof Promise ? await params : params;
   const resolvedSearchParams =
     searchParams && searchParams instanceof Promise ? await searchParams : searchParams;
+  const currentUser = await requirePageUser();
   const patient = await getPatientById(resolvedParams.id);
   if (!patient) notFound();
   const activeTab = resolvedSearchParams?.tab ?? "Summary";
@@ -196,7 +198,7 @@ export default async function PatientProfilePage({
       ) : normalizedActiveTab === "Messaging" ? (
         <PatientMessaging patientId={patient.id} />
       ) : normalizedActiveTab === "Sales history" ? (
-        <PatientSales patientId={patient.id} />
+        <PatientSales patientId={patient.id} canManageInvoices={isAdminRole(currentUser.role)} />
       ) : normalizedActiveTab === "Documents" ? (
         <PatientDocuments
           patientId={patient.id}

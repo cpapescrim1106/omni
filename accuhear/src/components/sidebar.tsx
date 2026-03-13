@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
+import type { AuthenticatedUser } from "@/lib/auth/session";
+import { LogoutButton } from "@/components/auth/logout-button";
 
 type InboxSummary = {
   needsAttentionCount: number;
@@ -131,7 +133,7 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function Sidebar() {
+export function Sidebar({ currentUser }: { currentUser: AuthenticatedUser }) {
   const pathname = usePathname();
   const [inboxSummary, setInboxSummary] = useState<InboxSummary>({ needsAttentionCount: 0 });
 
@@ -192,8 +194,18 @@ export function Sidebar() {
         })}
       </div>
       <div className="nav-bottom">
-        <span className="nav-bottom-dot" />
-        <span className="nav-label">Spring Hill</span>
+        <div className="nav-bottom-status">
+          <span className="nav-bottom-dot" />
+        </div>
+        <div className="nav-bottom-meta">
+          <div className="nav-bottom-email">{currentUser.email}</div>
+          <div className="nav-bottom-role">
+            {currentUser.role === "ADMINISTRATOR" ? "Administrator" : "Employee"}
+          </div>
+        </div>
+        <div className="nav-bottom-action">
+          <LogoutButton />
+        </div>
       </div>
     </nav>
   );

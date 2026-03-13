@@ -7,6 +7,21 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  ADMINISTRATOR
+  EMPLOYEE
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  role         UserRole  @default(EMPLOYEE)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
 model Patient {
   id            String    @id @default(cuid())
   legacyId      String?   @unique
@@ -27,20 +42,20 @@ model Patient {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  phones            PhoneNumber[]
-  searchIndex       PatientSearchIndex? @ignore
-  appointments      Appointment[]
-  journalEntries    JournalEntry[]
-  marketingContacts MarketingContact[]
-  recalls           Recall[]
-  devices           Device[]
-  documents         Document[]
-  payerPolicies     PayerPolicy[]
-  sales             SaleTransaction[]
-  purchaseOrders    PurchaseOrder[]
-  messageThreads    MessageThread[]
-  audiograms        Audiogram[]
-  smsConsents       SmsConsent[]
+  phones               PhoneNumber[]
+  searchIndex          PatientSearchIndex?   @ignore
+  appointments         Appointment[]
+  journalEntries       JournalEntry[]
+  marketingContacts    MarketingContact[]
+  recalls              Recall[]
+  devices              Device[]
+  documents            Document[]
+  payerPolicies        PayerPolicy[]
+  sales                SaleTransaction[]
+  purchaseOrders       PurchaseOrder[]
+  messageThreads       MessageThread[]
+  audiograms           Audiogram[]
+  smsConsents          SmsConsent[]
   appointmentReminders AppointmentReminder[]
 
   @@index([lastName, firstName])
@@ -60,24 +75,24 @@ model PhoneNumber {
 }
 
 model PatientSearchIndex {
-  patientId     String   @id @map("patient_id")
-  patient       Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  legacyId      String?  @map("legacy_id")
-  firstName     String   @map("first_name")
-  lastName      String   @map("last_name")
-  preferredName String?  @map("preferred_name")
-  fullName      String   @map("full_name")
-  nameSearch    String   @map("name_search")
+  patientId     String    @id @map("patient_id")
+  patient       Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  legacyId      String?   @map("legacy_id")
+  firstName     String    @map("first_name")
+  lastName      String    @map("last_name")
+  preferredName String?   @map("preferred_name")
+  fullName      String    @map("full_name")
+  nameSearch    String    @map("name_search")
   email         String?
   status        String?
-  providerName  String?  @map("provider_name")
+  providerName  String?   @map("provider_name")
   location      String?
   dateOfBirth   DateTime? @map("date_of_birth") @db.Date
-  phonesE164    String[] @default([]) @map("phones_e164")
-  payerNames    String[] @default([]) @map("payer_names")
-  payerSearch   String   @default("") @map("payer_search")
-  serialNumbers String[] @default([]) @map("serial_numbers")
-  updatedAt     DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  phonesE164    String[]  @default([]) @map("phones_e164")
+  payerNames    String[]  @default([]) @map("payer_names")
+  payerSearch   String    @default("") @map("payer_search")
+  serialNumbers String[]  @default([]) @map("serial_numbers")
+  updatedAt     DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
 
   @@index([email], map: "patient_search_email_idx")
   @@index([legacyId], map: "patient_search_legacy_idx")
@@ -111,29 +126,29 @@ model AppointmentStatus {
 }
 
 model Appointment {
-  id             String            @id @default(cuid())
-  patientId      String?
-  patient        Patient?          @relation(fields: [patientId], references: [id])
-  providerName   String
-  location       String
-  referralSource String?
-  typeId         String
-  type           AppointmentType   @relation(fields: [typeId], references: [id])
-  statusId       String
-  status         AppointmentStatus @relation(fields: [statusId], references: [id])
-  startTime      DateTime
-  endTime        DateTime
-  notes          String?
-  arrivedAt      DateTime?
-  readyAt        DateTime?
-  inProgressAt   DateTime?
-  completedAt    DateTime?
-  cancelledAt    DateTime?
-  smsConfirmedAt DateTime?
-  smsDeclinedAt  DateTime?
-  needsReschedule Boolean          @default(false)
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  id              String            @id @default(cuid())
+  patientId       String?
+  patient         Patient?          @relation(fields: [patientId], references: [id])
+  providerName    String
+  location        String
+  referralSource  String?
+  typeId          String
+  type            AppointmentType   @relation(fields: [typeId], references: [id])
+  statusId        String
+  status          AppointmentStatus @relation(fields: [statusId], references: [id])
+  startTime       DateTime
+  endTime         DateTime
+  notes           String?
+  arrivedAt       DateTime?
+  readyAt         DateTime?
+  inProgressAt    DateTime?
+  completedAt     DateTime?
+  cancelledAt     DateTime?
+  smsConfirmedAt  DateTime?
+  smsDeclinedAt   DateTime?
+  needsReschedule Boolean           @default(false)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   transitions    AppointmentStatusTransition[] @relation("AppointmentStatusTransition")
   statusEvents   AppointmentStatusEvent[]      @relation("AppointmentStatusEvent")
@@ -189,15 +204,15 @@ model AppointmentStatusEvent {
 }
 
 model ProviderSchedule {
-  id           String   @id @default(cuid())
-  providerName String
-  dayOfWeek    Int
-  startMinute  Int
-  endMinute    Int
+  id               String   @id @default(cuid())
+  providerName     String
+  dayOfWeek        Int
+  startMinute      Int
+  endMinute        Int
   lunchStartMinute Int?
   lunchEndMinute   Int?
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
 
   @@unique([providerName, dayOfWeek])
   @@index([providerName, dayOfWeek])
@@ -253,20 +268,20 @@ model Recall {
 }
 
 model AppointmentReminder {
-  id              String                  @id @default(cuid())
-  appointmentId   String
-  appointment     Appointment             @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
-  patientId       String
-  patient         Patient                 @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  type            AppointmentReminderType
-  status          AppointmentReminderStatus @default(sent)
-  scheduledFor    DateTime
-  sentAt          DateTime?
-  respondedAt     DateTime?
+  id                String                    @id @default(cuid())
+  appointmentId     String
+  appointment       Appointment               @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  patientId         String
+  patient           Patient                   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  type              AppointmentReminderType
+  status            AppointmentReminderStatus @default(sent)
+  scheduledFor      DateTime
+  sentAt            DateTime?
+  respondedAt       DateTime?
   outboundMessageId String?
-  replyMessageId  String?
-  createdAt       DateTime                @default(now())
-  updatedAt       DateTime                @updatedAt
+  replyMessageId    String?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
 
   @@unique([appointmentId, type])
   @@index([patientId, status, sentAt])
@@ -525,12 +540,12 @@ model CatalogItem {
 }
 
 model CatalogManufacturer {
-  id        String   @id @default(cuid())
-  name           String   @unique
-  active         Boolean  @default(true)
-  accountNumber  String?
-  createdAt      DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(cuid())
+  name          String   @unique
+  active        Boolean  @default(true)
+  accountNumber String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@index([active, name])
 }

@@ -1,4 +1,4 @@
-export const DOCUMENT_CATEGORIES = ["Consent", "Drivers license", "Insurance", "Purchase", "Quote", "Other"] as const;
+export const DOCUMENT_CATEGORIES = ["Consent", "Drivers license", "Insurance", "Order Form", "Purchase", "Quote", "Other"] as const;
 
 export type DocumentCategory = (typeof DOCUMENT_CATEGORIES)[number];
 

@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Campaigns — Variation A: List Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --brand-ink: #262260;
+    --brand-blue: #1f95b8;
+    --brand-orange: #dd6f26;
+    --surface-0: #f8f5f0;
+    --surface-1: #f3efe8;
+    --surface-2: #ece6dd;
+    --surface-3: #e6dfd4;
+    --surface-4: #dfd6c8;
+    --ink-strong: #1b1a27;
+    --ink: #2f2c3f;
+    --ink-muted: #6c687d;
+    --ink-soft: #9a95ad;
+    --success: #1e9b6c;
+    --warning: #c87a2f;
+    --danger: #c94646;
+    --card-bg: rgba(255,255,255,0.82);
+    --card-border: rgba(38,34,96,0.08);
+    --card-shadow: 0 1px 3px rgba(38,34,96,0.06), 0 0 0 1px rgba(38,34,96,0.04);
+    --radius-card: 18px;
+    --radius-pill: 999px;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --font-body: 'Open Sans', system-ui, sans-serif;
+    --font-display: 'Space Grotesk', system-ui, sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--surface-0);
+    color: var(--ink);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  /* Page shell */
+  .page {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+
+  /* Page header */
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .page-header h1 {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--ink-strong);
+  }
+
+  .page-header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    border-radius: var(--radius-pill);
+    padding: 0 14px;
+    height: 32px;
+    transition: all 0.15s ease;
+  }
+
+  .btn-primary {
+    background: var(--brand-blue);
+    color: white;
+  }
+  .btn-primary:hover { background: #1a8299; }
+
+  .btn-secondary {
+    background: var(--surface-2);
+    color: var(--ink);
+  }
+  .btn-secondary:hover { background: var(--surface-3); }
+
+  .btn-sm {
+    height: 26px;
+    padding: 0 10px;
+    font-size: 11px;
+  }
+
+  .btn-micro {
+    height: 22px;
+    padding: 0 8px;
+    font-size: 10px;
+  }
+
+  /* Stats row */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .stat-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    box-shadow: var(--card-shadow);
+    border-radius: var(--radius-card);
+    padding: 14px 16px;
+  }
+
+  .stat-label {
+    font-family: var(--font-display);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+
+  .stat-value {
+    font-family: var(--font-display);
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--ink-strong);
+  }
+
+  .stat-value.blue { color: var(--brand-blue); }
+  .stat-value.green { color: var(--success); }
+  .stat-value.orange { color: var(--brand-orange); }
+
+  .stat-sub {
+    font-size: 11px;
+    color: var(--ink-muted);
+    margin-top: 2px;
+  }
+
+  /* Filter bar */
+  .filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .search-input {
+    height: 34px;
+    padding: 0 12px 0 34px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--surface-3);
+    background: white;
+    font-family: var(--font-body);
+    font-size: 12px;
+    color: var(--ink);
+    width: 260px;
+    outline: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%239a95ad' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='6' cy='6' r='5'/%3E%3Cline x1='10' y1='10' x2='13' y2='13'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: 12px center;
+    transition: border-color 0.15s;
+  }
+  .search-input:focus { border-color: var(--brand-blue); }
+  .search-input::placeholder { color: var(--ink-soft); }
+
+  .filter-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 28px;
+    padding: 0 12px;
+    border-radius: var(--radius-pill);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--surface-3);
+    background: white;
+    color: var(--ink-muted);
+    transition: all 0.15s;
+  }
+  .filter-pill:hover { border-color: var(--brand-blue); color: var(--ink); }
+  .filter-pill.active {
+    background: rgba(31,149,184,0.08);
+    border-color: var(--brand-blue);
+    color: var(--brand-blue);
+  }
+
+  .filter-sep {
+    width: 1px;
+    height: 20px;
+    background: var(--surface-3);
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 16px;
+    background: var(--surface-1);
+    border-radius: var(--radius-sm);
+    padding: 3px;
+    width: fit-content;
+  }
+
+  .tab {
+    padding: 5px 16px;
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-muted);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: none;
+    background: none;
+  }
+  .tab:hover { color: var(--ink); }
+  .tab.active {
+    background: white;
+    color: var(--ink-strong);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  }
+
+  .tab-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 16px;
+    padding: 0 5px;
+    border-radius: var(--radius-pill);
+    font-size: 10px;
+    font-weight: 700;
+    margin-left: 4px;
+  }
+  .tab.active .tab-count {
+    background: rgba(31,149,184,0.1);
+    color: var(--brand-blue);
+  }
+  .tab:not(.active) .tab-count {
+    background: var(--surface-2);
+    color: var(--ink-soft);
+  }
+
+  /* Campaign table card */
+  .table-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    box-shadow: var(--card-shadow);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+  }
+
+  .campaign-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .campaign-table thead th {
+    font-family: var(--font-display);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--ink-soft);
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--surface-2);
+    background: rgba(243,239,232,0.3);
+  }
+
+  .campaign-table tbody tr {
+    border-bottom: 1px solid rgba(38,34,96,0.04);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .campaign-table tbody tr:hover {
+    background: rgba(31,149,184,0.04);
+  }
+  .campaign-table tbody tr:last-child { border-bottom: none; }
+
+  .campaign-table td {
+    padding: 10px 14px;
+    vertical-align: middle;
+  }
+
+  /* Campaign name cell */
+  .campaign-name {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .campaign-name strong {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-strong);
+  }
+  .campaign-name span {
+    font-size: 11px;
+    color: var(--ink-muted);
+  }
+
+  /* Badges */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    height: 20px;
+    padding: 0 8px;
+    border-radius: var(--radius-pill);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  .badge-success { background: rgba(30,155,108,0.1); color: var(--success); }
+  .badge-warning { background: rgba(200,122,47,0.1); color: var(--warning); }
+  .badge-neutral { background: var(--surface-2); color: var(--ink-muted); }
+  .badge-blue { background: rgba(31,149,184,0.1); color: var(--brand-blue); }
+  .badge-danger { background: rgba(201,70,70,0.1); color: var(--danger); }
+  .badge-orange { background: rgba(221,111,38,0.1); color: var(--brand-orange); }
+
+  /* Channel icons */
+  .channels {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .channel-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    font-size: 11px;
+  }
+
+  .channel-email { background: rgba(31,149,184,0.1); color: var(--brand-blue); }
+  .channel-sms { background: rgba(30,155,108,0.1); color: var(--success); }
+  .channel-print { background: rgba(221,111,38,0.1); color: var(--brand-orange); }
+
+  /* Sequence count */
+  .sequence-count {
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .sequence-count span {
+    color: var(--ink-soft);
+    font-weight: 400;
+    font-size: 11px;
+  }
+
+  /* Metrics cell */
+  .metrics {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+
+  .metric {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .metric-value {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-strong);
+  }
+
+  .metric-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--ink-soft);
+    font-weight: 600;
+  }
+
+  /* Mini bar chart */
+  .mini-bar {
+    width: 80px;
+    height: 6px;
+    background: var(--surface-2);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .mini-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s;
+  }
+  .mini-bar-fill.green { background: var(--success); }
+  .mini-bar-fill.blue { background: var(--brand-blue); }
+  .mini-bar-fill.orange { background: var(--brand-orange); }
+
+  /* Status dot */
+  .status-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    margin-right: 6px;
+  }
+  .status-dot.active { background: var(--success); }
+  .status-dot.paused { background: var(--warning); }
+  .status-dot.draft { background: var(--ink-soft); }
+  .status-dot.completed { background: var(--brand-blue); }
+
+  /* Actions */
+  .row-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .campaign-table tbody tr:hover .row-actions {
+    opacity: 1;
+  }
+
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    border: none;
+    background: none;
+    color: var(--ink-muted);
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.15s;
+  }
+  .icon-btn:hover {
+    background: var(--surface-2);
+    color: var(--ink);
+  }
+
+  /* Empty space helper */
+  .spacer { flex: 1; }
+
+  /* Type group header */
+  .type-group-header {
+    padding: 8px 14px;
+    background: rgba(243,239,232,0.5);
+    border-bottom: 1px solid var(--surface-2);
+  }
+  .type-group-header span {
+    font-family: var(--font-display);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--ink-muted);
+  }
+
+  /* Tooltip-style info */
+  .info-text {
+    font-size: 11px;
+    color: var(--ink-muted);
+    line-height: 1.4;
+  }
+
+  /* Right-align */
+  .text-right { text-align: right; }
+  .text-center { text-align: center; }
+
+  /* Last run */
+  .last-run {
+    font-size: 11px;
+    color: var(--ink-muted);
+  }
+
+  /* Campaign type tag */
+  .type-tag {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  /* New campaign indicator */
+  .new-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--brand-blue);
+    display: inline-block;
+    margin-right: 6px;
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1>Campaigns</h1>
+    <div class="page-header-actions">
+      <button class="btn btn-secondary btn-sm">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 1v12M1 7h12"/></svg>
+        Import
+      </button>
+      <button class="btn btn-primary">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 1v12M1 7h12"/></svg>
+        New Campaign
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">Total Campaigns</div>
+      <div class="stat-value">12</div>
+      <div class="stat-sub">8 automated, 4 manual</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Active Now</div>
+      <div class="stat-value green">8</div>
+      <div class="stat-sub">Running daily at 6:00 AM</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Emails This Month</div>
+      <div class="stat-value blue">347</div>
+      <div class="stat-sub">+12% vs last month</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Avg Open Rate</div>
+      <div class="stat-value">38.2%</div>
+      <div class="stat-sub">Industry avg: 21%</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Avg Click Rate</div>
+      <div class="stat-value orange">6.4%</div>
+      <div class="stat-sub">Industry avg: 2.5%</div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div style="display: flex; align-items: center; justify-content: space-between;">
+    <div class="tabs">
+      <button class="tab active">All<span class="tab-count">12</span></button>
+      <button class="tab">Automated<span class="tab-count">8</span></button>
+      <button class="tab">Manual<span class="tab-count">4</span></button>
+      <button class="tab">Drafts<span class="tab-count">2</span></button>
+    </div>
+  </div>
+
+  <!-- Filter Bar -->
+  <div class="filter-bar">
+    <input type="text" class="search-input" placeholder="Search campaigns...">
+    <div class="filter-sep"></div>
+    <button class="filter-pill active">
+      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="6" r="5"/></svg>
+      All Channels
+    </button>
+    <button class="filter-pill">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      Email
+    </button>
+    <button class="filter-pill">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      SMS
+    </button>
+    <button class="filter-pill">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Print
+    </button>
+    <div class="spacer"></div>
+    <button class="filter-pill">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M6 12h12M9 18h6"/></svg>
+      More Filters
+    </button>
+  </div>
+
+  <!-- Campaign Table -->
+  <div class="table-card">
+    <table class="campaign-table">
+      <thead>
+        <tr>
+          <th style="width: 30%">Campaign</th>
+          <th>Type</th>
+          <th>Channels</th>
+          <th>Sequence</th>
+          <th>Status</th>
+          <th class="text-center">Sent</th>
+          <th class="text-center">Open Rate</th>
+          <th>Last Run</th>
+          <th style="width: 60px"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Tested, Not Sold -->
+        <tr>
+          <td>
+            <div class="campaign-name">
+              <strong>Tested, Not Sold</strong>
+              <span>Re-engage patients who tested positive but didn't purchase</span>
+            </div>
+          </td>
+          <td><span class="badge badge-blue">Drip</span></td>
+          <td>
+            <div class="channels">
+              <span class="channel-icon channel-email" title="Email">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              </span>
+              <span class="channel-icon channel-print" title="Print">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              </span>
+            </div>
+          </td>
+          <td>
+            <div class="sequence-count">11 <span>touches over 24 mo</span></div>
+          </td>
+          <td>
+            <span class="status-dot active"></span>
+            <span style="font-size: 12px; font-weight: 500; color: var(--success)">Active</span>
+          </td>
+          <td class="text-center">
+            <div class="metric-value">1,247</div>
+          </td>
+          <td class="text-center">
+            <div class="metric-value">42.1%</div>
+            <div class="mini-bar" style="margin: 4px auto 0;">
+              <div class="mini-bar-fill green" style="width: 42%"></div>
+            </div>
+          </td>
+          <td><span class="last-run">Today, 6:00 AM</span></td>
+          <td>
+            <div class="row-actions">
+              <button class="icon-btn" title="Edit">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              <button class="icon-btn" title="More">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+              </button>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Post Fitting -->
+        <tr>
+          <td>
+            <div class="campaign-name">
+              <strong>Post Fitting Follow-Up</strong>
+              <span>Check in with patients after hearing aid fitting</span>
+            </div>
+          </td>
+          <td><span class="badge badge-blue">Drip</span></td>
+          <td>
+            <div class="channels">
+              <span class="channel-icon channel-email" title="Email">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              </span>
+              <span class="channel-icon channel-print" title="Print">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              </span>
+            </div>
+          </td>
+          <td>
+            <div class="sequence-count">7 <span>touches over 52 wk</span></div>
+          </td>
+          <td>
+            <span class="status-dot active"></span>
+            <span style="font-size: 12px; font-weight: 500; color: var(--success)">Active</span>
+          </td>
+          <td class="text-center">
+            <div class="metric-value">892</div>
+          </td>
+          <td class="text-center">
+            <div class="metric-value">45.3%</div>
+            <div class="mini-bar" style="margin: 4px auto 0;">
+              <div class="mini-bar-fill green" style="width: 45%"></div>
+            </div>
+          </td>
+          <td><span class="last-run">Today, 6:00 AM</span></td>
+          <td>
+            <div class="row-actions">
+              <button class="icon-btn" title="Edit">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              <button class="icon-btn" title="More">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+              </button>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Warranty Expiration -->
+        <tr>
+          <td>
+            <div class="campaign-name">
+              <strong>Warranty Expiration</strong>
+              <span>Alert patients before warranty coverage ends</span>
+            </div>
+          </td>
+          <td><span class="badge badge-blue">Drip</span></td>
+          <td>
+            <div class="channels">
+              <span class="channel-icon channel-email" title="Email">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              </span>
+              <span class="channel-icon channel-print" title="Print">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              </span>
+            </div>
+          </td>
+          <td>
+            <div class="sequence-count">5 <span>touches over 60 days</span></div>
+          </td>
+          <td>
+            <span class="status-dot active"></span>
+            <span style="font-size: 12px; font-weight: 500; color: var(--success)">Active</span>
+          </td>
+          <td class="text-center">
+            <div class="metric-value">534</div>
+          </td>
+          <td class="text-center">
+            <div class="metric-value">51.7%</div>
+            <div class="mini-bar" style="margin: 4px auto 0;">
+              <div class="mini-bar-fill green" style="width: 52%"></div>
+            </div>
+          </td>
+          <td><span class="last-run">Today, 6:00 AM</span></td>
+          <td>
+            <div class="row-actions">
+              <button class="icon-btn" title="Edit">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              <button class="icon-btn" title="More">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+              </button>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Birthday -->
+        <tr>
+          <td>
+            <div class="campaign-name">
+              <strong>Birthday Message</strong>
+              <span>Send warm birthday wishes to patients</span>
+            </div>
+          </td>
+          <td><span class="badge badge-blue">Drip</span></td>
+          <td>
+            <div class="channels">
+              <span class="channel-icon channel-email" title="Email">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              </span>
+              <span class="channel-icon channel-print" title="Print">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              </span>
+            </div>
+          </td>
+          <td>
+            <div class="sequence-count">2 <span>touches</span></div>
+          </td>
+          <td>
+            <span class="status-dot active"></span>
+            <span style="font-size: 12px; font-weight: 500; color: var(--success)">Active</span>
+          </td>
+          <td class="text-center">
+            <div class="metric-value">289</div>
+          </td>
+          <td class="text-center">
+            <div class="metric-value">61.4%</div>
+            <div class="mini-bar" style="margin: 4px auto 0;">
+              <div class="mini-bar-fill green" style="width: 61%"></div>
+            </div>
+          </td>
+          <td><span class="last-run">Today, 6:00 AM</span></td>
+          <td>
+            <div class="row-actions">
+              <button class="icon-btn" title="Edit">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              <button class="icon-btn" title="More">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+              </button>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Annual Hearing Test -->
+        <tr>
+          <td>
+            <div class="campaign-name">
+              <strong>Annual Hearing Test Reminder</strong>
+              <span>Remind patients it's time for their yearly evaluation</span>
+            </div>
+          </td>
+          <td><span class="badge badge-blue">Drip</span></td>
+          <td>
+            <div class="channels">
+              <span class="channel-icon channel-email" title="Email">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              </span>
+              <span class="channel-icon channel-print" title="Print">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              </span>
+            </div>
+          </td>
+          <td>
+            <div class="sequence-count">1 <span>touch</span></div>
+          </td>
+          <td>
+            <span class="status-dot active"></span>
+            <span style="font-size: 12px; font-weight: 500; color: var(--success)">Active</span>
+          </td>
+          <td class="text-center">
+            <div class="metric-value">412</div>
+          </td>
+          <td class="text-center">
+            <div class="metric-value">36.8%</div>
+            <div class="mini-bar" style="margin: 4px auto 0;">
+              <div class="mini-bar-fill green" style="width: 37%"></div>
+            </div>
+          </td>
+          <td><span class="last-run">Today, 6:00 AM</span></td>
+          <td>
+            <div class="row-actions">
+              <button class="icon-btn" title="Edit">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              <button class="icon-btn" title="More">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+              </button>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Cancel / No Show -->
+        <tr>
+          <td>
+            <div class="campaign-name">
+              <strong>Cancel &amp; No-Show Follow-Up</strong>
+              <span>Re-engage patients who cancelled or missed appointments</span>
+            </div>
+          </td>
+          <td><span class="badge badge-blue">Drip</span></td>
+          <td>
+            <div class="channels">
+              <span class="channel-icon channel-email" title="Email">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              </span>
+            </div>
+          </td>
+          <td>
+            <div class="sequence-count">3 <span>touches over 30 days</span></div>
+          </td>
+          <td>
+            <span class="status-dot active"></span>
+            <span style="font-size: 12px; font-weight: 500; color: var(--success)">Active</span>
+          </td>
+          <td class="text-center">
+            <div class="metric-value">156</div>
+          </td>
+          <td class="text-center">
+            <div class="metric-value">29.5%</div>
+            <div class="mini-bar" style="margin: 4px auto 0;">
+              <div class="mini-bar-fill orange" style="width: 30%"></div>
+            </div>
+          </td>
+          <td><span class="last-run">Today, 6:00 AM</span></td>
+          <td>
+            <div class="row-actions">
+              <button class="icon-btn" title="Edit">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              <button class="icon-btn" title="More">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+              </button>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Manual Campaign: Spring Hearing Check -->
+        <tr>
+          <td>
+            <div class="campaign-name">
+              <strong><span class="new-dot"></span>Spring Hearing Check Promotion</strong>
+              <span>Seasonal promotion for all active patients over 55</span>
+            </div>
+          </td>
+          <td><span class="badge badge-orange">Manual</span></td>
+          <td>
+            <div class="channels">
+              <span class="channel-icon channel-email" title="Email">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              </span>
+              <span class="channel-icon channel-sms" title="SMS">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </span>
+              <span class="channel-icon channel-print" title="Print">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              </span>
+            </div>
+          </td>
+          <td>
+            <div class="sequence-count">1 <span>send &middot; 247 recipients</span></div>
+          </td>
+          <td>
+            <span class="status-dot draft"></span>
+            <span style="font-size: 12px; font-weight: 500; color: var(--ink-muted)">Draft</span>
+          </td>
+          <td class="text-center">
+            <div class="metric-value" style="color: var(--ink-soft)">--</div>
+          </td>
+          <td class="text-center">
+            <div class="metric-value" style="color: var(--ink-soft)">--</div>
+          </td>
+          <td><span class="last-run">Created Mar 10</span></td>
+          <td>
+            <div class="row-actions" style="opacity: 1;">
+              <button class="btn btn-primary btn-micro">Send</button>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Manual Campaign: Completed -->
+        <tr>
+          <td>
+            <div class="campaign-name">
+              <strong>February Newsletter</strong>
+              <span>Monthly update: new hearing aid technology &amp; clinic news</span>
+            </div>
+          </td>
+          <td><span class="badge badge-orange">Manual</span></td>
+          <td>
+            <div class="channels">
+              <span class="channel-icon channel-email" title="Email">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              </span>
+            </div>
+          </td>
+          <td>
+            <div class="sequence-count">1 <span>send &middot; 312 recipients</span></div>
+          </td>
+          <td>
+            <span class="status-dot completed"></span>
+            <span style="font-size: 12px; font-weight: 500; color: var(--brand-blue)">Completed</span>
+          </td>
+          <td class="text-center">
+            <div class="metric-value">312</div>
+          </td>
+          <td class="text-center">
+            <div class="metric-value">44.2%</div>
+            <div class="mini-bar" style="margin: 4px auto 0;">
+              <div class="mini-bar-fill green" style="width: 44%"></div>
+            </div>
+          </td>
+          <td><span class="last-run">Feb 28, 9:15 AM</span></td>
+          <td>
+            <div class="row-actions">
+              <button class="icon-btn" title="View Report">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+              <button class="icon-btn" title="Clone">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button>
+            </div>
+          </td>
+        </tr>
+
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+</body>
+</html>

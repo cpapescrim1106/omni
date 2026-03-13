@@ -3,11 +3,15 @@ import { Sidebar } from "@/components/sidebar";
 import { MobileNav } from "@/components/mobile-nav";
 import { GlobalShortcuts } from "@/components/global-shortcuts";
 import { PatientTabsBar, PatientTabsProvider } from "@/components/patient-tabs";
+import { requirePageUser, requireSetupRedirect } from "@/lib/auth/session";
 
-export default function AppLayout({ children }: { children: ReactNode }) {
+export default async function AppLayout({ children }: { children: ReactNode }) {
+  await requireSetupRedirect();
+  const currentUser = await requirePageUser();
+
   return (
     <div className="shell">
-      <Sidebar />
+      <Sidebar currentUser={currentUser} />
       <PatientTabsProvider>
         <GlobalShortcuts />
         <div className="main-col">

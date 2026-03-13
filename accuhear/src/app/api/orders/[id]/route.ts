@@ -1,10 +1,16 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
+import { requireApiAdmin } from "@/lib/auth/api";
 import { prisma } from "@/lib/db";
 import { resolveLocalStoragePath } from "@/lib/documents/storage";
 
 export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireApiAdmin();
+  if (auth.error) {
+    return auth.error;
+  }
+
   const { id: orderId } = await params;
   if (!orderId) {
     return NextResponse.json({ error: "Missing order id" }, { status: 400 });

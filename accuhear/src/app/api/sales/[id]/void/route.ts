@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireApiAdmin } from "@/lib/auth/api";
 import { prisma } from "@/lib/db";
 import { formatSaleTransaction } from "@/lib/commerce";
 import { type SaleTransactionWithRelations, voidSaleTransaction } from "@/lib/sales-transactions";
 
 export async function POST(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireApiAdmin();
+  if (auth.error) {
+    return auth.error;
+  }
+
   const { id: saleId } = await params;
   if (!saleId) {
     return NextResponse.json({ error: "Missing sale id" }, { status: 400 });
