@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { getAdministratorCount } from "@/lib/auth/session";
 import { AUTH_COOKIE_NAME, AUTH_SESSION_MAX_AGE } from "@/lib/auth/constants";
 import { hashPassword } from "@/lib/auth/password";
 import { createAuthToken } from "@/lib/auth/token";
@@ -10,8 +11,8 @@ function normalizeEmail(value: unknown) {
 }
 
 export async function POST(request: Request) {
-  const existingUsers = await prisma.user.count();
-  if (existingUsers > 0) {
+  const administratorCount = await getAdministratorCount();
+  if (administratorCount > 0) {
     return NextResponse.json({ error: "Initial setup is already complete" }, { status: 403 });
   }
 

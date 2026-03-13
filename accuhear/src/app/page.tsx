@@ -1,13 +1,12 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { getAdministratorCount, getCurrentUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [userCount, currentUser] = await Promise.all([prisma.user.count(), getCurrentUser()]);
+  const [administratorCount, currentUser] = await Promise.all([getAdministratorCount(), getCurrentUser()]);
 
-  if (userCount === 0) {
+  if (administratorCount === 0) {
     redirect("/setup");
   }
 

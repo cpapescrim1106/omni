@@ -1,14 +1,13 @@
 import { redirect } from "next/navigation";
 import { SetupAdminForm } from "@/components/auth/setup-admin-form";
-import { getCurrentUser } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { getAdministratorCount, getCurrentUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function SetupPage() {
-  const [userCount, currentUser] = await Promise.all([prisma.user.count(), getCurrentUser()]);
+  const [administratorCount, currentUser] = await Promise.all([getAdministratorCount(), getCurrentUser()]);
 
-  if (userCount > 0) {
+  if (administratorCount > 0) {
     if (currentUser) {
       redirect("/patients");
     }
@@ -36,7 +35,7 @@ export default async function SetupPage() {
               Administrator bootstrap
             </div>
             <h2 className="mt-3 font-display text-[24px] font-bold text-ink-strong">Secure the workspace</h2>
-            <p className="mt-2 text-[13px] text-ink-muted">Use a strong password. Additional employees can be created later.</p>
+            <p className="mt-2 text-[13px] text-ink-muted">Create the first administrator. Additional employees can be created later.</p>
             <div className="mt-6">
               <SetupAdminForm />
             </div>

@@ -11,6 +11,10 @@ export function isAdminRole(role: UserRole | AuthTokenPayload["role"]) {
   return role === "ADMINISTRATOR";
 }
 
+export async function getAdministratorCount() {
+  return prisma.user.count({ where: { role: "ADMINISTRATOR" } });
+}
+
 export async function getAuthTokenPayload() {
   const cookieStore = await cookies();
   const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
@@ -43,8 +47,8 @@ export async function requirePageUser() {
 }
 
 export async function requireSetupRedirect() {
-  const userCount = await prisma.user.count();
-  if (userCount === 0) {
+  const administratorCount = await getAdministratorCount();
+  if (administratorCount === 0) {
     redirect("/setup");
   }
 }
