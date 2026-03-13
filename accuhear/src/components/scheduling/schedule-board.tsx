@@ -105,6 +105,8 @@ type Appointment = {
   providerName: string;
   startTime: string;
   endTime: string;
+  smsConfirmedAt?: string | null;
+  needsReschedule?: boolean;
   patient?: { id: string; firstName: string; lastName: string } | null;
   type?: { id: string; name: string } | null;
   status?: { id: string; name: string } | null;
@@ -132,6 +134,7 @@ type ScheduleEvent = {
   end: dayjs.Dayjs;
   durationMinutes: number;
   color: string;
+  smsConfirmed: boolean;
 };
 
 type PatientSearchResult = {
@@ -158,6 +161,18 @@ type AppointmentFormState = {
 
 function QuestionMark({ size, style }: { size?: number; style?: React.CSSProperties }) {
   return <span style={{ fontSize: size ? size + 2 : 12, lineHeight: 1, fontWeight: 700, display: "inline-block", ...style }}>?</span>;
+}
+
+function TextConfirmedIcon() {
+  return (
+    <span
+      title="Confirmed by text"
+      aria-label="Confirmed by text"
+      className="inline-flex items-center rounded-full bg-[rgba(30,155,108,0.12)] px-1.5 py-[1px] text-[9px] font-semibold uppercase tracking-[0.08em] text-[var(--success)]"
+    >
+      TXT
+    </span>
+  );
 }
 
 type StatusIconConfig = { Icon: React.ElementType; color: string };
@@ -773,6 +788,7 @@ export function BigSchedule() {
           end,
           durationMinutes,
           color,
+          smsConfirmed: Boolean(appointment.smsConfirmedAt),
         } as ScheduleEvent;
       })
       .filter((event) => visibleProviders.includes(event.providerName))
@@ -2401,6 +2417,7 @@ export function BigSchedule() {
                             <Icon size={12} style={{ color }} strokeWidth={2.5} />
                           </button>
                         ); })()}
+                        {event.smsConfirmed ? <TextConfirmedIcon /> : null}
                         <span className="schedule-event-label">{event.title}</span>
                       </div>
                       <div className="schedule-day-event-time">{event.timeLabel}</div>
@@ -2715,6 +2732,7 @@ export function BigSchedule() {
                             <Icon size={12} style={{ color }} strokeWidth={2.5} />
                           </button>
                         ); })()}
+                        {event.smsConfirmed ? <TextConfirmedIcon /> : null}
                         <span className="schedule-event-label">{event.title}</span>
                       </div>
                       <div className="schedule-week-event-time">{event.timeLabel}</div>

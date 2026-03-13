@@ -234,6 +234,10 @@ export async function getPatientById(id: string) {
       devices: true,
       appointments: {
         where: { startTime: { gte: new Date() } },
+        include: {
+          type: true,
+          status: true,
+        },
         orderBy: { startTime: 'asc' },
         take: 5,
       },

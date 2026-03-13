@@ -234,11 +234,19 @@ export default async function PatientProfilePage({
                       {dayjs(appt.startTime).format("MM/DD")}
                     </div>
                     <div className="appt-detail">
-                      <div className="appt-type">{appt.typeId || "Appointment"}</div>
+                      <div className="appt-type">{appt.type?.name || "Appointment"}</div>
                       <div className="appt-meta">
                         {dayjs(appt.startTime).format("h:mm A")}
                         {appt.endTime ? ` – ${dayjs(appt.endTime).format("h:mm A")}` : ""}
                         {appt.providerName ? ` · ${appt.providerName}` : ""}
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-2">
+                        {appt.smsConfirmedAt ? (
+                          <span className="patient-header-badge badge-success">Confirmed by text</span>
+                        ) : null}
+                        {appt.needsReschedule ? (
+                          <span className="patient-header-badge badge-warning">Needs reschedule</span>
+                        ) : null}
                       </div>
                     </div>
                   </div>

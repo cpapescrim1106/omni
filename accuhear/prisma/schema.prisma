@@ -41,6 +41,7 @@ model Patient {
   messageThreads    MessageThread[]
   audiograms        Audiogram[]
   smsConsents       SmsConsent[]
+  appointmentReminders AppointmentReminder[]
 
   @@index([lastName, firstName])
   @@index([email])
@@ -128,16 +129,21 @@ model Appointment {
   inProgressAt   DateTime?
   completedAt    DateTime?
   cancelledAt    DateTime?
+  smsConfirmedAt DateTime?
+  smsDeclinedAt  DateTime?
+  needsReschedule Boolean          @default(false)
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
   transitions    AppointmentStatusTransition[] @relation("AppointmentStatusTransition")
   statusEvents   AppointmentStatusEvent[]      @relation("AppointmentStatusEvent")
+  reminders      AppointmentReminder[]
   purchaseOrders PurchaseOrder[]
 
   @@index([providerName, startTime])
   @@index([patientId])
   @@index([statusId])
+  @@index([needsReschedule, startTime])
 }
 
 model AppointmentStatusTransition {
@@ -244,6 +250,38 @@ model Recall {
   @@index([patientId, dueDate])
   @@index([status, dueDate])
   @@index([recallRuleId])
+}
+
+model AppointmentReminder {
+  id              String                  @id @default(cuid())
+  appointmentId   String
+  appointment     Appointment             @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  patientId       String
+  patient         Patient                 @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  type            AppointmentReminderType
+  status          AppointmentReminderStatus @default(sent)
+  scheduledFor    DateTime
+  sentAt          DateTime?
+  respondedAt     DateTime?
+  outboundMessageId String?
+  replyMessageId  String?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  @@unique([appointmentId, type])
+  @@index([patientId, status, sentAt])
+  @@index([status, scheduledFor])
+}
+
+enum AppointmentReminderType {
+  one_week
+  one_day
+}
+
+enum AppointmentReminderStatus {
+  sent
+  confirmed
+  declined
 }
 
 enum RecallTriggerType {

@@ -1649,6 +1649,11 @@ a {
   color: var(--brand-blue);
 }
 
+.patient-header-badge.badge-warning {
+  background: rgba(194, 124, 26, 0.14);
+  color: #9a6216;
+}
+
 .patient-header-stats {
   display: flex;
   align-items: center;

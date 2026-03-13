@@ -5,6 +5,7 @@ import { claimWebhookEvent, markWebhookEventFailed, markWebhookEventProcessed } 
 import { detectConsentKeyword, updateSmsConsent } from "@/lib/messaging/consent";
 import { findPatientByPhone, normalizeToE164 } from "@/lib/messaging/phone";
 import { recordInboundMessage, updateMessageStatusByProviderMessageId, type MessageStatus } from "@/lib/messaging";
+import { handleAppointmentReminderReply } from "@/lib/appointments/reminders";
 
 export const runtime = "nodejs";
 
@@ -203,7 +204,7 @@ export async function POST(request: NextRequest) {
       if (keyword === "opt_out") await updateSmsConsent(match.patientId, fromNumber, "opted_out");
       if (keyword === "opt_in") await updateSmsConsent(match.patientId, fromNumber, "opted_in");
 
-      await recordInboundMessage({
+      const { message } = await recordInboundMessage({
         patientId: match.patientId,
         channel: "sms",
         body,
@@ -213,6 +214,13 @@ export async function POST(request: NextRequest) {
         fromNumber: fromNumber || undefined,
         toNumber: toNumber || undefined,
         rawPayload: recordObj,
+      });
+
+      await handleAppointmentReminderReply({
+        patientId: match.patientId,
+        body,
+        replyMessageId: message.id,
+        replySentAt: sentAt,
       });
 
       await markWebhookEventProcessed(provider, eventId);
