@@ -142,13 +142,6 @@ body {
   font-family: var(--font-body), "Open Sans", "Segoe UI", sans-serif;
 }
 
-/* Ensure Next.js wrappers don't break the flex chain */
-body > * {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
 
 body::before {
   content: "";
