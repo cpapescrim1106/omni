@@ -35,7 +35,7 @@ export function LoginPageClient() {
         </div>
 
         {/* Glass card */}
-        <div className="rounded-[20px] border border-white/[0.08] bg-white/[0.06] p-8 shadow-[0_32px_64px_rgba(0,0,0,0.3)] backdrop-blur-xl">
+        <div className="rounded-[20px] border border-white/[0.08] bg-white/[0.06] p-5 sm:p-8 shadow-[0_32px_64px_rgba(0,0,0,0.3)] backdrop-blur-xl">
           <div className="mb-6 text-center">
             <h1 className="font-display text-[20px] font-bold text-white">Welcome back</h1>
             <p className="mt-1.5 text-[13px] text-white/50">Sign in to your workspace</p>
