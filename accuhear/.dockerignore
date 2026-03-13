@@ -4,5 +4,6 @@ node_modules
 *.md
 tests
 scripts
+playwright.config.ts
 .env
 .env.*
