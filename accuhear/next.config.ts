@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   allowedDevOrigins: [
     "iris.taila6f62d.ts.net",
     "http://iris.taila6f62d.ts.net",
