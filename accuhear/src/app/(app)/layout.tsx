@@ -5,6 +5,8 @@ import { GlobalShortcuts } from "@/components/global-shortcuts";
 import { PatientTabsBar, PatientTabsProvider } from "@/components/patient-tabs";
 import { requirePageUser, requireSetupRedirect } from "@/lib/auth/session";
 
+export const dynamic = "force-dynamic";
+
 export default async function AppLayout({ children }: { children: ReactNode }) {
   await requireSetupRedirect();
   const currentUser = await requirePageUser();

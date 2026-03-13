@@ -3,6 +3,8 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { LoginPageClient } from "./login-page-client";
 
+export const dynamic = "force-dynamic";
+
 export default async function LoginPage() {
   const [userCount, currentUser] = await Promise.all([prisma.user.count(), getCurrentUser()]);
 
